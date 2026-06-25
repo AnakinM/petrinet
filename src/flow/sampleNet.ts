@@ -2,7 +2,9 @@ import type { PetriNet } from "@/domain/types";
 
 /**
  * A small built-in net rendered on first load so the canvas always has content.
- * It exercises every place glyph (empty / dots / number) and a rotated transition.
+ * It exercises every place glyph (empty / dots / number), a rotated transition, and
+ * arcs (including one with multiplicity > 1 to show the weight label). Arc endpoints
+ * are clipped to the node borders — the rendering convention for magnetic arcs.
  * A later milestone replaces this default with autosave/import.
  */
 export const SAMPLE_NET: PetriNet = {
@@ -25,8 +27,8 @@ export const SAMPLE_NET: PetriNet = {
       destMagnetic: true,
       multiplicity: 1,
       points: [
-        { x: -120, y: -80 },
-        { x: 20, y: 0 },
+        { x: -102.636, y: -70.077 },
+        { x: 12.5, y: -4.286 },
       ],
     },
     {
@@ -37,8 +39,8 @@ export const SAMPLE_NET: PetriNet = {
       destMagnetic: true,
       multiplicity: 1,
       points: [
-        { x: -120, y: 80 },
-        { x: 20, y: 0 },
+        { x: -102.636, y: 70.077 },
+        { x: 12.5, y: 4.286 },
       ],
     },
     {
@@ -49,8 +51,8 @@ export const SAMPLE_NET: PetriNet = {
       destMagnetic: true,
       multiplicity: 1,
       points: [
-        { x: 20, y: 0 },
-        { x: 160, y: 0 },
+        { x: 27.5, y: 0 },
+        { x: 140, y: 0 },
       ],
     },
     {
@@ -61,8 +63,8 @@ export const SAMPLE_NET: PetriNet = {
       destMagnetic: true,
       multiplicity: 2,
       points: [
-        { x: 160, y: 0 },
-        { x: 300, y: 0 },
+        { x: 180, y: 0 },
+        { x: 280, y: 0 },
       ],
     },
     {
@@ -73,8 +75,8 @@ export const SAMPLE_NET: PetriNet = {
       destMagnetic: true,
       multiplicity: 1,
       points: [
-        { x: 300, y: 0 },
-        { x: 420, y: 0 },
+        { x: 320, y: 0 },
+        { x: 400, y: 0 },
       ],
     },
   ],

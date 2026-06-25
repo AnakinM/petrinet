@@ -52,3 +52,33 @@ describe("FlowProjection.toNodes", () => {
     });
   });
 });
+
+describe("FlowProjection.toEdges", () => {
+  it("creates one edge per arc", () => {
+    const edges = FlowProjection.toEdges(SAMPLE_NET);
+    expect(edges).toHaveLength(SAMPLE_NET.arcs.length);
+  });
+
+  it("wires each edge to its arc's endpoints and the custom arc type", () => {
+    const edge = FlowProjection.toEdges(SAMPLE_NET).find((e) => e.id === "a-ready-start");
+    expect(edge?.type).toBe("arc");
+    expect(edge?.source).toBe("p-ready");
+    expect(edge?.target).toBe("t-start");
+  });
+
+  it("carries the source arc in edge data", () => {
+    const edge = FlowProjection.toEdges(SAMPLE_NET).find((e) => e.id === "a-buffer-finish");
+    expect(edge?.data?.arc.multiplicity).toBe(2);
+  });
+
+  it("attaches a closed arrowhead marker at the target end", () => {
+    const edge = FlowProjection.toEdges(SAMPLE_NET)[0];
+    expect(edge.markerEnd).toMatchObject({ type: "arrowclosed" });
+  });
+
+  describe.skipIf(!hasFixture)("against the local export-12.npn", () => {
+    it("projects every arc to an edge (170 arcs)", () => {
+      expect(FlowProjection.toEdges(NpnCodec.parse(fixtureText()))).toHaveLength(170);
+    });
+  });
+});

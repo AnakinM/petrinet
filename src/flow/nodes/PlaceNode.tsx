@@ -1,10 +1,12 @@
 import type { NodeProps } from "@xyflow/react";
 import type { JSX } from "react";
+import { NodeHandles } from "@/flow/nodes/NodeHandles";
 import { PlaceTokens } from "@/flow/nodes/tokens";
 import type { PlaceFlowNode } from "@/flow/projection";
 
-/** Diameter of the place circle, in flow units. */
-const DIAMETER = 44;
+// Diameter of the place circle, in flow units. Matches the `.npn` geometry (radius 20),
+// so stored magnetic arc endpoints land exactly on the rendered border.
+const DIAMETER = 40;
 
 /** A place: a circle whose tokens render as dots (few) or a numeral (many). */
 export function PlaceNode({ data }: NodeProps<PlaceFlowNode>): JSX.Element {
@@ -14,6 +16,7 @@ export function PlaceNode({ data }: NodeProps<PlaceFlowNode>): JSX.Element {
 
   return (
     <div className="relative" style={{ width: DIAMETER, height: DIAMETER }}>
+      <NodeHandles />
       <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-slate-700 bg-white shadow-sm">
         {display.kind === "dots" && (
           <div className="grid grid-cols-2 place-items-center gap-1">

@@ -3,31 +3,40 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  type EdgeTypes,
   MiniMap,
   type NodeTypes,
   ReactFlow,
+  useEdgesState,
   useNodesState,
 } from "@xyflow/react";
 import { type JSX, useMemo } from "react";
 import type { PetriNet } from "@/domain/types";
+import { ArcEdge } from "@/flow/edges/ArcEdge";
 import { PlaceNode } from "@/flow/nodes/PlaceNode";
 import { TransitionNode } from "@/flow/nodes/TransitionNode";
-import { FlowProjection, type PetriFlowNode } from "@/flow/projection";
+import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/projection";
 
-// Stable module-level reference: recreating this each render makes React Flow warn.
+// Stable module-level references: recreating these each render makes React Flow warn.
 const NODE_TYPES: NodeTypes = { place: PlaceNode, transition: TransitionNode };
+const EDGE_TYPES: EdgeTypes = { arc: ArcEdge };
 
 /** The infinite-grid canvas: renders the net's nodes with pan/zoom, grid, and minimap. */
 export function Canvas({ net }: { net: PetriNet }): JSX.Element {
   const initialNodes = useMemo(() => FlowProjection.toNodes(net), [net]);
+  const initialEdges = useMemo(() => FlowProjection.toEdges(net), [net]);
   const [nodes, , onNodesChange] = useNodesState<PetriFlowNode>(initialNodes);
+  const [edges, , onEdgesChange] = useEdgesState<ArcFlowEdge>(initialEdges);
 
   return (
     <div className="h-full w-full bg-white">
       <ReactFlow
         nodes={nodes}
+        edges={edges}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         nodeOrigin={[0.5, 0.5]}
         nodesDraggable={false}
         nodesConnectable={false}
