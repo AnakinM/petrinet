@@ -1,9 +1,11 @@
 import type { JSX } from "react";
+import { Canvas } from "@/flow/Canvas";
+import { SAMPLE_NET } from "@/flow/sampleNet";
 
 export default function App(): JSX.Element {
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-neutral-900 text-neutral-400">
-      <p className="text-sm">Petri Net Editor — empty canvas</p>
+    <div className="h-screen w-screen">
+      <Canvas net={SAMPLE_NET} />
     </div>
   );
 }
