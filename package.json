@@ -1,0 +1,35 @@
+{
+  "name": "petrinet",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser-based editor and simulator for classic place/transition Petri nets, with byte-faithful .npn import/export.",
+  "license": "MIT",
+  "author": "Mateusz Anikiej <mateusz@anikiej.com>",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
+    "@tailwindcss/vite": "^4.3.1",
+    "@types/bun": "^1.3.14",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^6.0.3",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9"
+  }
+}
