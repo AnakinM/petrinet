@@ -2,6 +2,7 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { type JSX, useEffect } from "react";
 import { Canvas } from "@/flow/Canvas";
 import { netHistory, useNetStore } from "@/store/netStore";
+import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
 import { Palette } from "@/ui/Palette";
 import { PropertiesPanel } from "@/ui/PropertiesPanel";
 import { Toolbar } from "@/ui/Toolbar";
@@ -46,8 +47,9 @@ export default function App(): JSX.Element {
             <Palette />
             <PropertiesPanel />
           </aside>
-          <div className="min-w-0 flex-1">
+          <div className="relative min-w-0 flex-1">
             <Canvas />
+            <AnalyticsPanel />
           </div>
         </div>
       </ReactFlowProvider>
