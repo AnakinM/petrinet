@@ -18,8 +18,11 @@ export function ArcStartHandles({
 }: {
   nodeId: string;
   selected: boolean;
-}): JSX.Element {
+}): JSX.Element | null {
   const { screenToFlowPosition } = useReactFlow();
+  // Drawing an arc is an Idle-mode action; a placing/select tool hides the handles entirely.
+  const idle = useBuildStore((s) => s.tool === "idle");
+  if (!idle) return null;
   const visibility = selected ? "opacity-100" : "opacity-0 group-hover:opacity-100";
 
   const start = (e: ReactPointerEvent): void => {

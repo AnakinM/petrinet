@@ -25,10 +25,11 @@ function exportNet(): void {
   NpnFile.save(useNetStore.getState().net);
 }
 
-/** Enter Simulate: clear the Build selection, lock the net, and snapshot M0 into the sim. */
+/** Enter Simulate: drop any active Build tool, clear the selection, lock the net, snapshot M0. */
 function enterSimulate(): void {
   const store = useNetStore.getState();
   if (store.mode === "simulate") return;
+  useBuildStore.getState().setTool("idle");
   store.select({ nodes: [], edges: [] });
   store.setMode("simulate");
   useSimStore.getState().start(store.net);

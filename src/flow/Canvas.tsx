@@ -10,6 +10,7 @@ import {
   type NodeTypes,
   type OnSelectionChangeParams,
   ReactFlow,
+  SelectionMode,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -68,7 +69,9 @@ export function Canvas(): JSX.Element {
   const drawing = useBuildStore((s) => s.draft !== null);
   const tool = useBuildStore((s) => s.tool);
   const snap = useBuildStore((s) => s.snap);
-  const placing = tool === "place" || tool === "transition";
+  // Tools only act in Build; this also keeps a left-over placing tool from bleeding into Simulate.
+  const placing = editable && (tool === "place" || tool === "transition");
+  const marquee = editable && tool === "select";
   const highlight = useAnalyticsStore((s) => s.highlight);
   const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
 
@@ -111,6 +114,20 @@ export function Canvas(): JSX.Element {
       });
     }
   }, [highlight, setNodes, fitView]);
+
+  // In the marquee (select) tool, Esc clears the current selection (right-click clears it via the
+  // A5 context-menu policy). Other tools own Esc themselves (exit placing / cancel an arc draw).
+  useEffect(() => {
+    if (!marquee) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== "Escape") return;
+      setNodes(clearSelected);
+      setEdges(clearSelected);
+      useNetStore.getState().select({ nodes: [], edges: [] });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [marquee, setNodes, setEdges]);
 
   // Resolve a node's live position to the grid/alignment (B2+B3). A lone drag aligns to its
   // siblings and surfaces guides; a group drag falls back to plain snap. Only position changes
@@ -260,6 +277,12 @@ export function Canvas(): JSX.Element {
         elementsSelectable={editable}
         deleteKeyCode={null}
         panOnScroll
+        // Marquee (select) tool: left-drag the empty pane rubber-bands nodes (a drag on a selected
+        // node moves the group), while the middle button still pans. Other modes pan with the left
+        // or middle button. (panOnDrag button codes: 0 = left, 1 = middle.)
+        selectionOnDrag={marquee}
+        panOnDrag={marquee ? [1] : [0, 1]}
+        selectionMode={SelectionMode.Partial}
         minZoom={0.1}
         maxZoom={4}
         {...(initialViewport

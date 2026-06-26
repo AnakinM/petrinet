@@ -21,6 +21,10 @@ export function Palette(): JSX.Element {
         <span className="h-5 w-[7px] bg-current" />
         Transition
       </ToolButton>
+      <ToolButton active={tool === "select"} onClick={() => toggleTool("select")}>
+        <span className="h-5 w-5 rounded-[2px] border border-current border-dashed" />
+        Select
+      </ToolButton>
     </section>
   );
 }

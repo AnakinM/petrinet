@@ -69,6 +69,16 @@ export class NetOps {
     };
   }
 
+  /**
+   * Move several nodes at once (a marquee group-drag), each translating its own magnetic arc
+   * endpoints. Applied sequentially, so an arc whose endpoints are both in the group has each
+   * end translated by its own node's delta. Interior waypoints stay put (Phase 1). One transform,
+   * so the store commits it as a single undo entry.
+   */
+  static moveNodes(net: PetriNet, moves: { id: string; position: Vec2 }[]): PetriNet {
+    return moves.reduce((acc, m) => NetOps.moveNode(acc, m.id, m.position), net);
+  }
+
   // --- rotate ---------------------------------------------------------------
 
   /**

@@ -101,6 +101,26 @@ describe("NetOps.moveNode", () => {
   });
 });
 
+describe("NetOps.moveNodes", () => {
+  it("translates each end of an arc whose two nodes are both in the group", () => {
+    // Move p and t both by (10, 5): every magnetic endpoint follows its own node.
+    const after = NetOps.moveNodes(net(), [
+      { id: "p", position: { x: 10, y: 5 } },
+      { id: "t", position: { x: 110, y: 5 } },
+    ]);
+    expect(after.places[0].position).toEqual({ x: 10, y: 5 });
+    expect(after.transitions[0].position).toEqual({ x: 110, y: 5 });
+    expect(after.arcs[0].points[0]).toEqual({ x: 30, y: 5 }); // src end, by p's delta
+    expect(after.arcs[0].points[1]).toEqual({ x: 102.5, y: 5 }); // dst end, by t's delta
+  });
+
+  it("does not mutate the input net", () => {
+    const before = net();
+    NetOps.moveNodes(before, [{ id: "p", position: { x: 9, y: 9 } }]);
+    expect(before.places[0].position).toEqual({ x: 0, y: 0 });
+  });
+});
+
 describe("NetOps.canConnect", () => {
   it("accepts a bipartite pair in either direction", () => {
     expect(NetOps.canConnect(net(), "t", "p")).toBe(true);

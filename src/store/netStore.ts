@@ -76,10 +76,7 @@ export const useNetStore = create<NetState>()(
       setNet: (net) => set({ net, selection: EMPTY_SELECTION }),
       addPlace: (position) => set((s) => ({ net: NetOps.addPlace(s.net, position) })),
       addTransition: (position) => set((s) => ({ net: NetOps.addTransition(s.net, position) })),
-      moveNodes: (moves) =>
-        set((s) => ({
-          net: moves.reduce((net, m) => NetOps.moveNode(net, m.id, m.position), s.net),
-        })),
+      moveNodes: (moves) => set((s) => ({ net: NetOps.moveNodes(s.net, moves) })),
       connect: (source, target, bends) =>
         set((s) => ({ net: NetOps.connect(s.net, source, target, bends) })),
       rename: (id, name) => set((s) => ({ net: NetOps.rename(s.net, id, name) })),
