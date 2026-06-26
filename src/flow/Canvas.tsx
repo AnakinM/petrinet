@@ -16,7 +16,6 @@ import {
 } from "@xyflow/react";
 import {
   type CSSProperties,
-  type DragEvent,
   type JSX,
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -29,11 +28,11 @@ import { ArcEdge } from "@/flow/edges/ArcEdge";
 import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { PlaceNode } from "@/flow/nodes/PlaceNode";
 import { TransitionNode } from "@/flow/nodes/TransitionNode";
+import { PlacingLayer } from "@/flow/PlacingLayer";
 import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/projection";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
-import { type PaletteNodeKind, PETRI_NODE_MIME } from "@/ui/Palette";
 
 // Stable module-level references: recreating these each render makes React Flow warn.
 const NODE_TYPES: NodeTypes = { place: PlaceNode, transition: TransitionNode };
@@ -61,6 +60,8 @@ export function Canvas(): JSX.Element {
   const net = useNetStore((s) => s.net);
   const editable = useNetStore((s) => s.mode === "build");
   const drawing = useBuildStore((s) => s.draft !== null);
+  const tool = useBuildStore((s) => s.tool);
+  const placing = tool === "place" || tool === "transition";
   const highlight = useAnalyticsStore((s) => s.highlight);
   const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
 
@@ -153,15 +154,14 @@ export function Canvas(): JSX.Element {
   // Unified right-click policy (A5). Mounted on the canvas wrapper so it suppresses the native
   // menu canvas-only (the side panels are separate DOM subtrees) and catches every target —
   // pane, node, edge, and the waypoint handles in the edge-label layer that RF's
-  // onEdgeContextMenu would miss. Rule 1 (cancel an in-progress draw) is handled upstream by
-  // ArcDrawLayer's overlay, which stops the event before it reaches here.
+  // onEdgeContextMenu would miss. Rules 1 (cancel an in-progress draw) and 2 (exit a placing tool)
+  // are handled upstream by the ArcDrawLayer / PlacingLayer overlays, which stop the event before
+  // it reaches here; this handler covers rules 3–5.
   const onContextMenu = useCallback(
     (event: ReactMouseEvent): void => {
       event.preventDefault();
       const { net, selection, mode } = useNetStore.getState();
       if (mode !== "build") return;
-
-      // Rule 2 (exit a Palette placing tool) is inert until Phase B adds placing state.
 
       // Rule 3: cursor on a selected arc's bend → remove that bend and straighten.
       const cursor = screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -186,32 +186,9 @@ export function Canvas(): JSX.Element {
     [screenToFlowPosition, getViewport, setNodes, setEdges],
   );
 
-  const onDragOver = useCallback((event: DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
-  }, []);
-
-  const onDrop = useCallback(
-    (event: DragEvent) => {
-      event.preventDefault();
-      const kind = event.dataTransfer.getData(PETRI_NODE_MIME) as PaletteNodeKind;
-      if (kind !== "place" && kind !== "transition") return;
-      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      const store = useNetStore.getState();
-      if (kind === "place") store.addPlace(position);
-      else store.addTransition(position);
-    },
-    [screenToFlowPosition],
-  );
-
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: palette drop target + canvas-only right-click policy; all other pointer interaction is React Flow's pane below.
-    <div
-      className="relative h-full w-full bg-white"
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onContextMenu={onContextMenu}
-    >
+    // biome-ignore lint/a11y/noStaticElementInteractions: canvas-only right-click policy; all other pointer interaction is React Flow's pane below.
+    <div className="relative h-full w-full bg-white" onContextMenu={onContextMenu}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -246,6 +223,7 @@ export function Canvas(): JSX.Element {
         <Controls showInteractive={false} />
       </ReactFlow>
       {drawing && <ArcDrawLayer />}
+      {placing && <PlacingLayer kind={tool === "place" ? "place" : "transition"} />}
     </div>
   );
 }

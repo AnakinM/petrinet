@@ -48,3 +48,38 @@ describe("buildStore arc draft", () => {
     expect(useBuildStore.getState().draft).toBeNull();
   });
 });
+
+describe("buildStore tool mode", () => {
+  beforeEach(() => {
+    useBuildStore.getState().setTool("idle");
+  });
+
+  it("defaults to the idle tool", () => {
+    expect(useBuildStore.getState().tool).toBe("idle");
+  });
+
+  it("setTool activates the given tool", () => {
+    useBuildStore.getState().setTool("place");
+    expect(useBuildStore.getState().tool).toBe("place");
+  });
+
+  it("toggleTool activates from idle, then deactivates the active tool", () => {
+    useBuildStore.getState().toggleTool("transition");
+    expect(useBuildStore.getState().tool).toBe("transition");
+    useBuildStore.getState().toggleTool("transition");
+    expect(useBuildStore.getState().tool).toBe("idle");
+  });
+
+  it("toggleTool switches directly between tools", () => {
+    useBuildStore.getState().toggleTool("place");
+    useBuildStore.getState().toggleTool("transition");
+    expect(useBuildStore.getState().tool).toBe("transition");
+  });
+
+  it("activating a tool cancels an in-progress arc draft (the two are exclusive)", () => {
+    useBuildStore.getState().startArc("p1", { x: 0, y: 0 });
+    useBuildStore.getState().toggleTool("place");
+    expect(useBuildStore.getState().draft).toBeNull();
+    expect(useBuildStore.getState().tool).toBe("place");
+  });
+});
