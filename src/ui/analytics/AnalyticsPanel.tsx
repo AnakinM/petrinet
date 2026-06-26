@@ -1,4 +1,4 @@
-import { type JSX, type PointerEvent as ReactPointerEvent, useEffect } from "react";
+import { type JSX, type PointerEvent as ReactPointerEvent, useEffect, useState } from "react";
 import type { AnalysisResult } from "@/domain/analysis/types";
 import { type AnalyticsTab, useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
@@ -125,23 +125,46 @@ function TabButton({
   );
 }
 
-/** Thin gutter on the panel's left border; drag to resize. Resizing is pointer-only in v1. */
+/**
+ * Gutter on the panel's left border: full-height double rails with an always-visible triple-dot
+ * grip at mid-height, over a ~9px `col-resize` hit-area. Highlights blue on hover and stays lit
+ * while dragging (the pointer leaves the strip mid-drag, so hover alone won't hold). Drag to
+ * resize (pointer-only in v1).
+ */
 function ResizeHandle(): JSX.Element {
+  const [dragging, setDragging] = useState(false);
   return (
     <div
-      onPointerDown={startResize}
-      className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize hover:bg-blue-300"
-    />
+      onPointerDown={(e) => {
+        setDragging(true);
+        startResize(e, () => setDragging(false));
+      }}
+      title="Drag to resize"
+      className={`absolute inset-y-0 left-0 z-10 flex w-[9px] cursor-col-resize items-center justify-center ${
+        dragging ? "bg-blue-300" : "hover:bg-blue-300"
+      }`}
+    >
+      <span className="-translate-x-1/2 absolute inset-y-0 left-1/2 flex gap-[5px]">
+        <span className="w-px bg-slate-300" />
+        <span className="w-px bg-slate-300" />
+      </span>
+      <span className="relative flex flex-col gap-[3px] rounded-sm bg-white p-[2px]">
+        <span className="h-[2px] w-[2px] rounded-full bg-slate-400" />
+        <span className="h-[2px] w-[2px] rounded-full bg-slate-400" />
+        <span className="h-[2px] w-[2px] rounded-full bg-slate-400" />
+      </span>
+    </div>
   );
 }
 
-function startResize(e: ReactPointerEvent): void {
+function startResize(e: ReactPointerEvent, onDone: () => void): void {
   e.preventDefault();
   const onMove = (ev: globalThis.PointerEvent): void => {
     useAnalyticsStore.getState().setWidth(window.innerWidth - ev.clientX);
   };
   const onUp = (): void => {
     useAnalyticsStore.getState().commitWidth();
+    onDone();
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
   };
