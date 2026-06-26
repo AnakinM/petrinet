@@ -9,7 +9,7 @@ import type {
   PropertyResult,
 } from "@/domain/analysis/types";
 import { NetNames } from "@/domain/netNames";
-import type { Marking, PetriNet } from "@/domain/types";
+import type { PetriNet } from "@/domain/types";
 
 /** Behavioural verdict shown until the on-demand reachability pass has run for the current net. */
 export const NOT_COMPUTED = "Not yet computed — run Re-analyze.";
@@ -24,6 +24,8 @@ interface AnalyzeOptions {
   behavioral?: boolean;
   /** Reachability state cap override — a test seam; production uses {@link ReachabilityGraph.STATE_CAP}. */
   cap?: number;
+  /** Invariant generator cap override — a test seam; production uses {@link Invariants.MAX_GENERATORS}. */
+  invariantCap?: number;
 }
 
 /**
@@ -43,58 +45,63 @@ interface AnalyzeOptions {
  */
 export class NetAnalysis {
   static analyze(net: PetriNet, opts?: AnalyzeOptions): AnalysisResult {
+    const algebraic = NetAnalysis._algebraic(net, opts?.invariantCap);
+    return opts?.behavioral ? NetAnalysis.behavioral(net, algebraic, opts.cap) : algebraic;
+  }
+
+  /**
+   * The instant algebraic slice — invariants, conservativeness, structural boundedness and the
+   * net-graph diagnostics — with every behavioural verdict left `indeterminate`. The store keeps
+   * this live while the panel is open, then threads it straight into {@link behavioral} so the
+   * on-demand reachability pass never recomputes any of it.
+   */
+  private static _algebraic(net: PetriNet, invariantCap?: number): AnalysisResult {
     const matrix = new IncidenceMatrix(net);
-    const place = Invariants.placeInvariants(matrix);
-    const transition = Invariants.transitionInvariants(matrix);
-    const placesCovered = Invariants.covers(place, matrix.places);
-    const transitionsCovered = Invariants.covers(transition, matrix.transitions);
-    const invariants: InvariantSet = {
-      place,
-      transition,
-      placesCovered,
-      transitionsCovered,
-      truncated: false,
-    };
-
+    const invariants = Invariants.invariantSet(matrix, invariantCap);
     const strictlyConservative = NetAnalysis._strictlyConservative(matrix.c);
-    const conservative = NetAnalysis._conservative(placesCovered, strictlyConservative);
-    const structure = NetStructure.analyze(net);
-
-    if (!opts?.behavioral) {
-      const pending: PropertyResult = { verdict: "indeterminate", detail: NOT_COMPUTED };
-      return {
-        boundedness: {
-          bounded: placesCovered ? "yes" : "indeterminate",
-          safe: "indeterminate",
-          bound: null,
-          source: placesCovered ? "structural" : "none",
-        },
-        conservative,
-        strictlyConservative,
-        live: pending,
-        quasiLive: pending,
-        reversible: pending,
-        deadlockFree: pending,
-        invariants,
-        diagnostics: { ...structure, deadTransitions: [], deadlocks: [] },
-        stateSpaceExceeded: false,
-        stateSpaceComplete: false,
-        exploredStates: 0,
-      };
-    }
-
-    const rg = new ReachabilityGraph(net, opts.cap ?? ReachabilityGraph.STATE_CAP);
+    const pending: PropertyResult = { verdict: "indeterminate", detail: NOT_COMPUTED };
     return {
-      boundedness: NetAnalysis._boundedness(placesCovered, rg),
-      conservative,
+      boundedness: {
+        bounded: invariants.placesCovered ? "yes" : "indeterminate",
+        safe: "indeterminate",
+        bound: null,
+        source: invariants.placesCovered ? "structural" : "none",
+      },
+      conservative: NetAnalysis._conservative(invariants, strictlyConservative),
       strictlyConservative,
+      live: pending,
+      quasiLive: pending,
+      reversible: pending,
+      deadlockFree: pending,
+      invariants,
+      diagnostics: { ...NetStructure.analyze(net), deadTransitions: [], deadlocks: [] },
+      stateSpaceExceeded: false,
+      stateSpaceComplete: false,
+      exploredStates: 0,
+    };
+  }
+
+  /**
+   * Augments a precomputed {@link _algebraic} slice with one {@link ReachabilityGraph} pass: the
+   * behavioural verdicts (live / reversible / deadlock-free / quasi-live), the exact bound and
+   * safeness, and the dead-transition / deadlock witnesses. The algebraic fields pass through
+   * untouched, so Re-analyze reuses them rather than redoing the invariant and structural work.
+   */
+  static behavioral(
+    net: PetriNet,
+    algebraic: AnalysisResult,
+    cap: number = ReachabilityGraph.STATE_CAP,
+  ): AnalysisResult {
+    const rg = new ReachabilityGraph(net, cap);
+    return {
+      ...algebraic,
+      boundedness: NetAnalysis._boundedness(algebraic.invariants.placesCovered, rg),
       live: NetAnalysis._live(rg),
       quasiLive: NetAnalysis._quasiLive(rg, net),
       reversible: NetAnalysis._reversible(rg),
       deadlockFree: NetAnalysis._deadlockFree(rg, net),
-      invariants,
       diagnostics: {
-        ...structure,
+        ...algebraic.diagnostics,
         deadTransitions: rg.deadTransitions(),
         deadlocks: rg.deadlocks(),
       },
@@ -105,15 +112,19 @@ export class NetAnalysis {
   }
 
   /**
-   * A cheap fingerprint of everything an analysis depends on — place ids & token counts, transition
-   * ids, and arc topology with multiplicities. Excludes positions, labels, rotation and names (none
+   * A fingerprint of everything an analysis depends on — place ids & token counts, transition ids,
+   * and arc topology with multiplicities. Excludes positions, labels, rotation and names (none
    * affect a verdict), so a layout nudge produces the same signature and need not invalidate results.
+   *
+   * JSON-encoded (not delimiter-joined) so it is injective: imported ids may contain any character,
+   * and a structural change must never collide with an unrelated net's fingerprint string.
    */
   static signature(net: PetriNet): string {
-    const places = net.places.map((p) => `${p.id}:${p.tokens}`).join(",");
-    const transitions = net.transitions.map((t) => t.id).join(",");
-    const arcs = net.arcs.map((a) => `${a.source}>${a.target}*${a.multiplicity}`).join(",");
-    return `${places}|${transitions}|${arcs}`;
+    return JSON.stringify([
+      net.places.map((p) => [p.id, p.tokens]),
+      net.transitions.map((t) => t.id),
+      net.arcs.map((a) => [a.source, a.target, a.multiplicity]),
+    ]);
   }
 
   /**
@@ -169,7 +180,7 @@ export class NetAnalysis {
       case "no":
         return {
           verdict: "no",
-          detail: `Reaches a dead marking: ${NetAnalysis._formatMarking(rg.deadlocks()[0].marking, net)}.`,
+          detail: `Reaches a dead marking: ${NetNames.formatMarking(rg.deadlocks()[0].marking, net.places)}.`,
         };
       default:
         return { verdict: "indeterminate", detail: NetAnalysis._whyIndeterminate(rg) };
@@ -196,17 +207,20 @@ export class NetAnalysis {
     return NOT_COMPUTED;
   }
 
-  /** A reachable marking as `P1=1, P2=0` over place names, in net order. */
-  private static _formatMarking(marking: Marking, net: PetriNet): string {
-    return net.places.map((p) => `${p.name}=${marking[p.id] ?? 0}`).join(", ");
-  }
-
   /**
    * Conservative ⟺ a positive P-invariant exists ⟺ every place is covered by some minimal
-   * P-semiflow (their sum is then a full-support semiflow). Fully algebraic, so a definite yes/no.
+   * P-semiflow (their sum is then a full-support semiflow). Fully algebraic, so a definite yes/no —
+   * unless the P-semiflow enumeration truncated, in which case place coverage is unknown and the
+   * verdict degrades to indeterminate rather than claim a false "no" (a T-overflow is irrelevant here).
    */
-  private static _conservative(placesCovered: boolean, strict: boolean): PropertyResult {
-    if (!placesCovered) {
+  private static _conservative(invariants: InvariantSet, strict: boolean): PropertyResult {
+    if (invariants.placeTruncated) {
+      return {
+        verdict: "indeterminate",
+        detail: "Too many place invariants to enumerate within the safety cap.",
+      };
+    }
+    if (!invariants.placesCovered) {
       return {
         verdict: "no",
         detail:

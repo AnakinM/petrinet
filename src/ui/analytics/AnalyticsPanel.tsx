@@ -1,4 +1,4 @@
-import type { JSX, PointerEvent as ReactPointerEvent } from "react";
+import { type JSX, type PointerEvent as ReactPointerEvent, useEffect } from "react";
 import type { AnalysisResult } from "@/domain/analysis/types";
 import { type AnalyticsTab, useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
@@ -17,6 +17,17 @@ export function AnalyticsPanel(): JSX.Element | null {
   const activeTab = useAnalyticsStore((s) => s.activeTab);
   const result = useAnalyticsStore((s) => s.result);
   const net = useNetStore((s) => s.net);
+
+  // Shrinking the viewport can leave the persisted width wider than the canvas now allows; re-clamp
+  // it (transiently — the load-time clamp persists the correction) so the panel never occludes the
+  // sidebar. setWidth re-runs the same clamp against the new innerWidth.
+  useEffect(() => {
+    const onResize = (): void => {
+      useAnalyticsStore.getState().setWidth(useAnalyticsStore.getState().width);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   if (!open) return null;
   const empty = net.places.length === 0 && net.transitions.length === 0;

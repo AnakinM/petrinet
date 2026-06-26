@@ -1,22 +1,26 @@
-import type { JSX } from "react";
+import { type JSX, useMemo } from "react";
 import type { AnalysisResult, Invariant } from "@/domain/analysis/types";
 import { NetNames } from "@/domain/netNames";
 import { useNetStore } from "@/store/netStore";
-
-/** Never render more than this many invariant rows; the rest collapse to a "showing N of M" note. */
-const DISPLAY_CAP = 50;
+import { DISPLAY_CAP, Overflow, Section } from "@/ui/analytics/widgets";
 
 /** P- and T-invariants rendered as weighted sums over element names, plus the coverage summary. */
 export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Element {
   const net = useNetStore((s) => s.net);
+  // Order arrays and resolvers rebuild only when the net changes, not on every render.
+  const placeOrder = useMemo(() => net.places.map((p) => p.id), [net.places]);
+  const transitionOrder = useMemo(() => net.transitions.map((t) => t.id), [net.transitions]);
+  const placeName = useMemo(() => NetNames.resolver(net.places), [net.places]);
+  const transitionName = useMemo(() => NetNames.resolver(net.transitions), [net.transitions]);
   const { invariants } = result;
   return (
     <div className="flex flex-col gap-4">
       <InvariantSection
         title="Place invariants"
         invariants={invariants.place}
-        order={net.places.map((p) => p.id)}
-        nameOf={NetNames.resolver(net.places)}
+        truncated={invariants.placeTruncated}
+        order={placeOrder}
+        nameOf={placeName}
         covered={invariants.placesCovered}
         coveredNote="All places covered — structurally bounded & conservative."
         emptyNote="No place invariants."
@@ -24,8 +28,9 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
       <InvariantSection
         title="Transition invariants"
         invariants={invariants.transition}
-        order={net.transitions.map((t) => t.id)}
-        nameOf={NetNames.resolver(net.transitions)}
+        truncated={invariants.transitionTruncated}
+        order={transitionOrder}
+        nameOf={transitionName}
         covered={invariants.transitionsCovered}
         coveredNote="All transitions covered — consistent."
         emptyNote="No transition invariants."
@@ -37,6 +42,7 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
 function InvariantSection({
   title,
   invariants,
+  truncated,
   order,
   nameOf,
   covered,
@@ -45,22 +51,27 @@ function InvariantSection({
 }: {
   title: string;
   invariants: Invariant[];
+  truncated: boolean;
   order: string[];
   nameOf: (id: string) => string;
   covered: boolean;
   coveredNote: string;
   emptyNote: string;
 }): JSX.Element {
-  const shown = invariants.slice(0, DISPLAY_CAP);
   return (
-    <section className="flex flex-col gap-2">
-      <h3 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">{title}</h3>
-      {invariants.length === 0 ? (
+    <Section title={title}>
+      {truncated ? (
+        // A truncated family yields an empty list that does NOT mean "none" — say so per-family, so
+        // an overflow on one family never hides the other family that computed fine.
+        <p className="text-slate-400 text-sm">
+          Too many to enumerate within the safety cap — simplify the net to list them.
+        </p>
+      ) : invariants.length === 0 ? (
         <p className="text-slate-400 text-sm">{emptyNote}</p>
       ) : (
         <>
           <ul className="flex flex-col gap-1">
-            {shown.map((inv) => (
+            {invariants.slice(0, DISPLAY_CAP).map((inv) => (
               // Key on the id-based support (element names can collide); display uses names.
               <li
                 key={invariantKey(inv)}
@@ -70,15 +81,11 @@ function InvariantSection({
               </li>
             ))}
           </ul>
-          {invariants.length > DISPLAY_CAP && (
-            <p className="text-slate-400 text-xs">
-              Showing {DISPLAY_CAP} of {invariants.length}.
-            </p>
-          )}
+          <Overflow total={invariants.length} />
           {covered && <p className="text-slate-500 text-xs">{coveredNote}</p>}
         </>
       )}
-    </section>
+    </Section>
   );
 }
 

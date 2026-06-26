@@ -28,6 +28,12 @@ export interface AnalyticsState {
   stale: boolean;
   /** A behavioural pass is in flight (for the Web-Worker upgrade, §9; synchronous today). */
   running: boolean;
+  /**
+   * Node ids the canvas should spotlight — driven by clicking a diagnostic (a dead transition, a
+   * loop, a source place …). A separate channel from the editor's selection so it reads as "the
+   * analysis points here", survives Simulate (where selection is off), and never edits the net.
+   */
+  highlight: string[];
 
   toggle: () => void;
   close: () => void;
@@ -40,6 +46,8 @@ export interface AnalyticsState {
   analyze: () => void;
   /** Run the on-demand behavioural reachability pass for the current net and clear the stale flag. */
   reanalyze: () => void;
+  /** Spotlight these nodes on the canvas; passing the already-lit set toggles the highlight off. */
+  highlightNodes: (ids: string[]) => void;
 }
 
 const STORAGE_KEY = "petrinet.analytics.v1";
@@ -95,30 +103,40 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
     result: persisted.open ? algebraicResult() : null,
     stale: false,
     running: false,
+    highlight: [],
 
     toggle: () => {
       const open = !get().open;
-      set({ open, result: open ? algebraicResult() : get().result, stale: false });
+      set({ open, result: open ? algebraicResult() : get().result, stale: false, highlight: [] });
       persist(get());
     },
     close: () => {
-      set({ open: false });
+      set({ open: false, highlight: [] });
       persist(get());
     },
     // Persisting on every pointermove would thrash localStorage during a drag; commitWidth saves once.
     setWidth: (width) => set({ width: clampWidth(width) }),
     commitWidth: () => persist(get()),
     setActiveTab: (activeTab) => {
-      set({ activeTab });
+      // A highlight belongs to the diagnostic that lit it; leaving its tab drops it.
+      set({ activeTab, highlight: [] });
       persist(get());
+    },
+    highlightNodes: (ids) => {
+      const current = get().highlight;
+      const same = ids.length === current.length && ids.every((id, i) => id === current[i]);
+      set({ highlight: same ? [] : ids });
     },
     analyze: () => set({ result: algebraicResult(), stale: false }),
     reanalyze: () => {
       // Synchronous in v1 (cap-bounded); `running` brackets the call for the Web-Worker upgrade
       // (§9) that will make it async — both sets land before React repaints today, so no flicker.
       set({ running: true });
+      // The live `result` already holds this net's algebraic slice (the subscription keeps it
+      // current), so thread it straight in — only the reachability-derived fields recompute.
+      const algebraic = get().result ?? algebraicResult();
       set({
-        result: NetAnalysis.analyze(useNetStore.getState().net, { behavioral: true }),
+        result: NetAnalysis.behavioral(useNetStore.getState().net, algebraic),
         stale: false,
         running: false,
       });
@@ -137,5 +155,8 @@ useNetStore.subscribe((state, prev) => {
   if (state.net === prev.net) return;
   if (!useAnalyticsStore.getState().open) return;
   if (NetAnalysis.signature(state.net) === NetAnalysis.signature(prev.net)) return;
-  useAnalyticsStore.setState({ result: algebraicResult(), stale: true });
+  // A structural edit can delete a highlighted node or invalidate the diagnostic that lit it, so
+  // drop the highlight along with refreshing the algebraic slice. A cosmetic nudge (same signature)
+  // is filtered above, so the spotlight follows a dragged/renamed node unchanged.
+  useAnalyticsStore.setState({ result: algebraicResult(), stale: true, highlight: [] });
 });

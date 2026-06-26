@@ -38,8 +38,10 @@ export interface InvariantSet {
   placesCovered: boolean;
   /** Every transition lies in some T-invariant's support ⇒ consistent. */
   transitionsCovered: boolean;
-  /** The minimal-invariant set was larger than the display cap. */
-  truncated: boolean;
+  /** The P-semiflow enumeration overran the generator cap, so `place` is empty/unknown, not absent. */
+  placeTruncated: boolean;
+  /** The T-semiflow enumeration overran the generator cap, so `transition` is empty/unknown. */
+  transitionTruncated: boolean;
 }
 
 /** A reachable dead marking plus a firing path (transition ids) that reaches it from M0. */

@@ -85,6 +85,47 @@ describe("NetAnalysis.analyze (algebraic slice)", () => {
     expect(r.exploredStates).toBe(0);
   });
 
+  it("degrades conservative and structural boundedness to indeterminate when invariants truncate", () => {
+    // Two disjoint cycles need two minimal P-semiflows; the tiny cap can't hold them, so the
+    // enumeration truncates and coverage is unknown — verdicts must not claim a false negative.
+    const net: PetriNet = {
+      places: [place("p1", 1), place("p2"), place("p3", 1), place("p4")],
+      transitions: ["t1", "t2", "t3", "t4"].map(transition),
+      arcs: [
+        arc("p1", "t1"),
+        arc("t1", "p2"),
+        arc("p2", "t2"),
+        arc("t2", "p1"),
+        arc("p3", "t3"),
+        arc("t3", "p4"),
+        arc("t4", "p3"),
+        arc("p4", "t4"),
+      ],
+    };
+    const r = NetAnalysis.analyze(net, { invariantCap: 1 });
+
+    expect(r.invariants.placeTruncated).toBe(true);
+    expect(r.invariants.place).toEqual([]);
+    expect(r.conservative.verdict).toBe("indeterminate");
+    expect(r.boundedness.bounded).toBe("indeterminate");
+    expect(r.boundedness.source).toBe("none");
+  });
+
+  it("keeps conservative definite when only the transition-invariant family truncates", () => {
+    // One place, two self-loop transitions: P stays covered (so conservative is decidable) while
+    // the T-family overruns the cap — a T-overflow must not drag conservative to indeterminate.
+    const net: PetriNet = {
+      places: [place("p", 1)],
+      transitions: [transition("t1"), transition("t2")],
+      arcs: [arc("p", "t1"), arc("t1", "p"), arc("p", "t2"), arc("t2", "p")],
+    };
+    const r = NetAnalysis.analyze(net, { invariantCap: 1 });
+
+    expect(r.invariants.placeTruncated).toBe(false);
+    expect(r.invariants.transitionTruncated).toBe(true);
+    expect(r.conservative.verdict).toBe("yes");
+  });
+
   it("fills the structural diagnostics even without the behavioural pass", () => {
     const net: PetriNet = {
       places: [place("P1", 1), place("P2", 0)],
@@ -193,6 +234,21 @@ describe("NetAnalysis.analyze (behavioural slice)", () => {
   });
 });
 
+describe("NetAnalysis.behavioral", () => {
+  it("threading a cached algebraic slice equals a full one-shot behavioural analyze", () => {
+    // Re-analyze augments the live algebraic result instead of recomputing it; the two paths must
+    // agree byte-for-byte, otherwise threading would silently drift from the one-shot analysis.
+    const net: PetriNet = {
+      places: [place("P1", 1), place("P2", 0)],
+      transitions: [transition("t1"), transition("t2")],
+      arcs: [arc("P1", "t1"), arc("t1", "P2"), arc("P2", "t2"), arc("t2", "P1")],
+    };
+    const oneShot = NetAnalysis.analyze(net, { behavioral: true });
+    const threaded = NetAnalysis.behavioral(net, NetAnalysis.analyze(net));
+    expect(threaded).toEqual(oneShot);
+  });
+});
+
 describe("NetAnalysis.signature", () => {
   const base: PetriNet = {
     places: [place("P1", 1), place("P2", 0)],
@@ -216,5 +272,13 @@ describe("NetAnalysis.signature", () => {
     const heavierArc: PetriNet = { ...base, arcs: [arc("P1", "t1", 3)] };
     expect(NetAnalysis.signature(moreTokens)).not.toBe(NetAnalysis.signature(base));
     expect(NetAnalysis.signature(heavierArc)).not.toBe(NetAnalysis.signature(base));
+  });
+
+  it("stays injective when ids contain fingerprint delimiters (crafted imports)", () => {
+    // A delimiter-joined fingerprint collides here ('x:1,y' + tokens 0 vs 'x'+1, 'y'+0 → "x:1,y:0");
+    // the JSON encoding keeps two structurally different nets apart.
+    const a: PetriNet = { places: [place("x:1,y", 0)], transitions: [], arcs: [] };
+    const b: PetriNet = { places: [place("x", 1), place("y", 0)], transitions: [], arcs: [] };
+    expect(NetAnalysis.signature(a)).not.toBe(NetAnalysis.signature(b));
   });
 });

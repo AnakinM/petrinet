@@ -120,6 +120,55 @@ describe("Invariants", () => {
     });
   });
 
+  describe("invariantSet", () => {
+    it("bundles both families with coverage flags for a conservative, consistent ring", () => {
+      const set = Invariants.invariantSet(matrix(ring(3)));
+      expect(set.placeTruncated).toBe(false);
+      expect(set.transitionTruncated).toBe(false);
+      expect(set.placesCovered).toBe(true);
+      expect(set.transitionsCovered).toBe(true);
+      expect(weights(set.place)).toEqual([{ p1: 1, p2: 1, p3: 1 }]);
+    });
+
+    it("truncates and reports coverage unknown when the generator cap is too small", () => {
+      // Two disjoint cycles ⇒ two minimal P-semiflows; a cap of 1 cannot hold the working set, so
+      // the family truncates to an empty list with placesCovered false (unknown, not proven absent).
+      const net: PetriNet = {
+        places: [place("p1", 1), place("p2"), place("p3", 1), place("p4")],
+        transitions: ["t1", "t2", "t3", "t4"].map(transition),
+        arcs: [
+          arc("p1", "t1"),
+          arc("t1", "p2"),
+          arc("p2", "t2"),
+          arc("t2", "p1"),
+          arc("p3", "t3"),
+          arc("t3", "p4"),
+          arc("p4", "t4"),
+          arc("t4", "p3"),
+        ],
+      };
+      const set = Invariants.invariantSet(matrix(net), 1);
+      expect(set.placeTruncated).toBe(true);
+      expect(set.place).toEqual([]);
+      expect(set.placesCovered).toBe(false);
+    });
+
+    it("truncates one family without hiding the other", () => {
+      // One place, two self-loop transitions: a single P-invariant {p}, but two T-invariants
+      // {t1},{t2}. A cap of 1 holds the P-family but overruns the T-family — they report separately.
+      const net: PetriNet = {
+        places: [place("p", 1)],
+        transitions: [transition("t1"), transition("t2")],
+        arcs: [arc("p", "t1"), arc("t1", "p"), arc("p", "t2"), arc("t2", "p")],
+      };
+      const set = Invariants.invariantSet(matrix(net), 1);
+      expect(set.placeTruncated).toBe(false);
+      expect(set.transitionTruncated).toBe(true);
+      expect(weights(set.place)).toEqual([{ p: 1 }]); // the P-invariant still computed
+      expect(set.transition).toEqual([]); // only the T-family is suppressed
+    });
+  });
+
   describe("covers", () => {
     it("reports full place & transition coverage for a conservative, consistent net", () => {
       const m = matrix(ring(3));

@@ -46,6 +46,21 @@ const UNBOUNDED: PetriNet = {
   arcs: [arc("t1", "P1")],
 };
 
+// A live P1 ⇄ P2 cycle plus `starved`, which needs P3 (never marked) ⇒ a structurally dead
+// transition. `starved` has both an input and an output, so it shows up only as a dead transition.
+const DEAD_T: PetriNet = {
+  places: [place("P1", 1), place("P2", 0), place("P3", 0)],
+  transitions: [transition("t1"), transition("t2"), transition("starved")],
+  arcs: [
+    arc("P1", "t1"),
+    arc("t1", "P2"),
+    arc("P2", "t2"),
+    arc("t2", "P1"),
+    arc("P3", "starved"),
+    arc("starved", "P2"),
+  ],
+};
+
 function openWith(net: PetriNet, tab: AnalyticsTab = "invariants"): void {
   useNetStore.getState().setNet(net);
   useAnalyticsStore.setState({ open: true, activeTab: tab });
@@ -61,6 +76,7 @@ describe("AnalyticsPanel", () => {
       width: 360,
       stale: false,
       running: false,
+      highlight: [],
     });
   });
   afterEach(cleanup);
@@ -139,5 +155,56 @@ describe("AnalyticsPanel", () => {
     // The graph was pruned for unboundedness, so empty results must NOT read as "None".
     expect(screen.queryByText(/every transition can fire/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/incomplete/).length).toBeGreaterThan(0);
+  });
+
+  it("spotlights a dead transition's node from the Structure tab, and clears on a second click", async () => {
+    openWith(DEAD_T, "structure");
+    render(<AnalyticsPanel />);
+    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
+
+    const chip = screen.getByRole("button", { name: "starved" });
+    await userEvent.click(chip);
+    expect(useAnalyticsStore.getState().highlight).toEqual(["starved"]);
+    // Clicking the lit chip again toggles the spotlight back off.
+    await userEvent.click(chip);
+    expect(useAnalyticsStore.getState().highlight).toEqual([]);
+  });
+
+  it("drops the highlight when the active tab changes", async () => {
+    openWith(DEAD_T, "structure");
+    render(<AnalyticsPanel />);
+    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
+    await userEvent.click(screen.getByRole("button", { name: "starved" }));
+    expect(useAnalyticsStore.getState().highlight).toEqual(["starved"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Properties" }));
+    expect(useAnalyticsStore.getState().highlight).toEqual([]);
+  });
+
+  it("drops the highlight on a structural net edit", async () => {
+    openWith(DEAD_T, "structure");
+    render(<AnalyticsPanel />);
+    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
+    await userEvent.click(screen.getByRole("button", { name: "starved" }));
+    expect(useAnalyticsStore.getState().highlight).toEqual(["starved"]);
+
+    act(() => useNetStore.getState().setTokens("P1", 2));
+    expect(useAnalyticsStore.getState().highlight).toEqual([]);
+  });
+
+  it("renders an all-zero deadlock marking as non-interactive (nothing to spotlight)", async () => {
+    // One token drained by a sink transition: dead at {p=0}, where no place holds a token.
+    const DRAIN: PetriNet = {
+      places: [place("p", 1)],
+      transitions: [transition("drain")],
+      arcs: [arc("p", "drain")],
+    };
+    openWith(DRAIN, "structure");
+    render(<AnalyticsPanel />);
+    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
+
+    expect(screen.getByText("p=0")).toBeInTheDocument();
+    // No tokens remain, so there is nothing to highlight — the row must not be a clickable button.
+    expect(screen.queryByRole("button", { name: /p=0/ })).not.toBeInTheDocument();
   });
 });

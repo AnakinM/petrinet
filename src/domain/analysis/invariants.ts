@@ -1,5 +1,11 @@
 import type { IncidenceMatrix } from "@/domain/analysis/incidenceMatrix";
-import type { Invariant } from "@/domain/analysis/types";
+import type { Invariant, InvariantSet } from "@/domain/analysis/types";
+
+/** A computed semiflow family plus whether the generator cap forced an early, incomplete stop. */
+interface SemiflowSet {
+  invariants: Invariant[];
+  truncated: boolean;
+}
 
 /**
  * Minimal semipositive P- and T-semiflows (place/transition invariants) of a net, computed
@@ -18,19 +24,42 @@ import type { Invariant } from "@/domain/analysis/types";
  * minimal-support semiflows — each reduced by the gcd of its entries.
  */
 export class Invariants {
+  /**
+   * Safety cap on the working generator set. The minimal-semiflow count is tiny for editor-scale
+   * nets, but Farkas elimination is worst-case exponential; once the generators outgrow this bound
+   * the computation stops and reports `truncated` instead of hanging. Generous enough that any
+   * realistic net settles long before reaching it.
+   */
+  static readonly MAX_GENERATORS = 2000;
+
   /** Minimal P-semiflows: `y ≥ 0`, `y·C = 0`, keyed by place id. */
   static placeInvariants(m: IncidenceMatrix): Invariant[] {
-    const ct = Invariants._transpose(m.c, m.places.length, m.transitions.length);
-    return Invariants._minimalSemiflows(ct, m.places.length).map((v) =>
-      Invariants._toInvariant(v, m.places),
-    );
+    return Invariants._placeSemiflows(m, Invariants.MAX_GENERATORS).invariants;
   }
 
   /** Minimal T-semiflows: `x ≥ 0`, `C·x = 0`, keyed by transition id. */
   static transitionInvariants(m: IncidenceMatrix): Invariant[] {
-    return Invariants._minimalSemiflows(m.c, m.transitions.length).map((v) =>
-      Invariants._toInvariant(v, m.transitions),
-    );
+    return Invariants._transitionSemiflows(m, Invariants.MAX_GENERATORS).invariants;
+  }
+
+  /**
+   * The full invariant bundle the {@link NetAnalysis} facade consumes: both semiflow families, the
+   * coverage flags, and whether either computation was truncated by the {@link MAX_GENERATORS} cap.
+   * A truncated family yields an empty list and `covered = false` (unknown, **not** proven absent),
+   * so the facade degrades the derived verdicts to indeterminate rather than assert a false negative.
+   */
+  static invariantSet(m: IncidenceMatrix, cap: number = Invariants.MAX_GENERATORS): InvariantSet {
+    const place = Invariants._placeSemiflows(m, cap);
+    const transition = Invariants._transitionSemiflows(m, cap);
+    return {
+      place: place.invariants,
+      transition: transition.invariants,
+      placesCovered: !place.truncated && Invariants.covers(place.invariants, m.places),
+      transitionsCovered:
+        !transition.truncated && Invariants.covers(transition.invariants, m.transitions),
+      placeTruncated: place.truncated,
+      transitionTruncated: transition.truncated,
+    };
   }
 
   /** True iff every id appears in the support of at least one invariant (its supports cover them). */
@@ -45,7 +74,22 @@ export class Invariants {
 
   // --- core: minimal semipositive integer solutions of A·v = 0 ---------------
 
-  private static _minimalSemiflows(a: number[][], cols: number): number[][] {
+  private static _placeSemiflows(m: IncidenceMatrix, cap: number): SemiflowSet {
+    const ct = Invariants._transpose(m.c, m.places.length, m.transitions.length);
+    const { gens, truncated } = Invariants._minimalSemiflows(ct, m.places.length, cap);
+    return { invariants: gens.map((v) => Invariants._toInvariant(v, m.places)), truncated };
+  }
+
+  private static _transitionSemiflows(m: IncidenceMatrix, cap: number): SemiflowSet {
+    const { gens, truncated } = Invariants._minimalSemiflows(m.c, m.transitions.length, cap);
+    return { invariants: gens.map((v) => Invariants._toInvariant(v, m.transitions)), truncated };
+  }
+
+  private static _minimalSemiflows(
+    a: number[][],
+    cols: number,
+    cap: number,
+  ): { gens: number[][]; truncated: boolean } {
     // Generators start as the unit vectors (the minimal-support solutions of the empty system);
     // each constraint row of A is then eliminated in turn.
     let gens: number[][] = [];
@@ -64,6 +108,12 @@ export class Invariants {
         else if (d > 0) positive.push({ v: g, d });
         else negative.push({ v: g, d });
       }
+      // Bail before materialising a combination set that would blow past the cap — this product is
+      // where the elimination explodes on pathological nets. A partial run yields no valid semiflow,
+      // so we drop the lot and let the caller treat coverage as unknown.
+      if (zero.length + positive.length * negative.length > cap) {
+        return { gens: [], truncated: true };
+      }
       // Generators already satisfying the row carry over; every +/− pair combines into a new
       // non-negative generator that cancels this row's component.
       const next = [...zero];
@@ -76,8 +126,9 @@ export class Invariants {
         }
       }
       gens = Invariants._keepMinimalSupport(next);
+      if (gens.length > cap) return { gens: [], truncated: true };
     }
-    return gens;
+    return { gens, truncated: false };
   }
 
   private static _dot(row: number[], v: number[]): number {

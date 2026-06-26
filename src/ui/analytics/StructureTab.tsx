@@ -1,20 +1,26 @@
-import type { JSX } from "react";
+import { type JSX, type ReactNode, useMemo } from "react";
 import { STATE_CAP_LABEL } from "@/domain/analysis/netAnalysis";
 import type { AnalysisResult, Deadlock } from "@/domain/analysis/types";
 import { NetNames } from "@/domain/netNames";
-import type { Marking, Place } from "@/domain/types";
+import type { Place } from "@/domain/types";
+import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
+import { DISPLAY_CAP, HighlightChip, Overflow, Section } from "@/ui/analytics/widgets";
 
 /**
  * Structure & diagnostics: loops and net facts come from the always-on structural pass; dead
  * transitions and deadlock markings need the behavioural reachability pass, so they show a hint
- * until Re-analyze has run for the current net.
+ * until Re-analyze has run for the current net. Every entity is a chip that spotlights its node(s)
+ * on the canvas (and pans to them); clicking the lit one again clears the highlight.
  */
 export function StructureTab({ result }: { result: AnalysisResult }): JSX.Element {
   const net = useNetStore((s) => s.net);
-  const name = NetNames.resolver([...net.places, ...net.transitions]);
-  const placeName = NetNames.resolver(net.places);
-  const transitionName = NetNames.resolver(net.transitions);
+  // A comma-joined key of the live highlight, so each chip can tell whether it is the lit one.
+  const lit = useAnalyticsStore((s) => s.highlight).join(",");
+  // Resolvers rebuild only when the net changes, not on every highlight-click re-render.
+  const name = useMemo(() => NetNames.resolver([...net.places, ...net.transitions]), [net]);
+  const placeName = useMemo(() => NetNames.resolver(net.places), [net.places]);
+  const transitionName = useMemo(() => NetNames.resolver(net.transitions), [net.transitions]);
   const { diagnostics: d, exploredStates, stateSpaceExceeded, stateSpaceComplete } = result;
   const behaviouralRan = exploredStates > 0;
 
@@ -25,13 +31,13 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
           <Note>The net is acyclic.</Note>
         ) : (
           // A cyclic SCC is an unordered node set — commas, not arrows (which would imply a path).
-          <List
-            items={d.cyclicComponents.map((c) => ({
-              key: c.join(","),
-              label: c.map(name).join(", "),
-            }))}
-            mono
-          />
+          <ChipList>
+            {d.cyclicComponents.map((c) => (
+              <HighlightChip key={c.join(",")} ids={c} lit={lit}>
+                <span className="font-mono">{c.map(name).join(", ")}</span>
+              </HighlightChip>
+            ))}
+          </ChipList>
         )}
       </Section>
 
@@ -43,7 +49,14 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
         ) : d.deadTransitions.length === 0 ? (
           <Note>None — every transition can fire.</Note>
         ) : (
-          <List items={d.deadTransitions.map((id) => ({ key: id, label: transitionName(id) }))} />
+          <ChipList>
+            {d.deadTransitions.slice(0, DISPLAY_CAP).map((id) => (
+              <HighlightChip key={id} ids={[id]} lit={lit}>
+                {transitionName(id)}
+              </HighlightChip>
+            ))}
+            <Overflow total={d.deadTransitions.length} />
+          </ChipList>
         )}
       </Section>
 
@@ -52,16 +65,18 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
           <Hint />
         ) : d.deadlocks.length > 0 ? (
           // Found deadlocks are real witnesses even on an incomplete graph, so always show them.
-          <ul className="flex flex-col gap-1">
-            {d.deadlocks.map((dl) => (
+          <ChipList>
+            {d.deadlocks.slice(0, DISPLAY_CAP).map((dl) => (
               <DeadlockRow
                 key={deadlockKey(dl)}
                 deadlock={dl}
                 places={net.places}
                 transitionName={transitionName}
+                lit={lit}
               />
             ))}
-          </ul>
+            <Overflow total={d.deadlocks.length} />
+          </ChipList>
         ) : stateSpaceComplete ? (
           <Note>None — no reachable marking is dead.</Note>
         ) : (
@@ -70,13 +85,23 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
       </Section>
 
       <Section title="Net facts">
-        <dl className="flex flex-col gap-1 text-sm">
+        <dl className="flex flex-col gap-2 text-sm">
           <Fact label="Connected" value={d.connected ? "Yes" : "No"} />
-          <Fact label="Source places" value={join(d.sourcePlaces, placeName)} />
-          <Fact label="Sink places" value={join(d.sinkPlaces, placeName)} />
-          <Fact label="Source transitions" value={join(d.sourceTransitions, transitionName)} />
-          <Fact label="Sink transitions" value={join(d.sinkTransitions, transitionName)} />
-          <Fact label="Isolated" value={join(d.isolated, name)} />
+          <FactChips label="Source places" ids={d.sourcePlaces} nameOf={placeName} lit={lit} />
+          <FactChips label="Sink places" ids={d.sinkPlaces} nameOf={placeName} lit={lit} />
+          <FactChips
+            label="Source transitions"
+            ids={d.sourceTransitions}
+            nameOf={transitionName}
+            lit={lit}
+          />
+          <FactChips
+            label="Sink transitions"
+            ids={d.sinkTransitions}
+            nameOf={transitionName}
+            lit={lit}
+          />
+          <FactChips label="Isolated" ids={d.isolated} nameOf={name} lit={lit} />
         </dl>
       </Section>
 
@@ -95,56 +120,36 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
   );
 }
 
+/** A deadlock witness; clicking spotlights the places that still hold tokens in the dead marking. */
 function DeadlockRow({
   deadlock,
   places,
   transitionName,
+  lit,
 }: {
   deadlock: Deadlock;
   places: Place[];
   transitionName: (id: string) => string;
+  lit: string;
 }): JSX.Element {
+  // All-zero dead markings have nothing to spotlight; HighlightChip then renders non-interactive.
+  const marked = places.filter((p) => (deadlock.marking[p.id] ?? 0) > 0).map((p) => p.id);
   return (
-    <li className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm">
-      <span className="font-mono text-slate-700">{formatMarking(deadlock.marking, places)}</span>
+    <HighlightChip ids={marked} lit={lit}>
+      <span className="font-mono text-slate-700">
+        {NetNames.formatMarking(deadlock.marking, places)}
+      </span>
       {deadlock.path.length > 0 && (
         <span className="block text-slate-400 text-xs">
           via {deadlock.path.map(transitionName).join(" → ")}
         </span>
       )}
-    </li>
+    </HighlightChip>
   );
 }
 
-function Section({ title, children }: { title: string; children: JSX.Element }): JSX.Element {
-  return (
-    <section className="flex flex-col gap-2">
-      <h3 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-/** Rows keyed by a stable, unique id (element ids never collide; display names can). */
-function List({
-  items,
-  mono,
-}: {
-  items: { key: string; label: string }[];
-  mono?: boolean;
-}): JSX.Element {
-  return (
-    <ul className="flex flex-col gap-1">
-      {items.map(({ key, label }) => (
-        <li
-          key={key}
-          className={`rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700 text-sm ${mono ? "font-mono" : ""}`}
-        >
-          {label}
-        </li>
-      ))}
-    </ul>
-  );
+function ChipList({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="flex flex-col gap-1">{children}</div>;
 }
 
 function Fact({ label, value }: { label: string; value: string }): JSX.Element {
@@ -152,6 +157,36 @@ function Fact({ label, value }: { label: string; value: string }): JSX.Element {
     <div className="flex justify-between gap-2">
       <dt className="text-slate-500">{label}</dt>
       <dd className="text-right text-slate-700">{value}</dd>
+    </div>
+  );
+}
+
+/** A net-fact row whose members are individually clickable chips (or an em dash when empty). */
+function FactChips({
+  label,
+  ids,
+  nameOf,
+  lit,
+}: {
+  label: string;
+  ids: string[];
+  nameOf: (id: string) => string;
+  lit: string;
+}): JSX.Element {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <dt className="shrink-0 text-slate-500">{label}</dt>
+      {ids.length === 0 ? (
+        <dd className="text-slate-700">—</dd>
+      ) : (
+        <dd className="flex flex-wrap justify-end gap-1">
+          {ids.map((id) => (
+            <HighlightChip key={id} ids={[id]} lit={lit} size="chip">
+              {nameOf(id)}
+            </HighlightChip>
+          ))}
+        </dd>
+      )}
     </div>
   );
 }
@@ -166,15 +201,6 @@ function Hint(): JSX.Element {
   );
 }
 
-/** Render a marking as `P1=0, P3=1` over place names, in net order. */
-function formatMarking(marking: Marking, places: Place[]): string {
-  return places.map((p) => `${p.name}=${marking[p.id] ?? 0}`).join(", ");
-}
-
 function deadlockKey(deadlock: Deadlock): string {
   return deadlock.path.join(",") || JSON.stringify(deadlock.marking);
-}
-
-function join(ids: string[], nameOf: (id: string) => string): string {
-  return ids.length === 0 ? "—" : ids.map(nameOf).join(", ");
 }
