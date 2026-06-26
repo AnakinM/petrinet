@@ -45,9 +45,9 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
         {!behaviouralRan ? (
           <Hint />
         ) : !stateSpaceComplete ? (
-          <Note>Undetermined — the reachability graph is incomplete.</Note>
+          <Note>Undetermined. The reachability graph is incomplete.</Note>
         ) : d.deadTransitions.length === 0 ? (
-          <Note>None — every transition can fire.</Note>
+          <Note>None. Every transition can fire.</Note>
         ) : (
           <ChipList>
             {d.deadTransitions.slice(0, DISPLAY_CAP).map((id) => (
@@ -78,9 +78,9 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
             <Overflow total={d.deadlocks.length} />
           </ChipList>
         ) : stateSpaceComplete ? (
-          <Note>None — no reachable marking is dead.</Note>
+          <Note>None. No reachable marking is dead.</Note>
         ) : (
-          <Note>None found in the explored markings — the graph is incomplete.</Note>
+          <Note>None found in the explored markings. The graph is incomplete.</Note>
         )}
       </Section>
 
@@ -112,7 +112,7 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
             ? ` (stopped at the ${STATE_CAP_LABEL} cap)`
             : stateSpaceComplete
               ? ""
-              : " (incomplete — the net is unbounded)"}
+              : " (incomplete because the net is unbounded)"}
           .
         </p>
       )}

@@ -97,7 +97,7 @@ export function ArcEdge({
   return (
     <>
       <BaseEdge
-        path={ArcGeometry.path(points)}
+        path={ArcGeometry.roundedPath(points)}
         markerEnd={markerEnd}
         style={{ stroke: ARC_COLOR, strokeWidth: 1.5 }}
       />

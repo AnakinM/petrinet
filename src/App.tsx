@@ -16,6 +16,7 @@ function isTextEntry(target: EventTarget | null): boolean {
 }
 
 export default function App(): JSX.Element {
+  const buildMode = useNetStore((s) => s.mode === "build");
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (isTextEntry(e.target)) return;
@@ -44,7 +45,7 @@ export default function App(): JSX.Element {
       <ReactFlowProvider>
         <div className="flex min-h-0 flex-1">
           <aside className="flex w-64 shrink-0 flex-col border-slate-200 border-r bg-slate-50">
-            <Palette />
+            {buildMode && <Palette />}
             <PropertiesPanel />
           </aside>
           <div className="relative min-w-0 flex-1">

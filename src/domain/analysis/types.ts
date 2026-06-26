@@ -7,10 +7,15 @@ import type { Marking } from "@/domain/types";
 /** Three-valued verdict, so the UI never lies about a net too large to settle. */
 export type Verdict = "yes" | "no" | "indeterminate";
 
-/** A verdict plus a one-line human explanation/witness. */
+/**
+ * A verdict plus a human explanation. `detail` is a one-line summary; when the explanation
+ * enumerates (a dead marking's places, a list of clauses), `detail` is the lead and `items` are
+ * the bullets the UI renders beneath it. A single-sentence detail leaves `items` absent.
+ */
 export interface PropertyResult {
   verdict: Verdict;
   detail: string;
+  items?: string[];
 }
 
 /**

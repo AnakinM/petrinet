@@ -1,9 +1,11 @@
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import type { PetriNet } from "@/domain/types";
 import { NpnFile } from "@/lib/download";
 import { useAnalyticsStore } from "@/store/analyticsStore";
+import { useBuildStore } from "@/store/buildStore";
 import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { useSimStore } from "@/store/simStore";
+import { ExportIcon, GridIcon, ImportIcon, NewIcon, RedoIcon, UndoIcon } from "@/ui/icons";
 
 const EMPTY_NET: PetriNet = { places: [], transitions: [], arcs: [] };
 
@@ -23,10 +25,11 @@ function exportNet(): void {
   NpnFile.save(useNetStore.getState().net);
 }
 
-/** Enter Simulate: clear the Build selection, lock the net, and snapshot M0 into the sim. */
+/** Enter Simulate: drop any active Build tool, clear the selection, lock the net, snapshot M0. */
 function enterSimulate(): void {
   const store = useNetStore.getState();
   if (store.mode === "simulate") return;
+  useBuildStore.getState().setTool("idle");
   store.select({ nodes: [], edges: [] });
   store.setMode("simulate");
   useSimStore.getState().start(store.net);
@@ -45,6 +48,7 @@ export function Toolbar(): JSX.Element {
   const mode = useNetStore((s) => s.mode);
   const simulating = mode === "simulate";
   const analyticsOpen = useAnalyticsStore((s) => s.open);
+  const snap = useBuildStore((s) => s.snap);
   const canUndo = useTemporal((t) => t.pastStates.length > 0);
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
 
@@ -52,19 +56,39 @@ export function Toolbar(): JSX.Element {
     <header className="flex items-center gap-2 border-slate-200 border-b bg-white px-3 py-2">
       <span className="mr-2 font-semibold text-slate-800 text-sm">Petri Net Editor</span>
       <ToolbarButton onClick={newNet} disabled={simulating}>
+        <NewIcon />
         New
       </ToolbarButton>
       <ToolbarButton onClick={importNet} disabled={simulating}>
+        <ImportIcon />
         Import
       </ToolbarButton>
-      <ToolbarButton onClick={exportNet}>Export</ToolbarButton>
+      <ToolbarButton onClick={exportNet}>
+        <ExportIcon />
+        Export
+      </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-slate-200" />
       <ToolbarButton onClick={netHistory.undo} disabled={simulating || !canUndo}>
+        <UndoIcon />
         Undo
       </ToolbarButton>
       <ToolbarButton onClick={netHistory.redo} disabled={simulating || !canRedo}>
+        <RedoIcon />
         Redo
       </ToolbarButton>
+      {!simulating && (
+        <>
+          <span className="mx-1 h-5 w-px bg-slate-200" />
+          <ToolbarButton
+            onClick={() => useBuildStore.getState().toggleSnap()}
+            active={snap}
+            ariaLabel="Snap to grid"
+            title="Snap node placement and dragging to the grid"
+          >
+            <GridIcon />
+          </ToolbarButton>
+        </>
+      )}
       <div className="ml-auto flex items-center gap-2">
         {simulating && (
           <ToolbarButton onClick={() => useSimStore.getState().reset()}>Reset</ToolbarButton>
@@ -120,12 +144,16 @@ function ToolbarButton({
   onClick,
   disabled,
   active,
+  title,
+  ariaLabel,
   children,
 }: {
   onClick: () => void;
   disabled?: boolean;
   active?: boolean;
-  children: string;
+  title?: string;
+  ariaLabel?: string;
+  children: ReactNode;
 }): JSX.Element {
   return (
     <button
@@ -133,10 +161,12 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
+      aria-label={ariaLabel}
+      title={title}
       className={
         active
-          ? "rounded border border-slate-700 bg-slate-700 px-2.5 py-1 text-sm text-white shadow-sm"
-          : "rounded border border-slate-300 bg-white px-2.5 py-1 text-slate-700 text-sm shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          ? "inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-700 px-2.5 py-1 text-sm text-white shadow-sm"
+          : "inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2.5 py-1 text-slate-700 text-sm shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
       }
     >
       {children}

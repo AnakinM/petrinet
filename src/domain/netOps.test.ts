@@ -101,6 +101,26 @@ describe("NetOps.moveNode", () => {
   });
 });
 
+describe("NetOps.moveNodes", () => {
+  it("translates each end of an arc whose two nodes are both in the group", () => {
+    // Move p and t both by (10, 5): every magnetic endpoint follows its own node.
+    const after = NetOps.moveNodes(net(), [
+      { id: "p", position: { x: 10, y: 5 } },
+      { id: "t", position: { x: 110, y: 5 } },
+    ]);
+    expect(after.places[0].position).toEqual({ x: 10, y: 5 });
+    expect(after.transitions[0].position).toEqual({ x: 110, y: 5 });
+    expect(after.arcs[0].points[0]).toEqual({ x: 30, y: 5 }); // src end, by p's delta
+    expect(after.arcs[0].points[1]).toEqual({ x: 102.5, y: 5 }); // dst end, by t's delta
+  });
+
+  it("does not mutate the input net", () => {
+    const before = net();
+    NetOps.moveNodes(before, [{ id: "p", position: { x: 9, y: 9 } }]);
+    expect(before.places[0].position).toEqual({ x: 0, y: 0 });
+  });
+});
+
 describe("NetOps.canConnect", () => {
   it("accepts a bipartite pair in either direction", () => {
     expect(NetOps.canConnect(net(), "t", "p")).toBe(true);
@@ -133,9 +153,42 @@ describe("NetOps.connect", () => {
     expect(arc.points[1]).toEqual({ x: 20, y: 0 });
   });
 
+  it("threads interior bends and clips each endpoint toward its neighbour bend", () => {
+    // Bend directly below the transition: the source endpoint must exit the bar downward
+    // (toward the bend), not sideways toward the place centre.
+    const after = NetOps.connect(net(), "t", "p", [{ x: 100, y: 100 }]);
+    const arc = after.arcs[1];
+    expect(arc.points).toHaveLength(3);
+    expect(arc.points[0]).toEqual({ x: 100, y: 20 }); // t exits its long (bottom) side
+    expect(arc.points[1]).toEqual({ x: 100, y: 100 }); // bend kept verbatim
+    // p endpoint clips toward the bend (45°), landing on the radius-20 circle.
+    expect(Math.hypot(arc.points[2].x, arc.points[2].y)).toBeCloseTo(20);
+    expect(arc.points[2].x).toBeCloseTo(14.142, 2);
+    expect(arc.points[2].y).toBeCloseTo(14.142, 2);
+  });
+
   it("no-ops an invalid connection", () => {
     const before = net();
     expect(NetOps.connect(before, "p", "t")).toBe(before); // duplicate
+  });
+});
+
+describe("NetOps.nodeAt", () => {
+  it("returns the place under a point inside its circle", () => {
+    expect(NetOps.nodeAt(net(), { x: 10, y: 0 })).toBe("p"); // within radius 20 of (0,0)
+  });
+
+  it("returns the transition under a point inside its bar", () => {
+    expect(NetOps.nodeAt(net(), { x: 100, y: 10 })).toBe("t"); // within the 15×40 bar at (100,0)
+  });
+
+  it("returns null on empty canvas", () => {
+    expect(NetOps.nodeAt(net(), { x: 50, y: 50 })).toBeNull();
+  });
+
+  it("honours the pad for a forgiving hit just outside the border", () => {
+    expect(NetOps.nodeAt(net(), { x: 24, y: 0 })).toBeNull(); // 4px past the radius-20 circle
+    expect(NetOps.nodeAt(net(), { x: 24, y: 0 }, 6)).toBe("p"); // within the pad
   });
 });
 
@@ -185,23 +238,6 @@ describe("NetOps.isNameTaken", () => {
 
   it("is false for a free name", () => {
     expect(NetOps.isNameTaken(named, "place", "Sink")).toBe(false);
-  });
-});
-
-describe("NetOps.toggleEndpointMagnetic", () => {
-  it("turning an endpoint free keeps its current point", () => {
-    const after = NetOps.toggleEndpointMagnetic(net(), "a", "src");
-    expect(after.arcs[0].srcMagnetic).toBe(false);
-    expect(after.arcs[0].points[0]).toEqual({ x: 20, y: 0 }); // unchanged
-  });
-
-  it("turning an endpoint magnetic re-clips it to the border", () => {
-    const start = net();
-    start.arcs[0].srcMagnetic = false;
-    start.arcs[0].points[0] = { x: -50, y: 0 }; // detached, off the border
-    const after = NetOps.toggleEndpointMagnetic(start, "a", "src");
-    expect(after.arcs[0].srcMagnetic).toBe(true);
-    expect(after.arcs[0].points[0]).toEqual({ x: 20, y: 0 }); // re-clipped to circle border
   });
 });
 

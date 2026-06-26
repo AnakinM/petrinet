@@ -69,6 +69,16 @@ export class NetOps {
     };
   }
 
+  /**
+   * Move several nodes at once (a marquee group-drag), each translating its own magnetic arc
+   * endpoints. Applied sequentially, so an arc whose endpoints are both in the group has each
+   * end translated by its own node's delta. Interior waypoints stay put (Phase 1). One transform,
+   * so the store commits it as a single undo entry.
+   */
+  static moveNodes(net: PetriNet, moves: { id: string; position: Vec2 }[]): PetriNet {
+    return moves.reduce((acc, m) => NetOps.moveNode(acc, m.id, m.position), net);
+  }
+
   // --- rotate ---------------------------------------------------------------
 
   /**
@@ -121,10 +131,12 @@ export class NetOps {
   }
 
   /**
-   * Connect `source`→`target` with a straight 2-point arc, magnetic at both ends and weight
-   * 1, the endpoints clipped to the node borders. No-op if {@link NetOps.canConnect} is false.
+   * Connect `source`→`target`, magnetic at both ends and weight 1, with the given interior
+   * `bends` (flow-space, in order). Each endpoint is clipped to its node border toward its
+   * neighbour — the first bend (or the target centre when straight) for the source, the last
+   * bend (or the source centre) for the target. No-op if {@link NetOps.canConnect} is false.
    */
-  static connect(net: PetriNet, source: string, target: string): PetriNet {
+  static connect(net: PetriNet, source: string, target: string, bends: Vec2[] = []): PetriNet {
     if (!NetOps.canConnect(net, source, target)) return net;
     const sCenter = NetOps._center(net, source);
     const tCenter = NetOps._center(net, target);
@@ -136,9 +148,29 @@ export class NetOps {
       srcMagnetic: true,
       destMagnetic: true,
       multiplicity: 1,
-      points: [NetOps._border(net, source, tCenter), NetOps._border(net, target, sCenter)],
+      points: [
+        NetOps.borderPoint(net, source, bends[0] ?? tCenter),
+        ...bends,
+        NetOps.borderPoint(net, target, bends[bends.length - 1] ?? sCenter),
+      ],
     };
     return { ...net, arcs: [...net.arcs, arc] };
+  }
+
+  /**
+   * The id of the node whose body contains `point` (flow-space), or `null`. Used by the
+   * click-to-draw layer to resolve a bend-vs-finish click and to flag a hover target.
+   * Transitions are tested before places; `pad` widens every hit-box for a forgiving target.
+   */
+  static nodeAt(net: PetriNet, point: Vec2, pad = 0): string | null {
+    for (const t of net.transitions) {
+      if (NodeGeometry.transitionContains(t.position, t.gui?.rotation ?? 0, point, pad))
+        return t.id;
+    }
+    for (const p of net.places) {
+      if (NodeGeometry.placeContains(p.position, point, pad)) return p.id;
+    }
+    return null;
   }
 
   // --- edit properties ------------------------------------------------------
@@ -178,34 +210,6 @@ export class NetOps {
       ...net,
       arcs: net.arcs.map((a) => (a.id === arcId ? { ...a, multiplicity: value } : a)),
     };
-  }
-
-  /**
-   * Flip one endpoint of an arc between magnetic and free. Turning an endpoint magnetic
-   * re-clips it to the node border (toward the adjacent point); turning it free leaves it
-   * at its current absolute position.
-   */
-  static toggleEndpointMagnetic(net: PetriNet, arcId: string, end: ArcEnd): PetriNet {
-    const arc = net.arcs.find((a) => a.id === arcId);
-    if (!arc) return net;
-    const isSrc = end === "src";
-    const nowMagnetic = !(isSrc ? arc.srcMagnetic : arc.destMagnetic);
-    let points = arc.points;
-    if (nowMagnetic) {
-      const last = arc.points.length - 1;
-      const idx = isSrc ? 0 : last;
-      const toward = arc.points[isSrc ? 1 : last - 1];
-      const nodeId = isSrc ? arc.source : arc.target;
-      const clipped = NetOps._border(net, nodeId, toward);
-      points = arc.points.map((pt, i) => (i === idx ? clipped : pt));
-    }
-    const next: Arc = {
-      ...arc,
-      srcMagnetic: isSrc ? nowMagnetic : arc.srcMagnetic,
-      destMagnetic: isSrc ? arc.destMagnetic : nowMagnetic,
-      points,
-    };
-    return { ...net, arcs: net.arcs.map((a) => (a.id === arcId ? next : a)) };
   }
 
   // --- arc geometry (waypoint / endpoint editing) ---------------------------
@@ -255,7 +259,7 @@ export class NetOps {
     if (!arc) return target;
     const magnetic = end === "src" ? arc.srcMagnetic : arc.destMagnetic;
     if (!magnetic) return target;
-    return NetOps._border(net, end === "src" ? arc.source : arc.target, target);
+    return NetOps.borderPoint(net, end === "src" ? arc.source : arc.target, target);
   }
 
   /** Move an arc endpoint toward `target` (re-clipped to the border when magnetic). */
@@ -313,8 +317,19 @@ export class NetOps {
       ?.position;
   }
 
+  /**
+   * Centers of every node (places then transitions), optionally excluding one id — the set a
+   * placing ghost or a dragged node aligns its center against.
+   */
+  static nodeCenters(net: PetriNet, exceptId?: string): Vec2[] {
+    const centers: Vec2[] = [];
+    for (const p of net.places) if (p.id !== exceptId) centers.push(p.position);
+    for (const t of net.transitions) if (t.id !== exceptId) centers.push(t.position);
+    return centers;
+  }
+
   /** Border point of node `id` along the direction from its center toward `toward`. */
-  private static _border(net: PetriNet, id: string, toward: Vec2): Vec2 {
+  static borderPoint(net: PetriNet, id: string, toward: Vec2): Vec2 {
     const place = net.places.find((p) => p.id === id);
     if (place) return NodeGeometry.placeBorderPoint(place.position, toward);
     const transition = net.transitions.find((t) => t.id === id);

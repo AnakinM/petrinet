@@ -12,7 +12,7 @@ import { NetNames } from "@/domain/netNames";
 import type { PetriNet } from "@/domain/types";
 
 /** Behavioural verdict shown until the on-demand reachability pass has run for the current net. */
-export const NOT_COMPUTED = "Not yet computed — run Re-analyze.";
+export const NOT_COMPUTED = "Not yet computed. Run Re-analyze.";
 /** The state cap rendered for humans (`"10,000"`), derived from the single source of truth. */
 export const STATE_CAP_LABEL = ReachabilityGraph.STATE_CAP.toLocaleString("en-US");
 /** Why a behavioural verdict is indeterminate after the reachability pass overran the cap. */
@@ -177,11 +177,12 @@ export class NetAnalysis {
     switch (rg.isDeadlockFree()) {
       case "yes":
         return { verdict: "yes", detail: "No reachable marking is dead." };
-      case "no":
-        return {
-          verdict: "no",
-          detail: `Reaches a dead marking: ${NetNames.formatMarking(rg.deadlocks()[0].marking, net.places)}.`,
-        };
+      case "no": {
+        const marked = NetNames.markedPlaces(rg.deadlocks()[0].marking, net.places);
+        return marked.length > 0
+          ? { verdict: "no", detail: "Reaches a dead marking:", items: marked }
+          : { verdict: "no", detail: "Reaches a dead marking with every place empty." };
+      }
       default:
         return { verdict: "indeterminate", detail: NetAnalysis._whyIndeterminate(rg) };
     }
@@ -224,13 +225,13 @@ export class NetAnalysis {
       return {
         verdict: "no",
         detail:
-          "No positive token weighting is conserved — some place lies outside every invariant.",
+          "No positive token weighting is conserved, because some place lies outside every invariant.",
       };
     }
     return {
       verdict: "yes",
       detail: strict
-        ? "Strictly conservative — the total token count never changes."
+        ? "The total token count never changes, so the net is strictly conservative."
         : "A positive token weighting is conserved by every firing.",
     };
   }

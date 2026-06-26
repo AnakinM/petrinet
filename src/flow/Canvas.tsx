@@ -2,14 +2,15 @@ import "@xyflow/react/dist/style.css";
 import {
   Background,
   BackgroundVariant,
-  type Connection,
   ConnectionMode,
   Controls,
   type EdgeTypes,
   MiniMap,
+  type NodeChange,
   type NodeTypes,
   type OnSelectionChangeParams,
   ReactFlow,
+  SelectionMode,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -17,21 +18,28 @@ import {
 } from "@xyflow/react";
 import {
   type CSSProperties,
-  type DragEvent,
   type JSX,
+  type MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
   useMemo,
+  useState,
 } from "react";
+import { AlignmentGuides, type Guide } from "@/domain/alignment";
+import { GridSnap } from "@/domain/gridSnap";
 import { NetOps } from "@/domain/netOps";
 import type { PetriNet, Vec2 } from "@/domain/types";
+import { AlignmentGuideLayer } from "@/flow/AlignmentGuideLayer";
+import { ArcDrawLayer } from "@/flow/ArcDrawLayer";
 import { ArcEdge } from "@/flow/edges/ArcEdge";
+import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { PlaceNode } from "@/flow/nodes/PlaceNode";
 import { TransitionNode } from "@/flow/nodes/TransitionNode";
+import { PlacingLayer } from "@/flow/PlacingLayer";
 import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/projection";
 import { useAnalyticsStore } from "@/store/analyticsStore";
+import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
-import { type PaletteNodeKind, PETRI_NODE_MIME } from "@/ui/Palette";
 
 // Stable module-level references: recreating these each render makes React Flow warn.
 const NODE_TYPES: NodeTypes = { place: PlaceNode, transition: TransitionNode };
@@ -44,6 +52,10 @@ const HIGHLIGHT_STYLE: CSSProperties = {
   zIndex: 5,
 };
 
+// Right-click within this many screen px of a selected arc's bend removes it (A5 rule 3).
+// Comfortably larger than the 10px waypoint handle so the target stays forgiving.
+const BEND_HIT_SCREEN_PX = 12;
+
 /**
  * The infinite-grid canvas. The domain net (from the store) is the single source of truth;
  * nodes/edges are re-derived from it on every change, while React Flow's local state owns
@@ -54,13 +66,20 @@ const HIGHLIGHT_STYLE: CSSProperties = {
 export function Canvas(): JSX.Element {
   const net = useNetStore((s) => s.net);
   const editable = useNetStore((s) => s.mode === "build");
+  const drawing = useBuildStore((s) => s.draft !== null);
+  const tool = useBuildStore((s) => s.tool);
+  const snap = useBuildStore((s) => s.snap);
+  // Tools only act in Build; this also keeps a left-over placing tool from bleeding into Simulate.
+  const placing = editable && (tool === "place" || tool === "transition");
+  const marquee = editable && tool === "select";
   const highlight = useAnalyticsStore((s) => s.highlight);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<PetriFlowNode>(
     FlowProjection.toNodes(net),
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<ArcFlowEdge>(FlowProjection.toEdges(net));
+  const [dragGuides, setDragGuides] = useState<Guide[]>([]);
   const initialViewport = useMemo(() => useNetStore.getState().viewport, []);
 
   // Re-derive the view whenever the domain net changes (edit, undo/redo, import), preserving
@@ -96,13 +115,66 @@ export function Canvas(): JSX.Element {
     }
   }, [highlight, setNodes, fitView]);
 
+  // In the marquee (select) tool, Esc clears the current selection (right-click clears it via the
+  // A5 context-menu policy). Other tools own Esc themselves (exit placing / cancel an arc draw).
+  useEffect(() => {
+    if (!marquee) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== "Escape") return;
+      setNodes(clearSelected);
+      setEdges(clearSelected);
+      useNetStore.getState().select({ nodes: [], edges: [] });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [marquee, setNodes, setEdges]);
+
+  // Resolve a node's live position to the grid/alignment (B2+B3). A lone drag aligns to its
+  // siblings and surfaces guides; a group drag falls back to plain snap. Only position changes
+  // carry a center; arc bends are dragged through their own waypoint handlers, so they stay
+  // freeform.
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<PetriFlowNode>[]) => {
+      const positions = changes.flatMap((c) =>
+        c.type === "position" && c.position
+          ? [{ change: c, id: c.id, position: c.position, dragging: c.dragging }]
+          : [],
+      );
+      if (positions.length === 1) {
+        const pc = positions[0];
+        const { position, guides } = AlignmentGuides.resolve(
+          pc.position,
+          NetOps.nodeCenters(useNetStore.getState().net, pc.id),
+          snap,
+        );
+        setDragGuides(pc.dragging ? guides : []);
+        onNodesChange(changes.map((c) => (c === pc.change ? { ...c, position } : c)));
+        return;
+      }
+      setDragGuides((g) => (g.length === 0 ? g : []));
+      onNodesChange(
+        snap
+          ? changes.map((c) =>
+              c.type === "position" && c.position
+                ? { ...c, position: GridSnap.snap(c.position) }
+                : c,
+            )
+          : changes,
+      );
+    },
+    [onNodesChange, snap],
+  );
+
   // Live arc-follow: while nodes drag, translate their magnetic arc endpoints from the domain
   // points by the live delta (recomputed from the domain each tick, so no accumulation). The
   // real geometry is committed on release; until then the store is untouched.
   const onNodeDrag = useCallback(
     (_event: unknown, _node: PetriFlowNode, draggedNodes: PetriFlowNode[]) => {
       const current = useNetStore.getState().net;
-      const moved = new Map(draggedNodes.map((n) => [n.id, n.position]));
+      const single = draggedNodes.length === 1;
+      const moved = new Map(
+        draggedNodes.map((n) => [n.id, dragCenter(current, n.id, n.position, snap, single)]),
+      );
       setEdges((prev) =>
         prev.map((edge) => {
           const arc = current.arcs.find((a) => a.id === edge.id);
@@ -120,16 +192,22 @@ export function Canvas(): JSX.Element {
         }),
       );
     },
-    [setEdges],
+    [setEdges, snap],
   );
 
   const onNodeDragStop = useCallback(
     (_event: unknown, _node: PetriFlowNode, draggedNodes: PetriFlowNode[]) => {
-      useNetStore
-        .getState()
-        .moveNodes(draggedNodes.map((n) => ({ id: n.id, position: n.position })));
+      const net = useNetStore.getState().net;
+      const single = draggedNodes.length === 1;
+      useNetStore.getState().moveNodes(
+        draggedNodes.map((n) => ({
+          id: n.id,
+          position: dragCenter(net, n.id, n.position, snap, single),
+        })),
+      );
+      setDragGuides([]);
     },
-    [],
+    [snap],
   );
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
@@ -139,61 +217,72 @@ export function Canvas(): JSX.Element {
     });
   }, []);
 
-  const onConnect = useCallback((c: Connection) => {
-    if (c.source && c.target) useNetStore.getState().connect(c.source, c.target);
-  }, []);
-
-  const isValidConnection = useCallback(
-    (c: Connection | ArcFlowEdge): boolean =>
-      !!c.source && !!c.target && NetOps.canConnect(useNetStore.getState().net, c.source, c.target),
-    [],
-  );
-
   const onMoveEnd = useCallback((_event: unknown, viewport: Viewport) => {
     useNetStore.getState().setViewport(viewport);
   }, []);
 
-  const onDragOver = useCallback((event: DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
-  }, []);
-
-  const onDrop = useCallback(
-    (event: DragEvent) => {
+  // Unified right-click policy (A5). Mounted on the canvas wrapper so it suppresses the native
+  // menu canvas-only (the side panels are separate DOM subtrees) and catches every target —
+  // pane, node, edge, and the waypoint handles in the edge-label layer that RF's
+  // onEdgeContextMenu would miss. Rules 1 (cancel an in-progress draw) and 2 (exit a placing tool)
+  // are handled upstream by the ArcDrawLayer / PlacingLayer overlays, which stop the event before
+  // it reaches here; this handler covers rules 3–5.
+  const onContextMenu = useCallback(
+    (event: ReactMouseEvent): void => {
       event.preventDefault();
-      const kind = event.dataTransfer.getData(PETRI_NODE_MIME) as PaletteNodeKind;
-      if (kind !== "place" && kind !== "transition") return;
-      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      const store = useNetStore.getState();
-      if (kind === "place") store.addPlace(position);
-      else store.addTransition(position);
+      const { net, selection, mode } = useNetStore.getState();
+      if (mode !== "build") return;
+
+      // Rule 3: cursor on a selected arc's bend → remove that bend and straighten.
+      const cursor = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      const tolerance = BEND_HIT_SCREEN_PX / getViewport().zoom;
+      for (const edgeId of selection.edges) {
+        const arc = net.arcs.find((a) => a.id === edgeId);
+        if (!arc) continue;
+        const index = ArcGeometry.bendAt(arc.points, cursor, tolerance);
+        if (index !== null) {
+          useNetStore.getState().removeWaypoint(arc.id, index);
+          return;
+        }
+      }
+
+      // Rule 4: anything selected → clear it. Rule 5 (nothing selected) falls through to a no-op.
+      if (selection.nodes.length > 0 || selection.edges.length > 0) {
+        setNodes(clearSelected);
+        setEdges(clearSelected);
+        useNetStore.getState().select({ nodes: [], edges: [] });
+      }
     },
-    [screenToFlowPosition],
+    [screenToFlowPosition, getViewport, setNodes, setEdges],
   );
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: drop target for palette drag-create; all pointer interaction is React Flow's pane below.
-    <div className="h-full w-full bg-white" onDragOver={onDragOver} onDrop={onDrop}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: canvas-only right-click policy; all other pointer interaction is React Flow's pane below.
+    <div className="relative h-full w-full bg-white" onContextMenu={onContextMenu}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         onSelectionChange={onSelectionChange}
-        onConnect={onConnect}
-        isValidConnection={isValidConnection}
         onMoveEnd={onMoveEnd}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         connectionMode={ConnectionMode.Loose}
         nodeOrigin={[0.5, 0.5]}
         nodesDraggable={editable}
-        nodesConnectable={editable}
+        nodesConnectable={false}
         elementsSelectable={editable}
         deleteKeyCode={null}
         panOnScroll
+        // Marquee (select) tool: left-drag the empty pane rubber-bands nodes (a drag on a selected
+        // node moves the group), while the middle button still pans. Other modes pan with the left
+        // or middle button. (panOnDrag button codes: 0 = left, 1 = middle.)
+        selectionOnDrag={marquee}
+        panOnDrag={marquee ? [1] : [0, 1]}
+        selectionMode={SelectionMode.Partial}
         minZoom={0.1}
         maxZoom={4}
         {...(initialViewport
@@ -209,8 +298,23 @@ export function Canvas(): JSX.Element {
         />
         <Controls showInteractive={false} />
       </ReactFlow>
+      {drawing && <ArcDrawLayer />}
+      {placing && <PlacingLayer kind={tool === "place" ? "place" : "transition"} />}
+      <AlignmentGuideLayer guides={dragGuides} />
     </div>
   );
+}
+
+/** Resolve a dragged node's center: align to siblings on a lone drag, otherwise just grid-snap. */
+function dragCenter(net: PetriNet, id: string, pos: Vec2, snap: boolean, single: boolean): Vec2 {
+  if (single) return AlignmentGuides.resolve(pos, NetOps.nodeCenters(net, id), snap).position;
+  return snap ? GridSnap.snap(pos) : pos;
+}
+
+/** Strip React Flow's selection flag from every element, keeping array identity if none were set. */
+function clearSelected<T extends { selected?: boolean }>(items: T[]): T[] {
+  if (!items.some((i) => i.selected)) return items;
+  return items.map((i) => (i.selected ? { ...i, selected: false } : i));
 }
 
 /** Carry forward React Flow's selection highlight by id when re-deriving from the domain. */

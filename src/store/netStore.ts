@@ -38,11 +38,11 @@ export interface NetState {
   addTransition: (position: Vec2) => void;
   /** Commit a finished drag of one or more nodes (coalesced into a single history entry). */
   moveNodes: (moves: { id: string; position: Vec2 }[]) => void;
-  connect: (source: string, target: string) => void;
+  /** Create an arc `source`→`target` with optional interior bends (from click-to-draw). */
+  connect: (source: string, target: string, bends?: Vec2[]) => void;
   rename: (id: string, name: string) => void;
   setTokens: (placeId: string, tokens: number) => void;
   setMultiplicity: (arcId: string, multiplicity: number) => void;
-  toggleEndpointMagnetic: (arcId: string, end: ArcEnd) => void;
   rotateTransition: (id: string, deg: number) => void;
   /** Commit a finished arc-waypoint drag (interior point). */
   moveWaypoint: (arcId: string, index: number, position: Vec2) => void;
@@ -76,18 +76,14 @@ export const useNetStore = create<NetState>()(
       setNet: (net) => set({ net, selection: EMPTY_SELECTION }),
       addPlace: (position) => set((s) => ({ net: NetOps.addPlace(s.net, position) })),
       addTransition: (position) => set((s) => ({ net: NetOps.addTransition(s.net, position) })),
-      moveNodes: (moves) =>
-        set((s) => ({
-          net: moves.reduce((net, m) => NetOps.moveNode(net, m.id, m.position), s.net),
-        })),
-      connect: (source, target) => set((s) => ({ net: NetOps.connect(s.net, source, target) })),
+      moveNodes: (moves) => set((s) => ({ net: NetOps.moveNodes(s.net, moves) })),
+      connect: (source, target, bends) =>
+        set((s) => ({ net: NetOps.connect(s.net, source, target, bends) })),
       rename: (id, name) => set((s) => ({ net: NetOps.rename(s.net, id, name) })),
       setTokens: (placeId, tokens) =>
         set((s) => ({ net: NetOps.setTokens(s.net, placeId, tokens) })),
       setMultiplicity: (arcId, multiplicity) =>
         set((s) => ({ net: NetOps.setMultiplicity(s.net, arcId, multiplicity) })),
-      toggleEndpointMagnetic: (arcId, end) =>
-        set((s) => ({ net: NetOps.toggleEndpointMagnetic(s.net, arcId, end) })),
       rotateTransition: (id, deg) => set((s) => ({ net: NetOps.rotateTransition(s.net, id, deg) })),
       moveWaypoint: (arcId, index, position) =>
         set((s) => ({ net: NetOps.moveWaypoint(s.net, arcId, index, position) })),

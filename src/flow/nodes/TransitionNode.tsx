@@ -1,6 +1,7 @@
 import type { NodeProps } from "@xyflow/react";
 import { type JSX, useState } from "react";
 import { NodeGeometry } from "@/domain/nodeGeometry";
+import { ArcStartHandles } from "@/flow/nodes/ArcStartHandles";
 import { NodeHandles } from "@/flow/nodes/NodeHandles";
 import type { TransitionFlowNode } from "@/flow/projection";
 import { useNetStore } from "@/store/netStore";
@@ -16,7 +17,7 @@ const BASE_BAR = "shadow-sm transition-all duration-150";
 
 /** A transition: a thin filled bar, rotatable via `gui.rotation`; in Simulate it glows when
  *  enabled and fires on click, flashing briefly as tokens move. */
-export function TransitionNode({ data }: NodeProps<TransitionFlowNode>): JSX.Element {
+export function TransitionNode({ data, selected }: NodeProps<TransitionFlowNode>): JSX.Element {
   const { transition } = data;
   const rotation = transition.gui?.rotation ?? 0;
   const offset = transition.labelPosition ?? { x: 0, y: BOX / 2 + 10 };
@@ -34,8 +35,9 @@ export function TransitionNode({ data }: NodeProps<TransitionFlowNode>): JSX.Ele
   };
 
   return (
-    <div className="relative" style={{ width: BOX, height: BOX }}>
+    <div className="group relative" style={{ width: BOX, height: BOX }}>
       <NodeHandles />
+      {!simulating && <ArcStartHandles nodeId={transition.id} selected={selected === true} />}
       <div
         className="absolute top-1/2 left-1/2"
         style={{ transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}
