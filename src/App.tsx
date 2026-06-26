@@ -5,6 +5,7 @@ import { netHistory, useNetStore } from "@/store/netStore";
 import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
 import { Palette } from "@/ui/Palette";
 import { PropertiesPanel } from "@/ui/PropertiesPanel";
+import { SidebarFooter } from "@/ui/SidebarFooter";
 import { Toolbar } from "@/ui/Toolbar";
 
 function isTextEntry(target: EventTarget | null): boolean {
@@ -47,6 +48,7 @@ export default function App(): JSX.Element {
           <aside className="flex w-64 shrink-0 flex-col border-slate-200 border-r bg-slate-50">
             {buildMode && <Palette />}
             <PropertiesPanel />
+            <SidebarFooter />
           </aside>
           <div className="relative min-w-0 flex-1">
             <Canvas />
