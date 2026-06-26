@@ -10,9 +10,44 @@ import type { Vec2 } from "@/domain/types";
  * is unit-testable in isolation.
  */
 export class ArcGeometry {
+  /** Default corner radius (flow-space) for {@link ArcGeometry.roundedPath}. */
+  static readonly CORNER_RADIUS = 8;
+
   /** SVG path command string for a straight-segment polyline through `points`. */
   static path(points: Vec2[]): string {
     return points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  }
+
+  /**
+   * SVG path that rounds every *interior* vertex with a smooth quadratic, leaving the two
+   * endpoints sharp (clean arrowhead tip and source attachment). Render-only: the stored
+   * `points` and the {@link ArcGeometry.midpoint} weight-label anchor are untouched, so this
+   * never affects `.npn` geometry.
+   *
+   * Each corner is cut back along both adjacent segments by `radius`, clamped to half the
+   * shorter of the two so adjacent corners never overlap, then joined through the original
+   * vertex as the quadratic control point.
+   */
+  static roundedPath(points: Vec2[], radius: number = ArcGeometry.CORNER_RADIUS): string {
+    const last = points.length - 1;
+    if (last < 2) return ArcGeometry.path(points);
+    const parts = [`M ${points[0].x} ${points[0].y}`];
+    for (let i = 1; i < last; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const next = points[i + 1];
+      const r = Math.min(
+        radius,
+        ArcGeometry._segLength(prev, curr) / 2,
+        ArcGeometry._segLength(curr, next) / 2,
+      );
+      const entry = ArcGeometry._backOff(curr, prev, r);
+      const exit = ArcGeometry._backOff(curr, next, r);
+      parts.push(`L ${entry.x} ${entry.y}`);
+      parts.push(`Q ${curr.x} ${curr.y} ${exit.x} ${exit.y}`);
+    }
+    parts.push(`L ${points[last].x} ${points[last].y}`);
+    return parts.join(" ");
   }
 
   /**
@@ -42,5 +77,14 @@ export class ArcGeometry {
 
   private static _segLength(a: Vec2, b: Vec2): number {
     return Math.hypot(b.x - a.x, b.y - a.y);
+  }
+
+  /** Point `dist` away from `from` along the direction `from`→`toward`. */
+  private static _backOff(from: Vec2, toward: Vec2, dist: number): Vec2 {
+    const len = ArcGeometry._segLength(from, toward) || 1;
+    return {
+      x: from.x + ((toward.x - from.x) / len) * dist,
+      y: from.y + ((toward.y - from.y) / len) * dist,
+    };
   }
 }
