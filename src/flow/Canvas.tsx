@@ -18,6 +18,7 @@ import {
   type CSSProperties,
   type DragEvent,
   type JSX,
+  type MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -25,6 +26,7 @@ import {
 import type { PetriNet, Vec2 } from "@/domain/types";
 import { ArcDrawLayer } from "@/flow/ArcDrawLayer";
 import { ArcEdge } from "@/flow/edges/ArcEdge";
+import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { PlaceNode } from "@/flow/nodes/PlaceNode";
 import { TransitionNode } from "@/flow/nodes/TransitionNode";
 import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/projection";
@@ -44,6 +46,10 @@ const HIGHLIGHT_STYLE: CSSProperties = {
   zIndex: 5,
 };
 
+// Right-click within this many screen px of a selected arc's bend removes it (A5 rule 3).
+// Comfortably larger than the 10px waypoint handle so the target stays forgiving.
+const BEND_HIT_SCREEN_PX = 12;
+
 /**
  * The infinite-grid canvas. The domain net (from the store) is the single source of truth;
  * nodes/edges are re-derived from it on every change, while React Flow's local state owns
@@ -56,7 +62,7 @@ export function Canvas(): JSX.Element {
   const editable = useNetStore((s) => s.mode === "build");
   const drawing = useBuildStore((s) => s.draft !== null);
   const highlight = useAnalyticsStore((s) => s.highlight);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<PetriFlowNode>(
     FlowProjection.toNodes(net),
@@ -144,6 +150,42 @@ export function Canvas(): JSX.Element {
     useNetStore.getState().setViewport(viewport);
   }, []);
 
+  // Unified right-click policy (A5). Mounted on the canvas wrapper so it suppresses the native
+  // menu canvas-only (the side panels are separate DOM subtrees) and catches every target —
+  // pane, node, edge, and the waypoint handles in the edge-label layer that RF's
+  // onEdgeContextMenu would miss. Rule 1 (cancel an in-progress draw) is handled upstream by
+  // ArcDrawLayer's overlay, which stops the event before it reaches here.
+  const onContextMenu = useCallback(
+    (event: ReactMouseEvent): void => {
+      event.preventDefault();
+      const { net, selection, mode } = useNetStore.getState();
+      if (mode !== "build") return;
+
+      // Rule 2 (exit a Palette placing tool) is inert until Phase B adds placing state.
+
+      // Rule 3: cursor on a selected arc's bend → remove that bend and straighten.
+      const cursor = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      const tolerance = BEND_HIT_SCREEN_PX / getViewport().zoom;
+      for (const edgeId of selection.edges) {
+        const arc = net.arcs.find((a) => a.id === edgeId);
+        if (!arc) continue;
+        const index = ArcGeometry.bendAt(arc.points, cursor, tolerance);
+        if (index !== null) {
+          useNetStore.getState().removeWaypoint(arc.id, index);
+          return;
+        }
+      }
+
+      // Rule 4: anything selected → clear it. Rule 5 (nothing selected) falls through to a no-op.
+      if (selection.nodes.length > 0 || selection.edges.length > 0) {
+        setNodes(clearSelected);
+        setEdges(clearSelected);
+        useNetStore.getState().select({ nodes: [], edges: [] });
+      }
+    },
+    [screenToFlowPosition, getViewport, setNodes, setEdges],
+  );
+
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
@@ -163,8 +205,13 @@ export function Canvas(): JSX.Element {
   );
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: drop target for palette drag-create; all pointer interaction is React Flow's pane below.
-    <div className="relative h-full w-full bg-white" onDragOver={onDragOver} onDrop={onDrop}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: palette drop target + canvas-only right-click policy; all other pointer interaction is React Flow's pane below.
+    <div
+      className="relative h-full w-full bg-white"
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onContextMenu={onContextMenu}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -201,6 +248,12 @@ export function Canvas(): JSX.Element {
       {drawing && <ArcDrawLayer />}
     </div>
   );
+}
+
+/** Strip React Flow's selection flag from every element, keeping array identity if none were set. */
+function clearSelected<T extends { selected?: boolean }>(items: T[]): T[] {
+  if (!items.some((i) => i.selected)) return items;
+  return items.map((i) => (i.selected ? { ...i, selected: false } : i));
 }
 
 /** Carry forward React Flow's selection highlight by id when re-deriving from the domain. */

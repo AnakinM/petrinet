@@ -75,6 +75,26 @@ export class ArcGeometry {
     return { x: points[0].x, y: points[0].y };
   }
 
+  /**
+   * Index into `points` of the interior vertex (a removable bend) within `tolerance` of
+   * `cursor`, or `null` when none qualify. The two endpoints are excluded — only bends are
+   * removable. The nearest bend wins when several are in range. All arguments share one
+   * coordinate space; the caller passes flow-space points with a zoom-scaled tolerance so the
+   * target stays a constant size on screen. Drives rule 3 of the unified right-click policy.
+   */
+  static bendAt(points: Vec2[], cursor: Vec2, tolerance: number): number | null {
+    let best: number | null = null;
+    let bestDist = tolerance;
+    for (let i = 1; i < points.length - 1; i++) {
+      const dist = ArcGeometry._segLength(points[i], cursor);
+      if (dist <= bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    return best;
+  }
+
   private static _segLength(a: Vec2, b: Vec2): number {
     return Math.hypot(b.x - a.x, b.y - a.y);
   }

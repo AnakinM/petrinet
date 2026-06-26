@@ -70,6 +70,53 @@ describe("ArcGeometry.roundedPath", () => {
   });
 });
 
+describe("ArcGeometry.bendAt", () => {
+  const arc = [
+    { x: 0, y: 0 }, // source endpoint
+    { x: 50, y: 0 }, // bend 1
+    { x: 50, y: 50 }, // bend 2
+    { x: 100, y: 50 }, // target endpoint
+  ];
+
+  it("returns the index of the bend under the cursor", () => {
+    expect(ArcGeometry.bendAt(arc, { x: 52, y: 3 }, 8)).toBe(1);
+    expect(ArcGeometry.bendAt(arc, { x: 48, y: 47 }, 8)).toBe(2);
+  });
+
+  it("returns null when the cursor is outside tolerance of every bend", () => {
+    expect(ArcGeometry.bendAt(arc, { x: 25, y: 25 }, 8)).toBeNull();
+  });
+
+  it("never matches an endpoint", () => {
+    expect(ArcGeometry.bendAt(arc, { x: 0, y: 0 }, 8)).toBeNull();
+    expect(ArcGeometry.bendAt(arc, { x: 100, y: 50 }, 8)).toBeNull();
+  });
+
+  it("returns null for a straight arc with no interior bends", () => {
+    expect(
+      ArcGeometry.bendAt(
+        [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        { x: 5, y: 0 },
+        8,
+      ),
+    ).toBeNull();
+  });
+
+  it("picks the nearest bend when several are in range", () => {
+    const close = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 16, y: 0 },
+      { x: 30, y: 0 },
+    ];
+    // Cursor at x=13 is within 8 of both bends (10 and 16) but closer to 16.
+    expect(ArcGeometry.bendAt(close, { x: 13.5, y: 0 }, 8)).toBe(2);
+  });
+});
+
 describe("ArcGeometry.midpoint", () => {
   it("returns the average for a straight two-point arc", () => {
     expect(
