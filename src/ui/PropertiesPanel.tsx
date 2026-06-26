@@ -2,6 +2,7 @@ import { type JSX, useState } from "react";
 import { NetOps, type NodeKind } from "@/domain/netOps";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
 import { useNetStore } from "@/store/netStore";
+import { HistoryList } from "@/ui/HistoryList";
 
 /** Contextual editor for the current single selection (place / transition / arc). */
 export function PropertiesPanel(): JSX.Element {
@@ -15,7 +16,7 @@ export function PropertiesPanel(): JSX.Element {
       <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">
         {simulating ? "Simulation" : "Properties"}
       </h2>
-      {simulating ? null : renderBody(net, selection, count)}
+      {simulating ? <HistoryList /> : renderBody(net, selection, count)}
     </section>
   );
 }

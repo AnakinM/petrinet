@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { PetriNetEngine } from "@/domain/engine";
+import { type History, SimHistory } from "@/domain/simHistory";
 import type { Marking, PetriNet } from "@/domain/types";
 
 /**
@@ -14,23 +15,32 @@ import type { Marking, PetriNet } from "@/domain/types";
  * The engine is bound to the net captured at `start`. Structural editing is locked
  * in Simulate, so that net stays frozen for the session — no re-binding needed.
  */
+const EMPTY_HISTORY: History = { m0: {}, steps: [], cursor: -1 };
+
 export interface SimState {
   /** Working marking, advanced by firing; distinct from the persisted M0. */
   marking: Marking;
   /** Ids of transitions enabled under the current `marking`. */
   enabled: Set<string>;
+  /** Firing log with a scrub cursor; in-memory only, reset on `start`/`reset`. */
+  history: History;
   /** Engine bound to the net captured at `start`; `null` outside Simulate. */
   _engine: PetriNetEngine | null;
   /** Snapshot of M0 taken at `start`, restored by `reset`. */
   _m0: Marking;
 
-  /** Enter Simulate: bind the engine, snapshot M0, compute the enabled set. */
+  /** Enter Simulate: bind the engine, snapshot M0, compute the enabled set, start the history. */
   start: (net: PetriNet) => void;
-  /** Fire an enabled transition, advancing the marking; ignores disabled/unknown ids. */
+  /** Fire an enabled transition, advancing the marking and recording a history step; ignores disabled/unknown ids. */
   fire: (id: string) => void;
-  /** Adjust a place's tokens by `delta` (clamped at 0) and recompute enabledness. */
+  /**
+   * Adjust a place's tokens by `delta` (clamped at 0) and recompute enabledness. A manual marking
+   * edit, not a firing — it is not recorded in `history` (which logs only fired transitions).
+   */
   spawnToken: (placeId: string, delta: number) => void;
-  /** Restore the marking to the captured M0. */
+  /** Scrub the history to `cursor` (−1 = M0), restoring the marking recorded after that step. */
+  goto: (cursor: number) => void;
+  /** Restore the marking to the captured M0 and clear the history. */
   reset: () => void;
   /** Leave Simulate: drop the working copy. */
   stop: () => void;
@@ -39,20 +49,31 @@ export interface SimState {
 export const useSimStore = create<SimState>((set, get) => ({
   marking: {},
   enabled: new Set<string>(),
+  history: EMPTY_HISTORY,
   _engine: null,
   _m0: {},
 
   start: (net) => {
     const engine = new PetriNetEngine(net);
     const m0 = PetriNetEngine.initialMarking(net);
-    set({ _engine: engine, _m0: m0, marking: m0, enabled: new Set(engine.enabledTransitions(m0)) });
+    set({
+      _engine: engine,
+      _m0: m0,
+      marking: m0,
+      enabled: new Set(engine.enabledTransitions(m0)),
+      history: SimHistory.init(m0),
+    });
   },
 
   fire: (id) => {
-    const { _engine, marking, enabled } = get();
+    const { _engine, marking, enabled, history } = get();
     if (!_engine || !enabled.has(id)) return;
     const next = _engine.fire(id, marking);
-    set({ marking: next, enabled: new Set(_engine.enabledTransitions(next)) });
+    set({
+      marking: next,
+      enabled: new Set(_engine.enabledTransitions(next)),
+      history: SimHistory.record(history, id, next),
+    });
   },
 
   spawnToken: (placeId, delta) => {
@@ -62,11 +83,30 @@ export const useSimStore = create<SimState>((set, get) => ({
     set({ marking: next, enabled: new Set(_engine.enabledTransitions(next)) });
   },
 
+  goto: (cursor) => {
+    const { _engine, history } = get();
+    if (!_engine) return;
+    const next = SimHistory.goto(history, cursor);
+    const marking = SimHistory.markingAt(next, next.cursor);
+    set({ history: next, marking, enabled: new Set(_engine.enabledTransitions(marking)) });
+  },
+
   reset: () => {
     const { _engine, _m0 } = get();
     if (!_engine) return;
-    set({ marking: _m0, enabled: new Set(_engine.enabledTransitions(_m0)) });
+    set({
+      marking: _m0,
+      enabled: new Set(_engine.enabledTransitions(_m0)),
+      history: SimHistory.init(_m0),
+    });
   },
 
-  stop: () => set({ _engine: null, _m0: {}, marking: {}, enabled: new Set<string>() }),
+  stop: () =>
+    set({
+      _engine: null,
+      _m0: {},
+      marking: {},
+      enabled: new Set<string>(),
+      history: EMPTY_HISTORY,
+    }),
 }));
