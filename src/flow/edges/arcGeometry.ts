@@ -1,54 +1,18 @@
 import type { Vec2 } from "@/domain/types";
 
 /**
- * Pure arc geometry: polyline path building, node-border intersection, label placement.
+ * Pure arc geometry: polyline path building and weight-label placement.
  *
  * The `.npn` polyline is rendered verbatim — its endpoints are stored already clipped to
- * the node border — so {@link ArcGeometry.path} just strings the points together. The
- * border-intersection helpers compute where the line from a node center meets the node
- * shape; they are used when creating a new arc and when a node moves (a magnetic endpoint
- * re-clips to the border). Kept framework-free so it is unit-testable in isolation.
+ * the node border — so {@link ArcGeometry.path} just strings the points together. Border
+ * intersection (where a new or dragged endpoint meets the node shape) lives on
+ * {@link NodeGeometry}, with the node dimensions it depends on. Kept framework-free so it
+ * is unit-testable in isolation.
  */
 export class ArcGeometry {
   /** SVG path command string for a straight-segment polyline through `points`. */
   static path(points: Vec2[]): string {
     return points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  }
-
-  /** Point on a circle of `radius` around `center`, in the direction of `toward`. */
-  static circleBorderPoint(center: Vec2, radius: number, toward: Vec2): Vec2 {
-    const dx = toward.x - center.x;
-    const dy = toward.y - center.y;
-    const len = Math.hypot(dx, dy) || 1;
-    return { x: center.x + (dx / len) * radius, y: center.y + (dy / len) * radius };
-  }
-
-  /**
-   * Point where the ray center→`toward` exits an axis box of half-size (`halfWidth`,
-   * `halfHeight`) rotated `rotationDeg` clockwise about `center`. Used for transition bars.
-   */
-  static rectBorderPoint(
-    center: Vec2,
-    halfWidth: number,
-    halfHeight: number,
-    rotationDeg: number,
-    toward: Vec2,
-  ): Vec2 {
-    const dx = toward.x - center.x;
-    const dy = toward.y - center.y;
-    if (dx === 0 && dy === 0) return { x: center.x, y: center.y };
-    const theta = (rotationDeg * Math.PI) / 180;
-    const cos = Math.cos(theta);
-    const sin = Math.sin(theta);
-    // Rotate the direction into the box's local (axis-aligned) frame.
-    const localX = cos * dx + sin * dy;
-    const localY = -sin * dx + cos * dy;
-    // Scale the local ray until it just touches the nearer pair of edges.
-    const scale = 1 / Math.max(Math.abs(localX) / halfWidth, Math.abs(localY) / halfHeight);
-    const hitX = localX * scale;
-    const hitY = localY * scale;
-    // Rotate the local hit back into world space.
-    return { x: center.x + (cos * hitX - sin * hitY), y: center.y + (sin * hitX + cos * hitY) };
   }
 
   /**

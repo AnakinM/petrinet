@@ -1,0 +1,223 @@
+import type { JSX } from "react";
+import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
+import { useNetStore } from "@/store/netStore";
+
+/** Contextual editor for the current single selection (place / transition / arc). */
+export function PropertiesPanel(): JSX.Element {
+  const net = useNetStore((s) => s.net);
+  const selection = useNetStore((s) => s.selection);
+  const count = selection.nodes.length + selection.edges.length;
+
+  return (
+    <aside className="flex w-64 shrink-0 flex-col gap-3 border-slate-200 border-l bg-slate-50 p-3">
+      <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Properties</h2>
+      {renderBody(net, selection, count)}
+    </aside>
+  );
+}
+
+function renderBody(
+  net: PetriNet,
+  selection: { nodes: string[]; edges: string[] },
+  count: number,
+): JSX.Element {
+  if (count === 0) return <Hint>Select an element to edit it.</Hint>;
+  if (count > 1) return <Hint>{count} elements selected.</Hint>;
+
+  if (selection.nodes.length === 1) {
+    const id = selection.nodes[0];
+    const place = net.places.find((p) => p.id === id);
+    if (place) return <PlaceEditor key={id} place={place} />;
+    const transition = net.transitions.find((t) => t.id === id);
+    if (transition) return <TransitionEditor key={id} transition={transition} />;
+  } else {
+    const arc = net.arcs.find((a) => a.id === selection.edges[0]);
+    if (arc) return <ArcEditor key={arc.id} arc={arc} net={net} />;
+  }
+  return <Hint>Select an element to edit it.</Hint>;
+}
+
+// --- editors ----------------------------------------------------------------
+
+function PlaceEditor({ place }: { place: Place }): JSX.Element {
+  const setTokens = (n: number): void => useNetStore.getState().setTokens(place.id, n);
+  return (
+    <div className="flex flex-col gap-3">
+      <Kind>Place</Kind>
+      <NameField id={place.id} name={place.name} />
+      <div>
+        <FieldLabel>Tokens</FieldLabel>
+        <div className="flex items-center gap-2">
+          <StepButton label="−" onClick={() => setTokens(place.tokens - 1)} />
+          <CommitField
+            key={`tok-${place.tokens}`}
+            type="number"
+            defaultValue={place.tokens}
+            onCommit={(raw) => commitNumber(raw, setTokens)}
+          />
+          <StepButton label="+" onClick={() => setTokens(place.tokens + 1)} />
+        </div>
+      </div>
+      <DeleteButton id={place.id} />
+    </div>
+  );
+}
+
+function TransitionEditor({ transition }: { transition: Transition }): JSX.Element {
+  return (
+    <div className="flex flex-col gap-3">
+      <Kind>Transition</Kind>
+      <NameField id={transition.id} name={transition.name} />
+      <DeleteButton id={transition.id} />
+    </div>
+  );
+}
+
+function ArcEditor({ arc, net }: { arc: Arc; net: PetriNet }): JSX.Element {
+  const setMultiplicity = (n: number): void => useNetStore.getState().setMultiplicity(arc.id, n);
+  return (
+    <div className="flex flex-col gap-3">
+      <Kind>Arc</Kind>
+      <p className="text-slate-500 text-xs">
+        {nodeName(net, arc.source)} → {nodeName(net, arc.target)}
+      </p>
+      <div>
+        <FieldLabel>Weight</FieldLabel>
+        <CommitField
+          key={`mul-${arc.multiplicity}`}
+          type="number"
+          defaultValue={arc.multiplicity}
+          onCommit={(raw) => commitNumber(raw, setMultiplicity)}
+        />
+      </div>
+      <CheckboxField
+        label="Source magnetic"
+        checked={arc.srcMagnetic}
+        onChange={() => useNetStore.getState().toggleEndpointMagnetic(arc.id, "src")}
+      />
+      <CheckboxField
+        label="Target magnetic"
+        checked={arc.destMagnetic}
+        onChange={() => useNetStore.getState().toggleEndpointMagnetic(arc.id, "dest")}
+      />
+      <DeleteButton id={arc.id} />
+    </div>
+  );
+}
+
+// --- shared fields ----------------------------------------------------------
+
+function NameField({ id, name }: { id: string; name: string }): JSX.Element {
+  return (
+    <div>
+      <FieldLabel>Name</FieldLabel>
+      <CommitField
+        key={`name-${name}`}
+        defaultValue={name}
+        onCommit={(raw) => {
+          const trimmed = raw.trim();
+          if (trimmed) useNetStore.getState().rename(id, trimmed);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Uncontrolled text/number field that commits on blur or Enter and reverts on Escape.
+ * Keyed by its committed value at the call site so external changes (+/-, undo/redo) remount
+ * it, while free typing stays local until commit — keeping one history entry per edit.
+ */
+function CommitField({
+  defaultValue,
+  onCommit,
+  type = "text",
+}: {
+  defaultValue: string | number;
+  onCommit: (raw: string) => void;
+  type?: "text" | "number";
+}): JSX.Element {
+  return (
+    <input
+      type={type}
+      defaultValue={defaultValue}
+      onBlur={(e) => onCommit(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") {
+          e.currentTarget.value = String(defaultValue);
+          e.currentTarget.blur();
+        }
+      }}
+      className="w-full rounded border border-slate-300 px-2 py-1 text-slate-800 text-sm"
+    />
+  );
+}
+
+function CheckboxField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+}): JSX.Element {
+  return (
+    <label className="flex items-center gap-2 text-slate-700 text-sm">
+      <input type="checkbox" checked={checked} onChange={onChange} className="accent-slate-700" />
+      {label}
+    </label>
+  );
+}
+
+function DeleteButton({ id }: { id: string }): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={() => useNetStore.getState().remove([id])}
+      className="mt-1 rounded border border-red-200 bg-white px-2.5 py-1 text-red-600 text-sm shadow-sm hover:bg-red-50"
+    >
+      Delete
+    </button>
+  );
+}
+
+function StepButton({ label, onClick }: { label: string; onClick: () => void }): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-7 w-7 shrink-0 rounded border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+    >
+      {label}
+    </button>
+  );
+}
+
+function FieldLabel({ children }: { children: string }): JSX.Element {
+  return <span className="mb-1 block text-slate-500 text-xs">{children}</span>;
+}
+
+function Kind({ children }: { children: string }): JSX.Element {
+  return <span className="font-semibold text-slate-800 text-sm">{children}</span>;
+}
+
+function Hint({ children }: { children: string | (string | number)[] }): JSX.Element {
+  return <p className="text-slate-400 text-sm">{children}</p>;
+}
+
+// --- helpers ----------------------------------------------------------------
+
+function commitNumber(raw: string, apply: (n: number) => void): void {
+  const n = Number(raw);
+  if (raw.trim() !== "" && Number.isFinite(n)) apply(n);
+}
+
+function nodeName(net: PetriNet, id: string): string {
+  return (
+    net.places.find((p) => p.id === id)?.name ??
+    net.transitions.find((t) => t.id === id)?.name ??
+    id
+  );
+}

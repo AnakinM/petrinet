@@ -1,14 +1,14 @@
 import type { NodeProps } from "@xyflow/react";
 import type { JSX } from "react";
+import { NodeGeometry } from "@/domain/nodeGeometry";
 import { NodeHandles } from "@/flow/nodes/NodeHandles";
 import type { TransitionFlowNode } from "@/flow/projection";
 
-// Square node box; the bar is centered inside it so any rotation stays bounded. The bar
-// matches the `.npn` geometry (15 wide x 40 tall) so stored magnetic arc endpoints land
-// exactly on the rendered border.
-const BOX = 40;
-const BAR_WIDTH = 15;
-const BAR_HEIGHT = 40;
+// Square node box; the bar is centered inside it so any rotation stays bounded. The bar's
+// `.npn` geometry (15 wide x 40 tall) puts stored magnetic arc endpoints on the rendered border.
+const BOX = NodeGeometry.TRANSITION_BOX;
+const BAR_WIDTH = NodeGeometry.TRANSITION_BAR_WIDTH;
+const BAR_HEIGHT = NodeGeometry.TRANSITION_BAR_HEIGHT;
 
 /** A transition: a thin filled bar, rotatable via `gui.rotation` about its center. */
 export function TransitionNode({ data }: NodeProps<TransitionFlowNode>): JSX.Element {
