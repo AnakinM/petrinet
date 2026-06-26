@@ -5,6 +5,7 @@ import { NetNames } from "@/domain/netNames";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
 import { DISPLAY_CAP, HighlightChip } from "@/ui/analytics/widgets";
+import { CheckIcon, CrossIcon, QuestionIcon } from "@/ui/icons";
 
 /**
  * Verdict chips for the net's properties. The algebraic ones (structural boundedness, conservative)
@@ -113,28 +114,44 @@ function PropertyRow({
   sub?: ReactNode;
 }): JSX.Element {
   return (
-    <div className="flex flex-col gap-0.5 rounded border border-slate-200 p-2">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex items-stretch gap-2 rounded border border-slate-200 p-2 shadow-sm">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="font-medium text-slate-700 text-sm">{label}</span>
-        <VerdictPill verdict={verdict} />
+        <span className="text-slate-400 text-xs">{detail}</span>
+        {sub && <span className="text-slate-400 text-xs">{sub}</span>}
       </div>
-      <span className="text-slate-400 text-xs">{detail}</span>
-      {sub && <span className="text-slate-400 text-xs">{sub}</span>}
+      <VerdictIcon verdict={verdict} />
     </div>
   );
 }
 
-const PILL_STYLES: Record<Verdict, string> = {
-  yes: "border-green-200 bg-green-100 text-green-700",
-  no: "border-red-200 bg-red-100 text-red-700",
-  indeterminate: "border-amber-200 bg-amber-100 text-amber-700",
-};
 const PILL_LABELS: Record<Verdict, string> = { yes: "Yes", no: "No", indeterminate: "Unknown" };
 
-function VerdictPill({ verdict }: { verdict: Verdict }): JSX.Element {
+const VERDICT_ICON: Record<
+  Verdict,
+  { tone: string; Icon: (p: { className?: string }) => JSX.Element }
+> = {
+  yes: { tone: "bg-green-500", Icon: CheckIcon },
+  no: { tone: "bg-red-500", Icon: CrossIcon },
+  indeterminate: { tone: "bg-amber-500", Icon: QuestionIcon },
+};
+
+/**
+ * Solid circular verdict badge: green check / red cross / amber question with a white glyph. Sits
+ * vertically centered at the box's right edge; its diameter tracks the box height, capped at ~44px.
+ */
+function VerdictIcon({ verdict }: { verdict: Verdict }): JSX.Element {
+  const { tone, Icon } = VERDICT_ICON[verdict];
   return (
-    <span className={`rounded border px-1.5 py-0.5 font-medium text-xs ${PILL_STYLES[verdict]}`}>
-      {PILL_LABELS[verdict]}
-    </span>
+    <div className="flex shrink-0 items-center">
+      <span
+        role="img"
+        aria-label={PILL_LABELS[verdict]}
+        title={PILL_LABELS[verdict]}
+        className={`flex aspect-square h-full max-h-11 min-h-9 min-w-9 max-w-11 items-center justify-center rounded-full text-white ${tone}`}
+      >
+        <Icon className="h-1/2 w-1/2" />
+      </span>
+    </div>
   );
 }
