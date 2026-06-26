@@ -43,6 +43,13 @@ export interface NetState {
   setTokens: (placeId: string, tokens: number) => void;
   setMultiplicity: (arcId: string, multiplicity: number) => void;
   toggleEndpointMagnetic: (arcId: string, end: ArcEnd) => void;
+  rotateTransition: (id: string, deg: number) => void;
+  /** Commit a finished arc-waypoint drag (interior point). */
+  moveWaypoint: (arcId: string, index: number, position: Vec2) => void;
+  insertWaypoint: (arcId: string, index: number, position: Vec2) => void;
+  removeWaypoint: (arcId: string, index: number) => void;
+  /** Commit a finished arc-endpoint drag (re-clipped to the border when magnetic). */
+  moveEndpoint: (arcId: string, end: ArcEnd, target: Vec2) => void;
   /** Remove the given ids (nodes drop their incident arcs); clears selection. */
   remove: (ids: string[]) => void;
   removeSelected: () => void;
@@ -81,6 +88,15 @@ export const useNetStore = create<NetState>()(
         set((s) => ({ net: NetOps.setMultiplicity(s.net, arcId, multiplicity) })),
       toggleEndpointMagnetic: (arcId, end) =>
         set((s) => ({ net: NetOps.toggleEndpointMagnetic(s.net, arcId, end) })),
+      rotateTransition: (id, deg) => set((s) => ({ net: NetOps.rotateTransition(s.net, id, deg) })),
+      moveWaypoint: (arcId, index, position) =>
+        set((s) => ({ net: NetOps.moveWaypoint(s.net, arcId, index, position) })),
+      insertWaypoint: (arcId, index, position) =>
+        set((s) => ({ net: NetOps.insertWaypoint(s.net, arcId, index, position) })),
+      removeWaypoint: (arcId, index) =>
+        set((s) => ({ net: NetOps.removeWaypoint(s.net, arcId, index) })),
+      moveEndpoint: (arcId, end, target) =>
+        set((s) => ({ net: NetOps.moveEndpoint(s.net, arcId, end, target) })),
       remove: (ids) =>
         set((s) => ({
           net: ids.reduce((net, id) => NetOps.remove(net, id), s.net),

@@ -14,7 +14,7 @@ function onDragStart(event: DragEvent<HTMLButtonElement>, kind: PaletteNodeKind)
 /** Drag sources for creating places and transitions by dropping them onto the canvas. */
 export function Palette(): JSX.Element {
   return (
-    <aside className="flex w-44 shrink-0 flex-col gap-3 border-slate-200 border-r bg-slate-50 p-3">
+    <section className="flex flex-col gap-3 p-3">
       <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Palette</h2>
       <button
         type="button"
@@ -35,6 +35,6 @@ export function Palette(): JSX.Element {
         Transition
       </button>
       <p className="mt-1 text-[11px] text-slate-400 leading-snug">Drag onto the canvas to add.</p>
-    </aside>
+    </section>
   );
 }

@@ -6,13 +6,29 @@ import { useNetStore } from "@/store/netStore";
 export function PropertiesPanel(): JSX.Element {
   const net = useNetStore((s) => s.net);
   const selection = useNetStore((s) => s.selection);
+  const simulating = useNetStore((s) => s.mode === "simulate");
   const count = selection.nodes.length + selection.edges.length;
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col gap-3 border-slate-200 border-l bg-slate-50 p-3">
-      <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Properties</h2>
-      {renderBody(net, selection, count)}
-    </aside>
+    <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-slate-200 border-t p-3">
+      <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">
+        {simulating ? "Simulation" : "Properties"}
+      </h2>
+      {simulating ? <SimHint /> : renderBody(net, selection, count)}
+    </section>
+  );
+}
+
+/** Simulate-mode body: editing is locked, so explain the controls instead of an editor. */
+function SimHint(): JSX.Element {
+  return (
+    <div className="flex flex-col gap-2 text-slate-500 text-sm">
+      <p>Editing is locked while simulating.</p>
+      <p className="text-slate-400 text-xs">
+        Click a glowing transition to fire it; click a place to add a token (shift-click to remove).
+        Reset restores the initial marking; Build returns to editing.
+      </p>
+    </div>
   );
 }
 
@@ -64,10 +80,25 @@ function PlaceEditor({ place }: { place: Place }): JSX.Element {
 }
 
 function TransitionEditor({ transition }: { transition: Transition }): JSX.Element {
+  const rotation = transition.gui?.rotation ?? 0;
+  const rotate = (deg: number): void => useNetStore.getState().rotateTransition(transition.id, deg);
   return (
     <div className="flex flex-col gap-3">
       <Kind>Transition</Kind>
       <NameField id={transition.id} name={transition.name} />
+      <div>
+        <FieldLabel>Rotation (°)</FieldLabel>
+        <div className="flex items-center gap-2">
+          <StepButton label="−" onClick={() => rotate(rotation - 90)} />
+          <CommitField
+            key={`rot-${rotation}`}
+            type="number"
+            defaultValue={rotation}
+            onCommit={(raw) => commitNumber(raw, rotate)}
+          />
+          <StepButton label="+" onClick={() => rotate(rotation + 90)} />
+        </div>
+      </div>
       <DeleteButton id={transition.id} />
     </div>
   );

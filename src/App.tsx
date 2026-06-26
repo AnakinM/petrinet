@@ -18,6 +18,8 @@ export default function App(): JSX.Element {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (isTextEntry(e.target)) return;
+      // Undo/redo and delete all mutate the net; Simulate locks structural editing.
+      if (useNetStore.getState().mode !== "build") return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -27,7 +29,6 @@ export default function App(): JSX.Element {
         e.preventDefault();
         netHistory.redo();
       } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (useNetStore.getState().mode !== "build") return;
         e.preventDefault();
         useNetStore.getState().removeSelected();
       }
@@ -41,11 +42,13 @@ export default function App(): JSX.Element {
       <Toolbar />
       <ReactFlowProvider>
         <div className="flex min-h-0 flex-1">
-          <Palette />
+          <aside className="flex w-64 shrink-0 flex-col border-slate-200 border-r bg-slate-50">
+            <Palette />
+            <PropertiesPanel />
+          </aside>
           <div className="min-w-0 flex-1">
             <Canvas />
           </div>
-          <PropertiesPanel />
         </div>
       </ReactFlowProvider>
     </div>

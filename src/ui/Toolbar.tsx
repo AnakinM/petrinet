@@ -1,7 +1,8 @@
 import type { JSX } from "react";
 import type { PetriNet } from "@/domain/types";
 import { NpnFile } from "@/lib/download";
-import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
+import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
+import { useSimStore } from "@/store/simStore";
 
 const EMPTY_NET: PetriNet = { places: [], transitions: [], arcs: [] };
 
@@ -21,25 +22,92 @@ function exportNet(): void {
   NpnFile.save(useNetStore.getState().net);
 }
 
-/** Top bar: New / Import / Export and undo / redo (reactive to history depth). */
+/** Enter Simulate: clear the Build selection, lock the net, and snapshot M0 into the sim. */
+function enterSimulate(): void {
+  const store = useNetStore.getState();
+  if (store.mode === "simulate") return;
+  store.select({ nodes: [], edges: [] });
+  store.setMode("simulate");
+  useSimStore.getState().start(store.net);
+}
+
+/** Return to Build and drop the simulation working copy. */
+function enterBuild(): void {
+  const store = useNetStore.getState();
+  if (store.mode === "build") return;
+  store.setMode("build");
+  useSimStore.getState().stop();
+}
+
+/** Top bar: New / Import / Export, undo / redo, and the Build ↔ Simulate toggle. */
 export function Toolbar(): JSX.Element {
+  const mode = useNetStore((s) => s.mode);
+  const simulating = mode === "simulate";
   const canUndo = useTemporal((t) => t.pastStates.length > 0);
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
 
   return (
     <header className="flex items-center gap-2 border-slate-200 border-b bg-white px-3 py-2">
       <span className="mr-2 font-semibold text-slate-800 text-sm">Petri Net Editor</span>
-      <ToolbarButton onClick={newNet}>New</ToolbarButton>
-      <ToolbarButton onClick={importNet}>Import</ToolbarButton>
+      <ToolbarButton onClick={newNet} disabled={simulating}>
+        New
+      </ToolbarButton>
+      <ToolbarButton onClick={importNet} disabled={simulating}>
+        Import
+      </ToolbarButton>
       <ToolbarButton onClick={exportNet}>Export</ToolbarButton>
       <span className="mx-1 h-5 w-px bg-slate-200" />
-      <ToolbarButton onClick={netHistory.undo} disabled={!canUndo}>
+      <ToolbarButton onClick={netHistory.undo} disabled={simulating || !canUndo}>
         Undo
       </ToolbarButton>
-      <ToolbarButton onClick={netHistory.redo} disabled={!canRedo}>
+      <ToolbarButton onClick={netHistory.redo} disabled={simulating || !canRedo}>
         Redo
       </ToolbarButton>
+      <div className="ml-auto flex items-center gap-2">
+        {simulating && (
+          <ToolbarButton onClick={() => useSimStore.getState().reset()}>Reset</ToolbarButton>
+        )}
+        <ModeToggle mode={mode} />
+      </div>
     </header>
+  );
+}
+
+function ModeToggle({ mode }: { mode: Mode }): JSX.Element {
+  return (
+    <div className="flex overflow-hidden rounded border border-slate-300 text-sm">
+      <ModeTab active={mode === "build"} onClick={enterBuild}>
+        Build
+      </ModeTab>
+      <ModeTab active={mode === "simulate"} onClick={enterSimulate}>
+        Simulate
+      </ModeTab>
+    </div>
+  );
+}
+
+function ModeTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        active
+          ? "bg-slate-700 px-3 py-1 text-white"
+          : "bg-white px-3 py-1 text-slate-700 hover:bg-slate-50"
+      }
+    >
+      {children}
+    </button>
   );
 }
 
