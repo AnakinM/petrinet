@@ -44,6 +44,31 @@ describe("NetOps.addPlace / addTransition", () => {
     NetOps.addPlace(before, { x: 1, y: 1 });
     expect(before.places).toHaveLength(1);
   });
+
+  it("auto-names the next free P-number, filling a gap left by a delete", () => {
+    // P1 and P3 exist (P2 was deleted); the new place takes P2 rather than colliding with P3.
+    const gapped: PetriNet = {
+      places: [
+        { id: "a", name: "P1", tokens: 0, position: { x: 0, y: 0 } },
+        { id: "b", name: "P3", tokens: 0, position: { x: 0, y: 0 } },
+      ],
+      transitions: [],
+      arcs: [],
+    };
+    expect(NetOps.addPlace(gapped, { x: 0, y: 0 }).places[2].name).toBe("P2");
+  });
+
+  it("auto-names transitions the same gap-filling way", () => {
+    const gapped: PetriNet = {
+      places: [],
+      transitions: [
+        { id: "a", name: "T1", position: { x: 0, y: 0 } },
+        { id: "b", name: "T3", position: { x: 0, y: 0 } },
+      ],
+      arcs: [],
+    };
+    expect(NetOps.addTransition(gapped, { x: 0, y: 0 }).transitions[2].name).toBe("T2");
+  });
 });
 
 describe("NetOps.moveNode", () => {
@@ -127,6 +152,39 @@ describe("NetOps.rename / setTokens / setMultiplicity", () => {
   it("clamps multiplicity to an integer ≥ 1", () => {
     expect(NetOps.setMultiplicity(net(), "a", 0).arcs[0].multiplicity).toBe(1);
     expect(NetOps.setMultiplicity(net(), "a", 3).arcs[0].multiplicity).toBe(3);
+  });
+});
+
+describe("NetOps.isNameTaken", () => {
+  // Two places (Buffer, Queue) and one transition named Emit — separate name namespaces.
+  const named: PetriNet = {
+    places: [
+      { id: "p1", name: "Buffer", tokens: 0, position: { x: 0, y: 0 } },
+      { id: "p2", name: "Queue", tokens: 0, position: { x: 0, y: 0 } },
+    ],
+    transitions: [{ id: "t1", name: "Emit", position: { x: 0, y: 0 } }],
+    arcs: [],
+  };
+
+  it("is true when another place already holds the name", () => {
+    expect(NetOps.isNameTaken(named, "place", "Queue")).toBe(true);
+  });
+
+  it("excludes the node being renamed", () => {
+    expect(NetOps.isNameTaken(named, "place", "Buffer", "p1")).toBe(false);
+  });
+
+  it("scopes by kind — names do not clash across places and transitions", () => {
+    expect(NetOps.isNameTaken(named, "place", "Emit")).toBe(false); // Emit is a transition
+    expect(NetOps.isNameTaken(named, "transition", "Buffer")).toBe(false); // Buffer is a place
+  });
+
+  it("is case-sensitive", () => {
+    expect(NetOps.isNameTaken(named, "place", "buffer")).toBe(false);
+  });
+
+  it("is false for a free name", () => {
+    expect(NetOps.isNameTaken(named, "place", "Sink")).toBe(false);
   });
 });
 

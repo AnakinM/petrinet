@@ -1,4 +1,5 @@
-import type { JSX } from "react";
+import { type JSX, useState } from "react";
+import { NetOps, type NodeKind } from "@/domain/netOps";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
 import { useNetStore } from "@/store/netStore";
 
@@ -60,7 +61,7 @@ function PlaceEditor({ place }: { place: Place }): JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <Kind>Place</Kind>
-      <NameField id={place.id} name={place.name} />
+      <NameField id={place.id} name={place.name} kind="place" />
       <div>
         <FieldLabel>Tokens</FieldLabel>
         <div className="flex items-center gap-2">
@@ -85,7 +86,7 @@ function TransitionEditor({ transition }: { transition: Transition }): JSX.Eleme
   return (
     <div className="flex flex-col gap-3">
       <Kind>Transition</Kind>
-      <NameField id={transition.id} name={transition.name} />
+      <NameField id={transition.id} name={transition.name} kind="transition" />
       <div>
         <FieldLabel>Rotation (°)</FieldLabel>
         <div className="flex items-center gap-2">
@@ -138,18 +139,36 @@ function ArcEditor({ arc, net }: { arc: Arc; net: PetriNet }): JSX.Element {
 
 // --- shared fields ----------------------------------------------------------
 
-function NameField({ id, name }: { id: string; name: string }): JSX.Element {
+/**
+ * Name editor that keeps names unique within the node's {@link NodeKind}. A duplicate commit is
+ * rejected inline (error shown, field keeps the typed value to correct) rather than reverted, and
+ * the domain {@link NetOps.rename} stays total. Empty input is ignored, matching the other fields.
+ */
+function NameField({ id, name, kind }: { id: string; name: string; kind: NodeKind }): JSX.Element {
+  const net = useNetStore((s) => s.net);
+  const [error, setError] = useState<string | null>(null);
   return (
     <div>
       <FieldLabel>Name</FieldLabel>
       <CommitField
         key={`name-${name}`}
         defaultValue={name}
+        invalid={error !== null}
         onCommit={(raw) => {
           const trimmed = raw.trim();
-          if (trimmed) useNetStore.getState().rename(id, trimmed);
+          if (!trimmed) {
+            setError(null);
+            return;
+          }
+          if (NetOps.isNameTaken(net, kind, trimmed, id)) {
+            setError(`A ${kind} named "${trimmed}" already exists.`);
+            return;
+          }
+          setError(null);
+          useNetStore.getState().rename(id, trimmed);
         }}
       />
+      {error && <span className="mt-1 block text-red-600 text-xs">{error}</span>}
     </div>
   );
 }
@@ -163,10 +182,12 @@ function CommitField({
   defaultValue,
   onCommit,
   type = "text",
+  invalid = false,
 }: {
   defaultValue: string | number;
   onCommit: (raw: string) => void;
   type?: "text" | "number";
+  invalid?: boolean;
 }): JSX.Element {
   return (
     <input
@@ -180,7 +201,9 @@ function CommitField({
           e.currentTarget.blur();
         }
       }}
-      className="w-full rounded border border-slate-300 px-2 py-1 text-slate-800 text-sm"
+      className={`w-full rounded border px-2 py-1 text-slate-800 text-sm ${
+        invalid ? "border-red-400" : "border-slate-300"
+      }`}
     />
   );
 }

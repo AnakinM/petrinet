@@ -5,7 +5,8 @@ import { newId } from "@/lib/id";
 /** Which side of an arc an endpoint sits on. */
 export type ArcEnd = "src" | "dest";
 
-type NodeKind = "place" | "transition";
+/** A node's kind — used to scope name-uniqueness checks (places and transitions namespace separately). */
+export type NodeKind = "place" | "transition";
 
 /**
  * Immutable Build-mode transforms on the {@link PetriNet}. Every method returns a NEW net
@@ -20,17 +21,17 @@ type NodeKind = "place" | "transition";
 export class NetOps {
   // --- create ---------------------------------------------------------------
 
-  /** Append a new place (0 tokens) centered at `position`. */
+  /** Append a new place (0 tokens) centered at `position`, auto-named to the next free `P<n>`. */
   static addPlace(net: PetriNet, position: Vec2): PetriNet {
-    const place: Place = { id: newId(), name: `P${net.places.length + 1}`, tokens: 0, position };
+    const place: Place = { id: newId(), name: NetOps._freeName(net, "place"), tokens: 0, position };
     return { ...net, places: [...net.places, place] };
   }
 
-  /** Append a new (unrotated) transition centered at `position`. */
+  /** Append a new (unrotated) transition centered at `position`, auto-named to the next free `T<n>`. */
   static addTransition(net: PetriNet, position: Vec2): PetriNet {
     const transition: Transition = {
       id: newId(),
-      name: `T${net.transitions.length + 1}`,
+      name: NetOps._freeName(net, "transition"),
       position,
     };
     return { ...net, transitions: [...net.transitions, transition] };
@@ -141,6 +142,16 @@ export class NetOps {
   }
 
   // --- edit properties ------------------------------------------------------
+
+  /**
+   * True iff a node of `kind` other than `exceptId` already carries exactly `name`
+   * (case-sensitive; places and transitions namespace separately). The UI uses this to block
+   * a duplicate rename — {@link NetOps.rename} itself stays total and never rejects.
+   */
+  static isNameTaken(net: PetriNet, kind: NodeKind, name: string, exceptId?: string): boolean {
+    const nodes = kind === "place" ? net.places : net.transitions;
+    return nodes.some((n) => n.id !== exceptId && n.name === name);
+  }
 
   /** Rename the place or transition with this id. */
   static rename(net: PetriNet, id: string, name: string): PetriNet {
@@ -277,6 +288,14 @@ export class NetOps {
   }
 
   // --- internals ------------------------------------------------------------
+
+  /** The lowest `P<n>`/`T<n>` (n ≥ 1) not currently in use for `kind`, filling gaps left by deletes. */
+  private static _freeName(net: PetriNet, kind: NodeKind): string {
+    const prefix = kind === "place" ? "P" : "T";
+    let n = 1;
+    while (NetOps.isNameTaken(net, kind, `${prefix}${n}`)) n++;
+    return `${prefix}${n}`;
+  }
 
   /** Return a new net with arc `arcId`'s polyline replaced by `points`. */
   private static _withPoints(net: PetriNet, arcId: string, points: Vec2[]): PetriNet {
