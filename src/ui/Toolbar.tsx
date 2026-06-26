@@ -5,7 +5,7 @@ import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { useSimStore } from "@/store/simStore";
-import { GridIcon } from "@/ui/icons";
+import { ExportIcon, GridIcon, ImportIcon, NewIcon, RedoIcon, UndoIcon } from "@/ui/icons";
 
 const EMPTY_NET: PetriNet = { places: [], transitions: [], arcs: [] };
 
@@ -56,17 +56,24 @@ export function Toolbar(): JSX.Element {
     <header className="flex items-center gap-2 border-slate-200 border-b bg-white px-3 py-2">
       <span className="mr-2 font-semibold text-slate-800 text-sm">Petri Net Editor</span>
       <ToolbarButton onClick={newNet} disabled={simulating}>
+        <NewIcon />
         New
       </ToolbarButton>
       <ToolbarButton onClick={importNet} disabled={simulating}>
+        <ImportIcon />
         Import
       </ToolbarButton>
-      <ToolbarButton onClick={exportNet}>Export</ToolbarButton>
+      <ToolbarButton onClick={exportNet}>
+        <ExportIcon />
+        Export
+      </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-slate-200" />
       <ToolbarButton onClick={netHistory.undo} disabled={simulating || !canUndo}>
+        <UndoIcon />
         Undo
       </ToolbarButton>
       <ToolbarButton onClick={netHistory.redo} disabled={simulating || !canRedo}>
+        <RedoIcon />
         Redo
       </ToolbarButton>
       {!simulating && (
@@ -158,8 +165,8 @@ function ToolbarButton({
       title={title}
       className={
         active
-          ? "rounded border border-slate-700 bg-slate-700 px-2.5 py-1 text-sm text-white shadow-sm"
-          : "rounded border border-slate-300 bg-white px-2.5 py-1 text-slate-700 text-sm shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          ? "inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-700 px-2.5 py-1 text-sm text-white shadow-sm"
+          : "inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2.5 py-1 text-slate-700 text-sm shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
       }
     >
       {children}
