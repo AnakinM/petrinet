@@ -42,7 +42,6 @@ export interface NetState {
   rename: (id: string, name: string) => void;
   setTokens: (placeId: string, tokens: number) => void;
   setMultiplicity: (arcId: string, multiplicity: number) => void;
-  toggleEndpointMagnetic: (arcId: string, end: ArcEnd) => void;
   rotateTransition: (id: string, deg: number) => void;
   /** Commit a finished arc-waypoint drag (interior point). */
   moveWaypoint: (arcId: string, index: number, position: Vec2) => void;
@@ -86,8 +85,6 @@ export const useNetStore = create<NetState>()(
         set((s) => ({ net: NetOps.setTokens(s.net, placeId, tokens) })),
       setMultiplicity: (arcId, multiplicity) =>
         set((s) => ({ net: NetOps.setMultiplicity(s.net, arcId, multiplicity) })),
-      toggleEndpointMagnetic: (arcId, end) =>
-        set((s) => ({ net: NetOps.toggleEndpointMagnetic(s.net, arcId, end) })),
       rotateTransition: (id, deg) => set((s) => ({ net: NetOps.rotateTransition(s.net, id, deg) })),
       moveWaypoint: (arcId, index, position) =>
         set((s) => ({ net: NetOps.moveWaypoint(s.net, arcId, index, position) })),

@@ -122,16 +122,6 @@ function ArcEditor({ arc, net }: { arc: Arc; net: PetriNet }): JSX.Element {
           onCommit={(raw) => commitNumber(raw, setMultiplicity)}
         />
       </div>
-      <CheckboxField
-        label="Source magnetic"
-        checked={arc.srcMagnetic}
-        onChange={() => useNetStore.getState().toggleEndpointMagnetic(arc.id, "src")}
-      />
-      <CheckboxField
-        label="Target magnetic"
-        checked={arc.destMagnetic}
-        onChange={() => useNetStore.getState().toggleEndpointMagnetic(arc.id, "dest")}
-      />
       <DeleteButton id={arc.id} />
     </div>
   );
@@ -205,23 +195,6 @@ function CommitField({
         invalid ? "border-red-400" : "border-slate-300"
       }`}
     />
-  );
-}
-
-function CheckboxField({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: () => void;
-}): JSX.Element {
-  return (
-    <label className="flex items-center gap-2 text-slate-700 text-sm">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-slate-700" />
-      {label}
-    </label>
   );
 }
 

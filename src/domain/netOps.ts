@@ -180,34 +180,6 @@ export class NetOps {
     };
   }
 
-  /**
-   * Flip one endpoint of an arc between magnetic and free. Turning an endpoint magnetic
-   * re-clips it to the node border (toward the adjacent point); turning it free leaves it
-   * at its current absolute position.
-   */
-  static toggleEndpointMagnetic(net: PetriNet, arcId: string, end: ArcEnd): PetriNet {
-    const arc = net.arcs.find((a) => a.id === arcId);
-    if (!arc) return net;
-    const isSrc = end === "src";
-    const nowMagnetic = !(isSrc ? arc.srcMagnetic : arc.destMagnetic);
-    let points = arc.points;
-    if (nowMagnetic) {
-      const last = arc.points.length - 1;
-      const idx = isSrc ? 0 : last;
-      const toward = arc.points[isSrc ? 1 : last - 1];
-      const nodeId = isSrc ? arc.source : arc.target;
-      const clipped = NetOps._border(net, nodeId, toward);
-      points = arc.points.map((pt, i) => (i === idx ? clipped : pt));
-    }
-    const next: Arc = {
-      ...arc,
-      srcMagnetic: isSrc ? nowMagnetic : arc.srcMagnetic,
-      destMagnetic: isSrc ? arc.destMagnetic : nowMagnetic,
-      points,
-    };
-    return { ...net, arcs: net.arcs.map((a) => (a.id === arcId ? next : a)) };
-  }
-
   // --- arc geometry (waypoint / endpoint editing) ---------------------------
 
   /** Move an interior waypoint (index `1..last-1`) to `position`. No-op if not interior. */

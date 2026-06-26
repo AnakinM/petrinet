@@ -188,23 +188,6 @@ describe("NetOps.isNameTaken", () => {
   });
 });
 
-describe("NetOps.toggleEndpointMagnetic", () => {
-  it("turning an endpoint free keeps its current point", () => {
-    const after = NetOps.toggleEndpointMagnetic(net(), "a", "src");
-    expect(after.arcs[0].srcMagnetic).toBe(false);
-    expect(after.arcs[0].points[0]).toEqual({ x: 20, y: 0 }); // unchanged
-  });
-
-  it("turning an endpoint magnetic re-clips it to the border", () => {
-    const start = net();
-    start.arcs[0].srcMagnetic = false;
-    start.arcs[0].points[0] = { x: -50, y: 0 }; // detached, off the border
-    const after = NetOps.toggleEndpointMagnetic(start, "a", "src");
-    expect(after.arcs[0].srcMagnetic).toBe(true);
-    expect(after.arcs[0].points[0]).toEqual({ x: 20, y: 0 }); // re-clipped to circle border
-  });
-});
-
 describe("NetOps.rotateTransition", () => {
   it("normalizes the angle and stores it on gui (dropping gui at 0)", () => {
     const after = NetOps.rotateTransition(net(), "t", 450);
