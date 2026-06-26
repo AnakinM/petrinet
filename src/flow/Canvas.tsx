@@ -15,19 +15,34 @@ import {
   useReactFlow,
   type Viewport,
 } from "@xyflow/react";
-import { type DragEvent, type JSX, useCallback, useEffect, useMemo } from "react";
+import {
+  type CSSProperties,
+  type DragEvent,
+  type JSX,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
 import { NetOps } from "@/domain/netOps";
 import type { PetriNet, Vec2 } from "@/domain/types";
 import { ArcEdge } from "@/flow/edges/ArcEdge";
 import { PlaceNode } from "@/flow/nodes/PlaceNode";
 import { TransitionNode } from "@/flow/nodes/TransitionNode";
 import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/projection";
+import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
 import { type PaletteNodeKind, PETRI_NODE_MIME } from "@/ui/Palette";
 
 // Stable module-level references: recreating these each render makes React Flow warn.
 const NODE_TYPES: NodeTypes = { place: PlaceNode, transition: TransitionNode };
 const EDGE_TYPES: EdgeTypes = { arc: ArcEdge };
+
+// Amber ring + soft glow an analytics highlight paints onto a node wrapper. Purely a `style`
+// overlay (untouched by the projection), so it layers cleanly over selection and survives Simulate.
+const HIGHLIGHT_STYLE: CSSProperties = {
+  boxShadow: "0 0 0 3px #f59e0b, 0 0 18px 6px rgba(245, 158, 11, 0.45)",
+  zIndex: 5,
+};
 
 /**
  * The infinite-grid canvas. The domain net (from the store) is the single source of truth;
@@ -39,7 +54,8 @@ const EDGE_TYPES: EdgeTypes = { arc: ArcEdge };
 export function Canvas(): JSX.Element {
   const net = useNetStore((s) => s.net);
   const editable = useNetStore((s) => s.mode === "build");
-  const { screenToFlowPosition } = useReactFlow();
+  const highlight = useAnalyticsStore((s) => s.highlight);
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<PetriFlowNode>(
     FlowProjection.toNodes(net),
@@ -48,12 +64,37 @@ export function Canvas(): JSX.Element {
   const initialViewport = useMemo(() => useNetStore.getState().viewport, []);
 
   // Re-derive the view whenever the domain net changes (edit, undo/redo, import), preserving
-  // the current selection highlight. Drags don't change the net until release, so this never
-  // fights an in-progress drag.
+  // the current selection and analytics highlight. Drags don't change the net until release, so
+  // this never fights an in-progress drag. The highlight is read imperatively (its own effect
+  // below tracks changes), so a layout nudge re-paints the glow on the moved node.
   useEffect(() => {
-    setNodes((prev) => withSelection(FlowProjection.toNodes(net), prev));
+    const lit = new Set(useAnalyticsStore.getState().highlight);
+    setNodes((prev) => withHighlight(withSelection(FlowProjection.toNodes(net), prev), lit));
     setEdges((prev) => withSelection(FlowProjection.toEdges(net), prev));
   }, [net, setNodes, setEdges]);
+
+  // Paint the analytics highlight onto the matching nodes and frame them — clicking a diagnostic
+  // (a dead transition, a loop, a source place) spotlights it and pans it into view, wherever it is.
+  // The panel overlays the canvas's right edge, so reserve its width as right padding; otherwise a
+  // framed node would centre under the panel and stay hidden.
+  useEffect(() => {
+    const lit = new Set(highlight);
+    setNodes((prev) => withHighlight(prev, lit));
+    if (highlight.length > 0) {
+      const { open, width } = useAnalyticsStore.getState();
+      fitView({
+        nodes: highlight.map((id) => ({ id })),
+        duration: 400,
+        maxZoom: 1.5,
+        padding: {
+          top: "40px",
+          bottom: "40px",
+          left: "40px",
+          right: `${open ? width + 40 : 40}px`,
+        },
+      });
+    }
+  }, [highlight, setNodes, fitView]);
 
   // Live arc-follow: while nodes drag, translate their magnetic arc endpoints from the domain
   // points by the live delta (recomputed from the domain each tick, so no accumulation). The
@@ -177,6 +218,22 @@ function withSelection<T extends { id: string; selected?: boolean }>(next: T[], 
   const selected = new Set(prev.filter((p) => p.selected).map((p) => p.id));
   if (selected.size === 0) return next;
   return next.map((n) => (selected.has(n.id) ? { ...n, selected: true } : n));
+}
+
+/**
+ * Apply the analytics glow to the lit nodes and strip it from the rest. `style` is the highlight's
+ * alone (the projection never sets it), so it can be set and cleared wholesale; places round the
+ * ring to a circle to match their shape, transitions leave it square.
+ */
+function withHighlight(nodes: PetriFlowNode[], lit: Set<string>): PetriFlowNode[] {
+  return nodes.map((n) => {
+    const on = lit.has(n.id);
+    if (!on && !n.style) return n;
+    const style = on
+      ? { ...HIGHLIGHT_STYLE, ...(n.type === "place" ? { borderRadius: 9999 } : {}) }
+      : undefined;
+    return { ...n, style };
+  });
 }
 
 /** Translate a stored point by (live − domain) of its node center. */

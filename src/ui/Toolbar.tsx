@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import type { PetriNet } from "@/domain/types";
 import { NpnFile } from "@/lib/download";
+import { useAnalyticsStore } from "@/store/analyticsStore";
 import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { useSimStore } from "@/store/simStore";
 
@@ -43,6 +44,7 @@ function enterBuild(): void {
 export function Toolbar(): JSX.Element {
   const mode = useNetStore((s) => s.mode);
   const simulating = mode === "simulate";
+  const analyticsOpen = useAnalyticsStore((s) => s.open);
   const canUndo = useTemporal((t) => t.pastStates.length > 0);
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
 
@@ -67,6 +69,9 @@ export function Toolbar(): JSX.Element {
         {simulating && (
           <ToolbarButton onClick={() => useSimStore.getState().reset()}>Reset</ToolbarButton>
         )}
+        <ToolbarButton onClick={() => useAnalyticsStore.getState().toggle()} active={analyticsOpen}>
+          Analytics
+        </ToolbarButton>
         <ModeToggle mode={mode} />
       </div>
     </header>
@@ -114,10 +119,12 @@ function ModeTab({
 function ToolbarButton({
   onClick,
   disabled,
+  active,
   children,
 }: {
   onClick: () => void;
   disabled?: boolean;
+  active?: boolean;
   children: string;
 }): JSX.Element {
   return (
@@ -125,7 +132,12 @@ function ToolbarButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="rounded border border-slate-300 bg-white px-2.5 py-1 text-slate-700 text-sm shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+      aria-pressed={active}
+      className={
+        active
+          ? "rounded border border-slate-700 bg-slate-700 px-2.5 py-1 text-sm text-white shadow-sm"
+          : "rounded border border-slate-300 bg-white px-2.5 py-1 text-slate-700 text-sm shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+      }
     >
       {children}
     </button>
