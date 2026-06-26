@@ -11,24 +11,35 @@ export type AnalyticsTab = "properties" | "invariants" | "structure";
  * opening, resizing, and analysing never touch the net. The computed {@link AnalysisResult} is a
  * derived working value — recomputed live while the panel is open and **never persisted**; only
  * `{ open, width, activeTab }` survive in `localStorage`.
+ *
+ * Two recompute cadences mirror the engine's two layers (spec §4):
+ *   - the **algebraic** slice is instant and stays live — it is refreshed on open and on every net
+ *     edit (which also marks the behavioural verdicts {@link AnalyticsState.stale});
+ *   - the **behavioural** pass is heavier and runs **on demand** via {@link AnalyticsState.reanalyze}
+ *     (the Re-analyze button), which clears the stale flag.
  */
 export interface AnalyticsState {
   open: boolean;
   width: number;
   activeTab: AnalyticsTab;
-  /** Last analysis (algebraic slice in M2); recomputed from M0 while the panel is open. */
+  /** Latest analysis from M0; the algebraic slice while live, the full result after Re-analyze. */
   result: AnalysisResult | null;
-  /** Behavioural verdicts are out of date after an edit. Wired with the reachability pass (M4). */
+  /** The net changed since the last behavioural pass, so those verdicts are out of date. */
   stale: boolean;
-  /** A behavioural pass is in flight. Wired with the reachability pass (M4). */
+  /** A behavioural pass is in flight (for the Web-Worker upgrade, §9; synchronous today). */
   running: boolean;
 
   toggle: () => void;
   close: () => void;
+  /** Set the panel width live (transient — does not persist; the drag calls {@link commitWidth} at the end). */
   setWidth: (width: number) => void;
+  /** Persist the current width once, at the end of a resize drag. */
+  commitWidth: () => void;
   setActiveTab: (tab: AnalyticsTab) => void;
-  /** Recompute the analysis from the current net (M0). */
+  /** Refresh the instant algebraic slice from the current net; behavioural verdicts reset to pending. */
   analyze: () => void;
+  /** Run the on-demand behavioural reachability pass for the current net and clear the stale flag. */
+  reanalyze: () => void;
 }
 
 const STORAGE_KEY = "petrinet.analytics.v1";
@@ -72,42 +83,59 @@ function persist(state: AnalyticsState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-function currentResult(): AnalysisResult {
-  return NetAnalysis.analyze(useNetStore.getState().net);
+/** Instant slice: invariants, conservativeness, structural boundedness and net-graph diagnostics. */
+function algebraicResult(): AnalysisResult {
+  return NetAnalysis.analyze(useNetStore.getState().net, { behavioral: false });
 }
 
 export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
   const persisted = loadPersisted();
   return {
     ...persisted,
-    result: persisted.open ? currentResult() : null,
+    result: persisted.open ? algebraicResult() : null,
     stale: false,
     running: false,
 
     toggle: () => {
       const open = !get().open;
-      set({ open, result: open ? currentResult() : get().result });
+      set({ open, result: open ? algebraicResult() : get().result, stale: false });
       persist(get());
     },
     close: () => {
       set({ open: false });
       persist(get());
     },
-    setWidth: (width) => {
-      set({ width: clampWidth(width) });
-      persist(get());
-    },
+    // Persisting on every pointermove would thrash localStorage during a drag; commitWidth saves once.
+    setWidth: (width) => set({ width: clampWidth(width) }),
+    commitWidth: () => persist(get()),
     setActiveTab: (activeTab) => {
       set({ activeTab });
       persist(get());
     },
-    analyze: () => set({ result: currentResult(), stale: false }),
+    analyze: () => set({ result: algebraicResult(), stale: false }),
+    reanalyze: () => {
+      // Synchronous in v1 (cap-bounded); `running` brackets the call for the Web-Worker upgrade
+      // (§9) that will make it async — both sets land before React repaints today, so no flicker.
+      set({ running: true });
+      set({
+        result: NetAnalysis.analyze(useNetStore.getState().net, { behavioral: true }),
+        stale: false,
+        running: false,
+      });
+    },
   };
 });
 
-// Keep the (instant) algebraic result live while the panel is open, mirroring the net store. The
-// heavier behavioural pass will move to an on-demand "Re-analyze" with a stale badge when it lands.
+// Keep the instant algebraic slice live while the panel is open, and flag the behavioural verdicts
+// stale so the Re-analyze button signals there is fresh work to do. The net reference only changes
+// in Build (Simulate edits a separate working copy), so results never go stale in Simulate.
+//
+// A position/label/rotation nudge mints a new net reference but cannot change any verdict, so it is
+// filtered out by comparing structural signatures — otherwise dragging a node would discard valid
+// behavioural results and force an expensive re-run.
 useNetStore.subscribe((state, prev) => {
   if (state.net === prev.net) return;
-  if (useAnalyticsStore.getState().open) useAnalyticsStore.getState().analyze();
+  if (!useAnalyticsStore.getState().open) return;
+  if (NetAnalysis.signature(state.net) === NetAnalysis.signature(prev.net)) return;
+  useAnalyticsStore.setState({ result: algebraicResult(), stale: true });
 });

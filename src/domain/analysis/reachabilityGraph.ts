@@ -1,3 +1,4 @@
+import { Tarjan } from "@/domain/analysis/tarjan";
 import type { Deadlock, Verdict } from "@/domain/analysis/types";
 import { PetriNetEngine } from "@/domain/engine";
 import type { Marking, PetriNet } from "@/domain/types";
@@ -141,7 +142,8 @@ export class ReachabilityGraph {
     }));
     this._deadTransitions = net.transitions.map((t) => t.id).filter((id) => !fired.has(id));
 
-    const scc = ReachabilityGraph._tarjan(adjacency);
+    // Tarjan needs only the edge targets; the labels stay on `adjacency` for the L4 check below.
+    const scc = Tarjan.components(adjacency.map((edges) => edges.map((e) => e.to)));
     this._singleScc = scc.count === 1;
     this._liveByTerminalScc = ReachabilityGraph._terminalSccsFireEveryTransition(
       adjacency,
@@ -216,58 +218,6 @@ export class ReachabilityGraph {
   }
 
   /**
-   * Iterative Tarjan SCC over the reachability graph — an explicit work stack, because recursion
-   * would overflow near the 10k-state cap. Returns each node's component id and the component count.
-   */
-  private static _tarjan(adjacency: Edge[][]): { componentOf: number[]; count: number } {
-    const n = adjacency.length;
-    const index = new Array<number>(n).fill(-1);
-    const low = new Array<number>(n).fill(0);
-    const onStack = new Array<boolean>(n).fill(false);
-    const componentOf = new Array<number>(n).fill(-1);
-    const sccStack: number[] = [];
-    let counter = 0;
-    let count = 0;
-
-    for (let root = 0; root < n; root++) {
-      if (index[root] !== -1) continue;
-      const work: { node: number; edge: number }[] = [{ node: root, edge: 0 }];
-      while (work.length > 0) {
-        const frame = work[work.length - 1];
-        const v = frame.node;
-        if (frame.edge === 0) {
-          index[v] = counter;
-          low[v] = counter;
-          counter++;
-          sccStack.push(v);
-          onStack[v] = true;
-        }
-        if (frame.edge < adjacency[v].length) {
-          const w = adjacency[v][frame.edge].to;
-          frame.edge++;
-          if (index[w] === -1) work.push({ node: w, edge: 0 });
-          else if (onStack[w] && index[w] < low[v]) low[v] = index[w];
-          continue;
-        }
-        // v fully explored: close its SCC if it is a root, then propagate its low-link upward.
-        if (low[v] === index[v]) {
-          let w = v;
-          do {
-            w = sccStack.pop() as number;
-            onStack[w] = false;
-            componentOf[w] = count;
-          } while (w !== v);
-          count++;
-        }
-        work.pop();
-        const caller = work[work.length - 1];
-        if (caller !== undefined && low[v] < low[caller.node]) low[caller.node] = low[v];
-      }
-    }
-    return { componentOf, count };
-  }
-
-  /**
    * L4-liveness witness: every terminal SCC (one with no edge leaving to another component) fires
    * every transition on its internal edges. Once a run settles into a terminal SCC it stays there
    * forever, so a transition missing from one can never fire again — exactly the L4 failure.
@@ -278,6 +228,10 @@ export class ReachabilityGraph {
     count: number,
     transitionCount: number,
   ): boolean {
+    // A net with no transitions can never fire: its sole marking is a deadlock, so it is not live.
+    // (Without this guard the `labels.size < transitionCount` test below is `0 < 0` — vacuously
+    // "live", which would contradict the deadlock that same marking represents.)
+    if (transitionCount === 0) return false;
     const terminal = new Array<boolean>(count).fill(true);
     const labels: Set<string>[] = Array.from({ length: count }, () => new Set<string>());
     for (let v = 0; v < adjacency.length; v++) {

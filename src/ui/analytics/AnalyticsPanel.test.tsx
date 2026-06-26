@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
@@ -30,6 +30,20 @@ const CYCLE: PetriNet = {
   places: [place("P1", 1), place("P2", 0)],
   transitions: [transition("t1"), transition("t2")],
   arcs: [arc("P1", "t1"), arc("t1", "P2"), arc("P2", "t2"), arc("t2", "P1")],
+};
+
+// One token drains P1 → t1 → P2 → t2 → P3 (a sink): runs into a deadlock at {P3=1}.
+const DEADLOCK: PetriNet = {
+  places: [place("P1", 1), place("P2", 0), place("P3", 0)],
+  transitions: [transition("t1"), transition("t2")],
+  arcs: [arc("P1", "t1"), arc("t1", "P2"), arc("P2", "t2"), arc("t2", "P3")],
+};
+
+// A source transition pumping P1 with no consumer: unbounded ⇒ the reachability graph never completes.
+const UNBOUNDED: PetriNet = {
+  places: [place("P1", 0)],
+  transitions: [transition("t1")],
+  arcs: [arc("t1", "P1")],
 };
 
 function openWith(net: PetriNet, tab: AnalyticsTab = "invariants"): void {
@@ -80,5 +94,50 @@ describe("AnalyticsPanel", () => {
     openWith({ places: [], transitions: [], arcs: [] });
     render(<AnalyticsPanel />);
     expect(screen.getByText(/Nothing to analyse/)).toBeInTheDocument();
+  });
+
+  it("resolves the behavioural verdicts only after Re-analyze", async () => {
+    openWith(CYCLE, "properties");
+    render(<AnalyticsPanel />);
+    // The behavioural pass is on-demand, so the behavioural rows start unsettled.
+    expect(screen.getAllByText(/run Re-analyze/).length).toBeGreaterThan(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
+    expect(
+      screen.getByText("Every transition can fire again from every reachable marking."),
+    ).toBeInTheDocument();
+  });
+
+  it("flags the behavioural verdicts stale after a net edit and clears it on Re-analyze", async () => {
+    openWith(CYCLE, "properties");
+    render(<AnalyticsPanel />);
+    expect(screen.queryByText("Stale")).not.toBeInTheDocument();
+
+    // Editing the net (a new reference) marks the on-demand verdicts out of date.
+    act(() => useNetStore.getState().setTokens("P1", 2));
+    expect(screen.getByText("Stale")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
+    expect(screen.queryByText("Stale")).not.toBeInTheDocument();
+  });
+
+  it("lists a deadlock marking and its firing path on the Structure tab after Re-analyze", async () => {
+    openWith(DEADLOCK, "structure");
+    render(<AnalyticsPanel />);
+    // Behavioural diagnostics need the reachability pass first.
+    expect(screen.getAllByText(/Run Re-analyze/).length).toBeGreaterThan(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
+    expect(screen.getByText("P1=0, P2=0, P3=1")).toBeInTheDocument();
+    expect(screen.getByText(/via t1.*t2/)).toBeInTheDocument();
+  });
+
+  it("never presents an incomplete (unbounded) net's structure as a definitive guarantee", async () => {
+    openWith(UNBOUNDED, "structure");
+    render(<AnalyticsPanel />);
+    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
+    // The graph was pruned for unboundedness, so empty results must NOT read as "None".
+    expect(screen.queryByText(/every transition can fire/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/incomplete/).length).toBeGreaterThan(0);
   });
 });

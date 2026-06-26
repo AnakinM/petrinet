@@ -62,6 +62,13 @@ export interface Diagnostics {
   connected: boolean;
 }
 
+/**
+ * The structural (net-graph) slice of {@link Diagnostics} — everything decidable from the net's
+ * shape alone, with no state-space search. {@link NetStructure} produces it; the facade folds in
+ * the behavioural `deadTransitions` / `deadlocks` only when the reachability pass runs.
+ */
+export type StructuralDiagnostics = Omit<Diagnostics, "deadTransitions" | "deadlocks">;
+
 /** The complete analysis of a net at its initial marking M0 — the only thing the UI consumes. */
 export interface AnalysisResult {
   boundedness: Boundedness;
@@ -75,5 +82,11 @@ export interface AnalysisResult {
   diagnostics: Diagnostics;
   /** The reachability graph hit STATE_CAP, so behavioural verdicts read `indeterminate`. */
   stateSpaceExceeded: boolean;
+  /**
+   * The reachability graph was fully built (neither capped nor pruned for unboundedness), so its
+   * *empty* results are definitive — an empty `deadTransitions` then truly means "none", not
+   * "none found in the part we explored". `false` whenever the behavioural pass did not run.
+   */
+  stateSpaceComplete: boolean;
   exploredStates: number;
 }

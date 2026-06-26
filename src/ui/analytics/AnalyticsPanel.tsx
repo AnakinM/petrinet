@@ -42,22 +42,37 @@ export function AnalyticsPanel(): JSX.Element | null {
 function TabBody({ tab, result }: { tab: AnalyticsTab; result: AnalysisResult }): JSX.Element {
   if (tab === "properties") return <PropertiesTab result={result} />;
   if (tab === "invariants") return <InvariantsTab result={result} />;
-  return <StructureTab />;
+  return <StructureTab result={result} />;
 }
 
 function PanelHeader({ activeTab }: { activeTab: AnalyticsTab }): JSX.Element {
+  const stale = useAnalyticsStore((s) => s.stale);
   return (
     <div className="shrink-0 border-slate-200 border-b">
-      <div className="flex items-center justify-between px-3 py-2">
+      <div className="flex items-center gap-2 px-3 py-2">
         <h2 className="font-semibold text-slate-800 text-sm">Analytics</h2>
-        <button
-          type="button"
-          onClick={() => useAnalyticsStore.getState().close()}
-          aria-label="Close analytics"
-          className="rounded px-1.5 text-lg text-slate-400 leading-none hover:bg-slate-100 hover:text-slate-700"
-        >
-          ×
-        </button>
+        {stale && (
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-700 text-xs">
+            Stale
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => useAnalyticsStore.getState().reanalyze()}
+            className="rounded border border-slate-300 px-2 py-0.5 font-medium text-slate-600 text-xs hover:bg-slate-100"
+          >
+            Re-analyze
+          </button>
+          <button
+            type="button"
+            onClick={() => useAnalyticsStore.getState().close()}
+            aria-label="Close analytics"
+            className="rounded px-1.5 text-lg text-slate-400 leading-none hover:bg-slate-100 hover:text-slate-700"
+          >
+            ×
+          </button>
+        </div>
       </div>
       <div className="flex gap-1 px-2 pb-2">
         <TabButton tab="properties" active={activeTab === "properties"}>
@@ -115,6 +130,7 @@ function startResize(e: ReactPointerEvent): void {
     useAnalyticsStore.getState().setWidth(window.innerWidth - ev.clientX);
   };
   const onUp = (): void => {
+    useAnalyticsStore.getState().commitWidth();
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
   };

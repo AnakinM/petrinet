@@ -1,35 +1,53 @@
 import { IncidenceMatrix } from "@/domain/analysis/incidenceMatrix";
 import { Invariants } from "@/domain/analysis/invariants";
+import { NetStructure } from "@/domain/analysis/netStructure";
+import { ReachabilityGraph } from "@/domain/analysis/reachabilityGraph";
 import type {
   AnalysisResult,
   Boundedness,
-  Diagnostics,
   InvariantSet,
   PropertyResult,
 } from "@/domain/analysis/types";
-import type { PetriNet } from "@/domain/types";
+import { NetNames } from "@/domain/netNames";
+import type { Marking, PetriNet } from "@/domain/types";
 
-/** Shown for behavioural verdicts until the reachability pass (M3) is wired in. */
-const BEHAVIOURAL_PENDING = "Requires the reachability pass.";
+/** Behavioural verdict shown until the on-demand reachability pass has run for the current net. */
+export const NOT_COMPUTED = "Not yet computed — run Re-analyze.";
+/** The state cap rendered for humans (`"10,000"`), derived from the single source of truth. */
+export const STATE_CAP_LABEL = ReachabilityGraph.STATE_CAP.toLocaleString("en-US");
+/** Why a behavioural verdict is indeterminate after the reachability pass overran the cap. */
+export const STATE_CAP_EXCEEDED = `The state space exceeded the ${STATE_CAP_LABEL}-marking cap.`;
+
+/** Optional second argument to {@link NetAnalysis.analyze}. */
+interface AnalyzeOptions {
+  /** Run the reachability pass for the behavioural verdicts; omit/false for the algebraic slice only. */
+  behavioral?: boolean;
+  /** Reachability state cap override — a test seam; production uses {@link ReachabilityGraph.STATE_CAP}. */
+  cap?: number;
+}
 
 /**
  * The single entry point the UI calls to analyse a net at its initial marking M0. Pure and
  * framework-free, mirroring {@link PetriNetEngine}.
  *
- * This milestone produces the **algebraic slice** only — invariants, coverage, conservativeness
- * and structural boundedness, all decided from the {@link IncidenceMatrix} with no state search.
- * The behavioural verdicts (live / reversible / deadlock-free / exact bound) stay `indeterminate`
- * until {@link ReachabilityGraph} lands; the full {@link AnalysisResult} contract is honoured now
- * so the UI and store never change shape when it does.
+ * Two layers, matching the spec:
+ *   - **Algebraic** (always): invariants, coverage, conservativeness and structural boundedness
+ *     from the {@link IncidenceMatrix}, plus the structural net-graph {@link NetStructure}
+ *     diagnostics — all instant, with no state search.
+ *   - **Behavioural** (`behavioral: true`): one {@link ReachabilityGraph} pass settles live /
+ *     reversible / deadlock-free / quasi-live, the exact bound and safeness, and the dead-transition
+ *     and deadlock witnesses. Without it those verdicts stay `indeterminate`.
+ *
+ * The full {@link AnalysisResult} contract is honoured either way, so the UI and store never change
+ * shape between the cheap live pass and the on-demand behavioural one.
  */
 export class NetAnalysis {
-  static analyze(net: PetriNet): AnalysisResult {
+  static analyze(net: PetriNet, opts?: AnalyzeOptions): AnalysisResult {
     const matrix = new IncidenceMatrix(net);
     const place = Invariants.placeInvariants(matrix);
     const transition = Invariants.transitionInvariants(matrix);
     const placesCovered = Invariants.covers(place, matrix.places);
     const transitionsCovered = Invariants.covers(transition, matrix.transitions);
-
     const invariants: InvariantSet = {
       place,
       transition,
@@ -38,32 +56,149 @@ export class NetAnalysis {
       truncated: false,
     };
 
-    // A P-invariant covering every place ⇒ bounded for any marking, with no state search; the
-    // exact bound k (and hence safeness) still needs the reachability pass.
-    const boundedness: Boundedness = {
-      bounded: placesCovered ? "yes" : "indeterminate",
-      safe: "indeterminate",
-      bound: null,
-      source: placesCovered ? "structural" : "none",
-    };
-
     const strictlyConservative = NetAnalysis._strictlyConservative(matrix.c);
     const conservative = NetAnalysis._conservative(placesCovered, strictlyConservative);
-    const pending: PropertyResult = { verdict: "indeterminate", detail: BEHAVIOURAL_PENDING };
+    const structure = NetStructure.analyze(net);
 
+    if (!opts?.behavioral) {
+      const pending: PropertyResult = { verdict: "indeterminate", detail: NOT_COMPUTED };
+      return {
+        boundedness: {
+          bounded: placesCovered ? "yes" : "indeterminate",
+          safe: "indeterminate",
+          bound: null,
+          source: placesCovered ? "structural" : "none",
+        },
+        conservative,
+        strictlyConservative,
+        live: pending,
+        quasiLive: pending,
+        reversible: pending,
+        deadlockFree: pending,
+        invariants,
+        diagnostics: { ...structure, deadTransitions: [], deadlocks: [] },
+        stateSpaceExceeded: false,
+        stateSpaceComplete: false,
+        exploredStates: 0,
+      };
+    }
+
+    const rg = new ReachabilityGraph(net, opts.cap ?? ReachabilityGraph.STATE_CAP);
     return {
-      boundedness,
+      boundedness: NetAnalysis._boundedness(placesCovered, rg),
       conservative,
       strictlyConservative,
-      live: pending,
-      quasiLive: pending,
-      reversible: pending,
-      deadlockFree: pending,
+      live: NetAnalysis._live(rg),
+      quasiLive: NetAnalysis._quasiLive(rg, net),
+      reversible: NetAnalysis._reversible(rg),
+      deadlockFree: NetAnalysis._deadlockFree(rg, net),
       invariants,
-      diagnostics: NetAnalysis._emptyDiagnostics(),
-      stateSpaceExceeded: false,
-      exploredStates: 0,
+      diagnostics: {
+        ...structure,
+        deadTransitions: rg.deadTransitions(),
+        deadlocks: rg.deadlocks(),
+      },
+      stateSpaceExceeded: rg.exceeded,
+      stateSpaceComplete: rg.complete,
+      exploredStates: rg.states,
     };
+  }
+
+  /**
+   * A cheap fingerprint of everything an analysis depends on — place ids & token counts, transition
+   * ids, and arc topology with multiplicities. Excludes positions, labels, rotation and names (none
+   * affect a verdict), so a layout nudge produces the same signature and need not invalidate results.
+   */
+  static signature(net: PetriNet): string {
+    const places = net.places.map((p) => `${p.id}:${p.tokens}`).join(",");
+    const transitions = net.transitions.map((t) => t.id).join(",");
+    const arcs = net.arcs.map((a) => `${a.source}>${a.target}*${a.multiplicity}`).join(",");
+    return `${places}|${transitions}|${arcs}`;
+  }
+
+  /**
+   * A structural P-cover proves boundedness for any marking with no state search, so it wins the
+   * `source` label; reachability still supplies the exact bound and safeness — which stay unknown
+   * (`bound: null`, `safe: "indeterminate"`) if the pass hit the cap, even on a structurally
+   * bounded net. Without a P-cover, boundedness itself is whatever reachability could settle.
+   */
+  private static _boundedness(placesCovered: boolean, rg: ReachabilityGraph): Boundedness {
+    if (placesCovered) {
+      return { bounded: "yes", safe: rg.isSafe(), bound: rg.bound(), source: "structural" };
+    }
+    return {
+      bounded: rg.isBounded(),
+      safe: rg.isSafe(),
+      bound: rg.bound(),
+      source: "reachability",
+    };
+  }
+
+  private static _live(rg: ReachabilityGraph): PropertyResult {
+    switch (rg.isLive()) {
+      case "yes":
+        return {
+          verdict: "yes",
+          detail: "Every transition can fire again from every reachable marking.",
+        };
+      case "no":
+        return {
+          verdict: "no",
+          detail: "A transition can no longer fire once the net settles into a terminal cycle.",
+        };
+      default:
+        return { verdict: "indeterminate", detail: NetAnalysis._whyIndeterminate(rg) };
+    }
+  }
+
+  private static _reversible(rg: ReachabilityGraph): PropertyResult {
+    switch (rg.isReversible()) {
+      case "yes":
+        return { verdict: "yes", detail: "M0 is reachable again from every reachable marking." };
+      case "no":
+        return { verdict: "no", detail: "Some reachable marking can never return to M0." };
+      default:
+        return { verdict: "indeterminate", detail: NetAnalysis._whyIndeterminate(rg) };
+    }
+  }
+
+  private static _deadlockFree(rg: ReachabilityGraph, net: PetriNet): PropertyResult {
+    switch (rg.isDeadlockFree()) {
+      case "yes":
+        return { verdict: "yes", detail: "No reachable marking is dead." };
+      case "no":
+        return {
+          verdict: "no",
+          detail: `Reaches a dead marking: ${NetAnalysis._formatMarking(rg.deadlocks()[0].marking, net)}.`,
+        };
+      default:
+        return { verdict: "indeterminate", detail: NetAnalysis._whyIndeterminate(rg) };
+    }
+  }
+
+  private static _quasiLive(rg: ReachabilityGraph, net: PetriNet): PropertyResult {
+    switch (rg.isQuasiLive()) {
+      case "yes":
+        return { verdict: "yes", detail: "Every transition can fire in some reachable marking." };
+      case "no": {
+        const name = NetNames.resolver(net.transitions);
+        const names = rg.deadTransitions().map(name);
+        return { verdict: "no", detail: `Never fires: ${names.join(", ")}.` };
+      }
+      default:
+        return { verdict: "indeterminate", detail: NetAnalysis._whyIndeterminate(rg) };
+    }
+  }
+
+  private static _whyIndeterminate(rg: ReachabilityGraph): string {
+    if (rg.unbounded) return "The net is unbounded, so its reachability graph is infinite.";
+    if (rg.exceeded) return STATE_CAP_EXCEEDED;
+    return NOT_COMPUTED;
+  }
+
+  /** A reachable marking as `P1=1, P2=0` over place names, in net order. */
+  private static _formatMarking(marking: Marking, net: PetriNet): string {
+    return net.places.map((p) => `${p.name}=${marking[p.id] ?? 0}`).join(", ");
   }
 
   /**
@@ -96,21 +231,5 @@ export class NetAnalysis {
       if (sum !== 0) return false;
     }
     return true;
-  }
-
-  /** Behavioural/structural diagnostics are filled by the reachability pass (M4); empty for now. */
-  private static _emptyDiagnostics(): Diagnostics {
-    return {
-      deadTransitions: [],
-      deadlocks: [],
-      cyclicComponents: [],
-      acyclic: false,
-      sourcePlaces: [],
-      sinkPlaces: [],
-      sourceTransitions: [],
-      sinkTransitions: [],
-      isolated: [],
-      connected: false,
-    };
   }
 }
