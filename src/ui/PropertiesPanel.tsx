@@ -15,21 +15,8 @@ export function PropertiesPanel(): JSX.Element {
       <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">
         {simulating ? "Simulation" : "Properties"}
       </h2>
-      {simulating ? <SimHint /> : renderBody(net, selection, count)}
+      {simulating ? null : renderBody(net, selection, count)}
     </section>
-  );
-}
-
-/** Simulate-mode body: editing is locked, so explain the controls instead of an editor. */
-function SimHint(): JSX.Element {
-  return (
-    <div className="flex flex-col gap-2 text-slate-500 text-sm">
-      <p>Editing is locked while simulating.</p>
-      <p className="text-slate-400 text-xs">
-        Click a glowing transition to fire it; click a place to add a token (shift-click to remove).
-        Reset restores the initial marking; Build returns to editing.
-      </p>
-    </div>
   );
 }
 
