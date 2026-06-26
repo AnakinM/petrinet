@@ -37,7 +37,7 @@ function renderBody(
     if (transition) return <TransitionEditor key={id} transition={transition} />;
   } else {
     const arc = net.arcs.find((a) => a.id === selection.edges[0]);
-    if (arc) return <ArcEditor key={arc.id} arc={arc} net={net} />;
+    if (arc) return <ArcEditor key={arc.id} arc={arc} />;
   }
   return <Hint>Select an element to edit it.</Hint>;
 }
@@ -93,14 +93,11 @@ function TransitionEditor({ transition }: { transition: Transition }): JSX.Eleme
   );
 }
 
-function ArcEditor({ arc, net }: { arc: Arc; net: PetriNet }): JSX.Element {
+function ArcEditor({ arc }: { arc: Arc }): JSX.Element {
   const setMultiplicity = (n: number): void => useNetStore.getState().setMultiplicity(arc.id, n);
   return (
     <div className="flex flex-col gap-3">
       <Kind>Arc</Kind>
-      <p className="text-slate-500 text-xs">
-        {nodeName(net, arc.source)} → {nodeName(net, arc.target)}
-      </p>
       <div>
         <FieldLabel>Weight</FieldLabel>
         <CommitField
@@ -191,7 +188,7 @@ function DeleteButton({ id }: { id: string }): JSX.Element {
     <button
       type="button"
       onClick={() => useNetStore.getState().remove([id])}
-      className="mt-1 rounded border border-red-200 bg-white px-2.5 py-1 text-red-600 text-sm shadow-sm hover:bg-red-50"
+      className="mt-1 w-1/2 self-center rounded border border-red-200 bg-white px-2.5 py-1 text-red-600 text-sm shadow-sm hover:bg-red-50"
     >
       Delete
     </button>
@@ -227,12 +224,4 @@ function Hint({ children }: { children: string | (string | number)[] }): JSX.Ele
 function commitNumber(raw: string, apply: (n: number) => void): void {
   const n = Number(raw);
   if (raw.trim() !== "" && Number.isFinite(n)) apply(n);
-}
-
-function nodeName(net: PetriNet, id: string): string {
-  return (
-    net.places.find((p) => p.id === id)?.name ??
-    net.transitions.find((t) => t.id === id)?.name ??
-    id
-  );
 }
