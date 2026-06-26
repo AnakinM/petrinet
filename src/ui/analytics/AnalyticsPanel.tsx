@@ -41,7 +41,7 @@ export function AnalyticsPanel(): JSX.Element | null {
       <PanelHeader activeTab={activeTab} />
       <div className="min-h-0 flex-1 overflow-auto p-3">
         {empty || result === null ? (
-          <p className="text-slate-400 text-sm">Nothing to analyse — add places and transitions.</p>
+          <p className="text-slate-400 text-sm">Nothing to analyse. Add places and transitions.</p>
         ) : (
           <TabBody tab={activeTab} result={result} />
         )}

@@ -22,7 +22,7 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
         order={placeOrder}
         nameOf={placeName}
         covered={invariants.placesCovered}
-        coveredNote="All places covered — structurally bounded & conservative."
+        coveredNote="All places covered, so the net is structurally bounded and conservative."
         emptyNote="No place invariants."
       />
       <InvariantSection
@@ -32,7 +32,7 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
         order={transitionOrder}
         nameOf={transitionName}
         covered={invariants.transitionsCovered}
-        coveredNote="All transitions covered — consistent."
+        coveredNote="All transitions covered, so the net is consistent."
         emptyNote="No transition invariants."
       />
     </div>
@@ -64,7 +64,7 @@ function InvariantSection({
         // A truncated family yields an empty list that does NOT mean "none" — say so per-family, so
         // an overflow on one family never hides the other family that computed fine.
         <p className="text-slate-400 text-sm">
-          Too many to enumerate within the safety cap — simplify the net to list them.
+          Too many to enumerate within the safety cap. Simplify the net to list them.
         </p>
       ) : invariants.length === 0 ? (
         <p className="text-slate-400 text-sm">{emptyNote}</p>

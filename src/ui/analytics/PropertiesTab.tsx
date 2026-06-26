@@ -50,10 +50,10 @@ function liveSub(
 ): ReactNode {
   if (live.verdict === "yes") return undefined;
   const prefix = `Quasi-live: ${PILL_LABELS[quasiLive.verdict].toLowerCase()}`;
-  if (quasiLive.verdict !== "no" || dead.length === 0) return `${prefix} — ${quasiLive.detail}`;
+  if (quasiLive.verdict !== "no" || dead.length === 0) return `${prefix}. ${quasiLive.detail}`;
   return (
     <span className="flex flex-wrap items-center gap-1">
-      <span>{prefix} — never fires:</span>
+      <span>{prefix}. Never fires:</span>
       {dead.slice(0, DISPLAY_CAP).map((id) => (
         <HighlightChip key={id} ids={[id]} lit={lit} size="chip">
           {transitionName(id)}
@@ -83,7 +83,7 @@ function boundedDetail(result: AnalysisResult): Detail {
       : { detail: "A P-invariant covers every place." };
   }
   if (boundedness.bounded === "no") {
-    return { detail: "Unbounded — a firing sequence pumps a place without limit." };
+    return { detail: "A firing sequence pumps a place without limit, so the net is unbounded." };
   }
   if (boundedness.bounded === "yes") {
     return { detail: boundedness.bound !== null ? `Bound k = ${boundedness.bound}.` : "Bounded." };
@@ -98,8 +98,8 @@ function safeDetail(result: AnalysisResult): Detail {
     return {
       detail:
         boundedness.bound !== null
-          ? `Not safe — a place reaches ${boundedness.bound} tokens.`
-          : "Not safe — a place holds more than one token.",
+          ? `A place reaches ${boundedness.bound} tokens, so the net is not safe.`
+          : "A place holds more than one token, so the net is not safe.",
     };
   }
   return { detail: unsettledDetail(result) };

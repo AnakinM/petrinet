@@ -92,7 +92,7 @@ describe("AnalyticsPanel", () => {
     expect(screen.getByText("Place invariants")).toBeInTheDocument();
     expect(screen.getByText("P1 + P2")).toBeInTheDocument();
     expect(
-      screen.getByText("All places covered — structurally bounded & conservative."),
+      screen.getByText("All places covered, so the net is structurally bounded and conservative."),
     ).toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe("AnalyticsPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Properties" }));
     expect(screen.getByText("Conservative")).toBeInTheDocument();
     expect(
-      screen.getByText("Strictly conservative — the total token count never changes."),
+      screen.getByText("The total token count never changes, so the net is strictly conservative."),
     ).toBeInTheDocument();
   });
 
@@ -116,7 +116,7 @@ describe("AnalyticsPanel", () => {
     openWith(CYCLE, "properties");
     render(<AnalyticsPanel />);
     // The behavioural pass is on-demand, so the behavioural rows start unsettled.
-    expect(screen.getAllByText(/run Re-analyze/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Run Re-analyze/).length).toBeGreaterThan(0);
 
     await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
     expect(
@@ -153,7 +153,7 @@ describe("AnalyticsPanel", () => {
     render(<AnalyticsPanel />);
     await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
     // The graph was pruned for unboundedness, so empty results must NOT read as "None".
-    expect(screen.queryByText(/every transition can fire/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Every transition can fire/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/incomplete/).length).toBeGreaterThan(0);
   });
 
