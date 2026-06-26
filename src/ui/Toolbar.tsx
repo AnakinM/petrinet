@@ -1,9 +1,11 @@
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import type { PetriNet } from "@/domain/types";
 import { NpnFile } from "@/lib/download";
 import { useAnalyticsStore } from "@/store/analyticsStore";
+import { useBuildStore } from "@/store/buildStore";
 import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { useSimStore } from "@/store/simStore";
+import { GridIcon } from "@/ui/icons";
 
 const EMPTY_NET: PetriNet = { places: [], transitions: [], arcs: [] };
 
@@ -45,6 +47,7 @@ export function Toolbar(): JSX.Element {
   const mode = useNetStore((s) => s.mode);
   const simulating = mode === "simulate";
   const analyticsOpen = useAnalyticsStore((s) => s.open);
+  const snap = useBuildStore((s) => s.snap);
   const canUndo = useTemporal((t) => t.pastStates.length > 0);
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
 
@@ -65,6 +68,19 @@ export function Toolbar(): JSX.Element {
       <ToolbarButton onClick={netHistory.redo} disabled={simulating || !canRedo}>
         Redo
       </ToolbarButton>
+      {!simulating && (
+        <>
+          <span className="mx-1 h-5 w-px bg-slate-200" />
+          <ToolbarButton
+            onClick={() => useBuildStore.getState().toggleSnap()}
+            active={snap}
+            ariaLabel="Snap to grid"
+            title="Snap node placement and dragging to the grid"
+          >
+            <GridIcon />
+          </ToolbarButton>
+        </>
+      )}
       <div className="ml-auto flex items-center gap-2">
         {simulating && (
           <ToolbarButton onClick={() => useSimStore.getState().reset()}>Reset</ToolbarButton>
@@ -120,12 +136,16 @@ function ToolbarButton({
   onClick,
   disabled,
   active,
+  title,
+  ariaLabel,
   children,
 }: {
   onClick: () => void;
   disabled?: boolean;
   active?: boolean;
-  children: string;
+  title?: string;
+  ariaLabel?: string;
+  children: ReactNode;
 }): JSX.Element {
   return (
     <button
@@ -133,6 +153,8 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
+      aria-label={ariaLabel}
+      title={title}
       className={
         active
           ? "rounded border border-slate-700 bg-slate-700 px-2.5 py-1 text-sm text-white shadow-sm"

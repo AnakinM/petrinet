@@ -6,6 +6,7 @@ import {
   Controls,
   type EdgeTypes,
   MiniMap,
+  type NodeChange,
   type NodeTypes,
   type OnSelectionChangeParams,
   ReactFlow,
@@ -22,6 +23,7 @@ import {
   useEffect,
   useMemo,
 } from "react";
+import { GridSnap } from "@/domain/gridSnap";
 import type { PetriNet, Vec2 } from "@/domain/types";
 import { ArcDrawLayer } from "@/flow/ArcDrawLayer";
 import { ArcEdge } from "@/flow/edges/ArcEdge";
@@ -61,6 +63,7 @@ export function Canvas(): JSX.Element {
   const editable = useNetStore((s) => s.mode === "build");
   const drawing = useBuildStore((s) => s.draft !== null);
   const tool = useBuildStore((s) => s.tool);
+  const snap = useBuildStore((s) => s.snap);
   const placing = tool === "place" || tool === "transition";
   const highlight = useAnalyticsStore((s) => s.highlight);
   const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
@@ -104,13 +107,33 @@ export function Canvas(): JSX.Element {
     }
   }, [highlight, setNodes, fitView]);
 
+  // Snap each live drag position change to the grid so a dragged node tracks the grid (B2). Only
+  // position changes carry a center to snap; everything else passes through untouched. Arc bends
+  // are dragged through their own waypoint handlers, not here, so they stay freeform.
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<PetriFlowNode>[]) => {
+      onNodesChange(
+        snap
+          ? changes.map((c) =>
+              c.type === "position" && c.position
+                ? { ...c, position: GridSnap.snap(c.position) }
+                : c,
+            )
+          : changes,
+      );
+    },
+    [onNodesChange, snap],
+  );
+
   // Live arc-follow: while nodes drag, translate their magnetic arc endpoints from the domain
   // points by the live delta (recomputed from the domain each tick, so no accumulation). The
   // real geometry is committed on release; until then the store is untouched.
   const onNodeDrag = useCallback(
     (_event: unknown, _node: PetriFlowNode, draggedNodes: PetriFlowNode[]) => {
       const current = useNetStore.getState().net;
-      const moved = new Map(draggedNodes.map((n) => [n.id, n.position]));
+      const moved = new Map(
+        draggedNodes.map((n) => [n.id, snap ? GridSnap.snap(n.position) : n.position]),
+      );
       setEdges((prev) =>
         prev.map((edge) => {
           const arc = current.arcs.find((a) => a.id === edge.id);
@@ -128,16 +151,19 @@ export function Canvas(): JSX.Element {
         }),
       );
     },
-    [setEdges],
+    [setEdges, snap],
   );
 
   const onNodeDragStop = useCallback(
     (_event: unknown, _node: PetriFlowNode, draggedNodes: PetriFlowNode[]) => {
-      useNetStore
-        .getState()
-        .moveNodes(draggedNodes.map((n) => ({ id: n.id, position: n.position })));
+      useNetStore.getState().moveNodes(
+        draggedNodes.map((n) => ({
+          id: n.id,
+          position: snap ? GridSnap.snap(n.position) : n.position,
+        })),
+      );
     },
-    [],
+    [snap],
   );
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
@@ -192,7 +218,7 @@ export function Canvas(): JSX.Element {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}

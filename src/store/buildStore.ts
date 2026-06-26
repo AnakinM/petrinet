@@ -20,6 +20,15 @@ export interface ArcDraft {
  */
 export type BuildTool = "idle" | "place" | "transition" | "select";
 
+const SNAP_STORAGE_KEY = "petrinet:snap-to-grid";
+
+/** Snap-to-grid is ON by default; only an explicit opt-out persists as "false". Guards the
+ *  non-browser case (the store is imported by node-env unit tests), as the autosave layer does. */
+function loadSnap(): boolean {
+  if (typeof localStorage === "undefined") return true;
+  return localStorage.getItem(SNAP_STORAGE_KEY) !== "false";
+}
+
 /**
  * Transient Build-mode interaction state, kept out of the domain net (and so out of undo/redo).
  * It owns the arc-draw state machine and the active Palette {@link BuildTool}; the two are mutually
@@ -29,6 +38,8 @@ export type BuildTool = "idle" | "place" | "transition" | "select";
 export interface BuildState {
   draft: ArcDraft | null;
   tool: BuildTool;
+  /** Whether node centers snap to the 24px grid on placement and drag (persisted). */
+  snap: boolean;
   /** Begin drawing an arc from `source`, with the cursor at `at`. */
   startArc: (source: string, at: Vec2) => void;
   /** Track the live cursor and the node (if any) under it. */
@@ -41,11 +52,14 @@ export interface BuildState {
   toggleTool: (tool: BuildTool) => void;
   /** Set the active tool directly (e.g. `idle` to exit a placing tool on Esc / right-click). */
   setTool: (tool: BuildTool) => void;
+  /** Flip snap-to-grid and persist the new state. */
+  toggleSnap: () => void;
 }
 
 export const useBuildStore = create<BuildState>((set) => ({
   draft: null,
   tool: "idle",
+  snap: loadSnap(),
   startArc: (source, at) => set({ draft: { source, bends: [], cursor: at, hoverTarget: null } }),
   moveDraft: (cursor, hoverTarget) =>
     set((s) => (s.draft ? { draft: { ...s.draft, cursor, hoverTarget } } : s)),
@@ -57,4 +71,10 @@ export const useBuildStore = create<BuildState>((set) => ({
   // Switching tools always clears any in-progress arc: the two interactions are exclusive.
   toggleTool: (tool) => set((s) => ({ tool: s.tool === tool ? "idle" : tool, draft: null })),
   setTool: (tool) => set({ tool, draft: null }),
+  toggleSnap: () =>
+    set((s) => {
+      const snap = !s.snap;
+      localStorage.setItem(SNAP_STORAGE_KEY, String(snap));
+      return { snap };
+    }),
 }));

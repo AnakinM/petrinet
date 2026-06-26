@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import { useBuildStore } from "@/store/buildStore";
 
@@ -81,5 +82,15 @@ describe("buildStore tool mode", () => {
     useBuildStore.getState().toggleTool("place");
     expect(useBuildStore.getState().draft).toBeNull();
     expect(useBuildStore.getState().tool).toBe("place");
+  });
+});
+
+describe("buildStore snap-to-grid", () => {
+  it("toggleSnap flips the flag and persists the new state", () => {
+    const before = useBuildStore.getState().snap;
+    useBuildStore.getState().toggleSnap();
+    expect(useBuildStore.getState().snap).toBe(!before);
+    expect(localStorage.getItem("petrinet:snap-to-grid")).toBe(String(!before));
+    useBuildStore.getState().toggleSnap(); // restore for any later tests
   });
 });

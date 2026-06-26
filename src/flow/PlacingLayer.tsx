@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { GridSnap } from "@/domain/gridSnap";
 import { NodeGeometry } from "@/domain/nodeGeometry";
 import type { Vec2 } from "@/domain/types";
 import { useBuildStore } from "@/store/buildStore";
@@ -25,6 +26,7 @@ const BAR_HEIGHT = NodeGeometry.TRANSITION_BAR_HEIGHT;
  */
 export function PlacingLayer({ kind }: { kind: "place" | "transition" }): JSX.Element {
   const { screenToFlowPosition } = useReactFlow();
+  const snap = useBuildStore((s) => s.snap);
   const [cursor, setCursor] = useState<Vec2 | null>(null);
 
   // Esc exits the tool; the listener lives only while this layer is mounted (i.e. while placing).
@@ -36,8 +38,11 @@ export function PlacingLayer({ kind }: { kind: "place" | "transition" }): JSX.El
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const flowAt = (e: { clientX: number; clientY: number }): Vec2 =>
-    screenToFlowPosition({ x: e.clientX, y: e.clientY });
+  // Where the node would land: the cursor in flow-space, snapped to the grid when snap is on.
+  const flowAt = (e: { clientX: number; clientY: number }): Vec2 => {
+    const at = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    return snap ? GridSnap.snap(at) : at;
+  };
 
   const onPointerMove = (e: ReactPointerEvent): void => setCursor(flowAt(e));
 
