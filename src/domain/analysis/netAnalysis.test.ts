@@ -189,7 +189,8 @@ describe("NetAnalysis.analyze (behavioural slice)", () => {
     const r = NetAnalysis.analyze(net, { behavioral: true });
 
     expect(r.deadlockFree.verdict).toBe("no");
-    expect(r.deadlockFree.detail).toContain("P3=1");
+    expect(r.deadlockFree.detail).toContain("dead marking");
+    expect(r.deadlockFree.items).toEqual(["P3=1"]);
     expect(r.diagnostics.deadlocks).toEqual([
       { marking: { P1: 0, P2: 0, P3: 1 }, path: ["t1", "t2"] },
     ]);

@@ -17,6 +17,11 @@ export class NetNames {
     return places.map((p) => `${p.name}=${marking[p.id] ?? 0}`).join(", ");
   }
 
+  /** Only the marked places (token count > 0) as `P3=1` strings, in net order — the dead-marking bullets. */
+  static markedPlaces(marking: Marking, places: Place[]): string[] {
+    return places.filter((p) => (marking[p.id] ?? 0) > 0).map((p) => `${p.name}=${marking[p.id]}`);
+  }
+
   /**
    * A fired transition as `T1: P1 → P2` — its name, then its input place names, an arrow, its
    * output place names (each side joined with ` + `, in arc order; an empty side shown as `∅` for a

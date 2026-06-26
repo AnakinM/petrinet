@@ -19,25 +19,19 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
   const lit = useAnalyticsStore((s) => s.highlight).join(",");
   return (
     <div className="flex flex-col gap-2">
-      <PropertyRow label="Bounded" verdict={boundedness.bounded} detail={boundedDetail(result)} />
-      <PropertyRow label="Safe" verdict={boundedness.safe} detail={safeDetail(result)} />
       <PropertyRow
-        label="Conservative"
-        verdict={conservative.verdict}
-        detail={conservative.detail}
+        label="Bounded"
+        value={{ verdict: boundedness.bounded, ...boundedDetail(result) }}
       />
+      <PropertyRow label="Safe" value={{ verdict: boundedness.safe, ...safeDetail(result) }} />
+      <PropertyRow label="Conservative" value={conservative} />
       <PropertyRow
         label="Live"
-        verdict={live.verdict}
-        detail={live.detail}
+        value={live}
         sub={liveSub(live, quasiLive, result.diagnostics.deadTransitions, transitionName, lit)}
       />
-      <PropertyRow label="Reversible" verdict={reversible.verdict} detail={reversible.detail} />
-      <PropertyRow
-        label="Deadlock-free"
-        verdict={deadlockFree.verdict}
-        detail={deadlockFree.detail}
-      />
+      <PropertyRow label="Reversible" value={reversible} />
+      <PropertyRow label="Deadlock-free" value={deadlockFree} />
     </div>
   );
 }
@@ -75,52 +69,66 @@ function unsettledDetail(result: AnalysisResult): string {
   return result.stateSpaceExceeded ? STATE_CAP_EXCEEDED : NOT_COMPUTED;
 }
 
-function boundedDetail(result: AnalysisResult): string {
+/** A detail without its verdict — the lead plus optional bullet items, spread into a {@link PropertyResult}. */
+type Detail = Omit<PropertyResult, "verdict">;
+
+function boundedDetail(result: AnalysisResult): Detail {
   const { boundedness } = result;
   if (boundedness.source === "structural") {
     return boundedness.bound !== null
-      ? `A P-invariant covers every place; bound k = ${boundedness.bound}.`
-      : "A P-invariant covers every place.";
+      ? {
+          detail: "Structurally bounded:",
+          items: ["A P-invariant covers every place.", `Bound k = ${boundedness.bound}.`],
+        }
+      : { detail: "A P-invariant covers every place." };
   }
   if (boundedness.bounded === "no") {
-    return "Unbounded — a firing sequence pumps a place without limit.";
+    return { detail: "Unbounded — a firing sequence pumps a place without limit." };
   }
   if (boundedness.bounded === "yes") {
-    return boundedness.bound !== null ? `Bound k = ${boundedness.bound}.` : "Bounded.";
+    return { detail: boundedness.bound !== null ? `Bound k = ${boundedness.bound}.` : "Bounded." };
   }
-  return unsettledDetail(result);
+  return { detail: unsettledDetail(result) };
 }
 
-function safeDetail(result: AnalysisResult): string {
+function safeDetail(result: AnalysisResult): Detail {
   const { boundedness } = result;
-  if (boundedness.safe === "yes") return "Every place holds at most one token.";
+  if (boundedness.safe === "yes") return { detail: "Every place holds at most one token." };
   if (boundedness.safe === "no") {
-    return boundedness.bound !== null
-      ? `Not safe — a place reaches ${boundedness.bound} tokens.`
-      : "Not safe — a place holds more than one token.";
+    return {
+      detail:
+        boundedness.bound !== null
+          ? `Not safe — a place reaches ${boundedness.bound} tokens.`
+          : "Not safe — a place holds more than one token.",
+    };
   }
-  return unsettledDetail(result);
+  return { detail: unsettledDetail(result) };
 }
 
 function PropertyRow({
   label,
-  verdict,
-  detail,
+  value,
   sub,
 }: {
   label: string;
-  verdict: Verdict;
-  detail: string;
+  value: PropertyResult;
   sub?: ReactNode;
 }): JSX.Element {
   return (
     <div className="flex items-stretch gap-2 rounded border border-slate-200 p-2 shadow-sm">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="font-medium text-slate-700 text-sm">{label}</span>
-        <span className="text-slate-400 text-xs">{detail}</span>
+        <span className="text-slate-400 text-xs">{value.detail}</span>
+        {value.items && value.items.length > 0 && (
+          <ul className="list-disc pl-4 text-slate-400 text-xs">
+            {value.items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        )}
         {sub && <span className="text-slate-400 text-xs">{sub}</span>}
       </div>
-      <VerdictIcon verdict={verdict} />
+      <VerdictIcon verdict={value.verdict} />
     </div>
   );
 }

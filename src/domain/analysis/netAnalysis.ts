@@ -177,11 +177,12 @@ export class NetAnalysis {
     switch (rg.isDeadlockFree()) {
       case "yes":
         return { verdict: "yes", detail: "No reachable marking is dead." };
-      case "no":
-        return {
-          verdict: "no",
-          detail: `Reaches a dead marking: ${NetNames.formatMarking(rg.deadlocks()[0].marking, net.places)}.`,
-        };
+      case "no": {
+        const marked = NetNames.markedPlaces(rg.deadlocks()[0].marking, net.places);
+        return marked.length > 0
+          ? { verdict: "no", detail: "Reaches a dead marking:", items: marked }
+          : { verdict: "no", detail: "Reaches a dead marking with every place empty." };
+      }
       default:
         return { verdict: "indeterminate", detail: NetAnalysis._whyIndeterminate(rg) };
     }
