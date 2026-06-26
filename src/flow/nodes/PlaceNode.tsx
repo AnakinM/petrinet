@@ -1,6 +1,7 @@
 import type { NodeProps } from "@xyflow/react";
 import type { JSX, MouseEvent } from "react";
 import { NodeGeometry } from "@/domain/nodeGeometry";
+import { ArcStartHandles } from "@/flow/nodes/ArcStartHandles";
 import { NodeHandles } from "@/flow/nodes/NodeHandles";
 import { PlaceTokens } from "@/flow/nodes/tokens";
 import type { PlaceFlowNode } from "@/flow/projection";
@@ -16,7 +17,7 @@ const CIRCLE =
 
 /** A place: a circle whose tokens render as dots (few) or a numeral (many). In Simulate it
  *  is a token source — click adds a token, shift-click removes one. */
-export function PlaceNode({ data }: NodeProps<PlaceFlowNode>): JSX.Element {
+export function PlaceNode({ data, selected }: NodeProps<PlaceFlowNode>): JSX.Element {
   const { place } = data;
   const simulating = useNetStore((s) => s.mode === "simulate");
   // In Simulate the live working marking overrides M0; in Build no marking is held for
@@ -49,8 +50,9 @@ export function PlaceNode({ data }: NodeProps<PlaceFlowNode>): JSX.Element {
   );
 
   return (
-    <div className="relative" style={{ width: DIAMETER, height: DIAMETER }}>
+    <div className="group relative" style={{ width: DIAMETER, height: DIAMETER }}>
       <NodeHandles />
+      {!simulating && <ArcStartHandles nodeId={place.id} selected={selected === true} />}
       {simulating ? (
         <button
           type="button"

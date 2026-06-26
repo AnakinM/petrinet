@@ -34,6 +34,27 @@ export class NodeGeometry {
     );
   }
 
+  /** True iff `point` lies within the place circle (plus `pad`). */
+  static placeContains(center: Vec2, point: Vec2, pad = 0): boolean {
+    return Math.hypot(point.x - center.x, point.y - center.y) <= NodeGeometry.PLACE_RADIUS + pad;
+  }
+
+  /** True iff `point` lies within the transition bar (rotated rect, plus `pad`). */
+  static transitionContains(center: Vec2, rotationDeg: number, point: Vec2, pad = 0): boolean {
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    const theta = (rotationDeg * Math.PI) / 180;
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    // Rotate the offset into the bar's local (axis-aligned) frame, matching rectBorderPoint.
+    const localX = cos * dx + sin * dy;
+    const localY = -sin * dx + cos * dy;
+    return (
+      Math.abs(localX) <= NodeGeometry.TRANSITION_BAR_WIDTH / 2 + pad &&
+      Math.abs(localY) <= NodeGeometry.TRANSITION_BAR_HEIGHT / 2 + pad
+    );
+  }
+
   /** Point on a circle of `radius` around `center`, in the direction of `toward`. */
   static circleBorderPoint(center: Vec2, radius: number, toward: Vec2): Vec2 {
     const dx = toward.x - center.x;

@@ -133,9 +133,42 @@ describe("NetOps.connect", () => {
     expect(arc.points[1]).toEqual({ x: 20, y: 0 });
   });
 
+  it("threads interior bends and clips each endpoint toward its neighbour bend", () => {
+    // Bend directly below the transition: the source endpoint must exit the bar downward
+    // (toward the bend), not sideways toward the place centre.
+    const after = NetOps.connect(net(), "t", "p", [{ x: 100, y: 100 }]);
+    const arc = after.arcs[1];
+    expect(arc.points).toHaveLength(3);
+    expect(arc.points[0]).toEqual({ x: 100, y: 20 }); // t exits its long (bottom) side
+    expect(arc.points[1]).toEqual({ x: 100, y: 100 }); // bend kept verbatim
+    // p endpoint clips toward the bend (45°), landing on the radius-20 circle.
+    expect(Math.hypot(arc.points[2].x, arc.points[2].y)).toBeCloseTo(20);
+    expect(arc.points[2].x).toBeCloseTo(14.142, 2);
+    expect(arc.points[2].y).toBeCloseTo(14.142, 2);
+  });
+
   it("no-ops an invalid connection", () => {
     const before = net();
     expect(NetOps.connect(before, "p", "t")).toBe(before); // duplicate
+  });
+});
+
+describe("NetOps.nodeAt", () => {
+  it("returns the place under a point inside its circle", () => {
+    expect(NetOps.nodeAt(net(), { x: 10, y: 0 })).toBe("p"); // within radius 20 of (0,0)
+  });
+
+  it("returns the transition under a point inside its bar", () => {
+    expect(NetOps.nodeAt(net(), { x: 100, y: 10 })).toBe("t"); // within the 15×40 bar at (100,0)
+  });
+
+  it("returns null on empty canvas", () => {
+    expect(NetOps.nodeAt(net(), { x: 50, y: 50 })).toBeNull();
+  });
+
+  it("honours the pad for a forgiving hit just outside the border", () => {
+    expect(NetOps.nodeAt(net(), { x: 24, y: 0 })).toBeNull(); // 4px past the radius-20 circle
+    expect(NetOps.nodeAt(net(), { x: 24, y: 0 }, 6)).toBe("p"); // within the pad
   });
 });
 

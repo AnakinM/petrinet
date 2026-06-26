@@ -2,7 +2,6 @@ import "@xyflow/react/dist/style.css";
 import {
   Background,
   BackgroundVariant,
-  type Connection,
   ConnectionMode,
   Controls,
   type EdgeTypes,
@@ -23,13 +22,14 @@ import {
   useEffect,
   useMemo,
 } from "react";
-import { NetOps } from "@/domain/netOps";
 import type { PetriNet, Vec2 } from "@/domain/types";
+import { ArcDrawLayer } from "@/flow/ArcDrawLayer";
 import { ArcEdge } from "@/flow/edges/ArcEdge";
 import { PlaceNode } from "@/flow/nodes/PlaceNode";
 import { TransitionNode } from "@/flow/nodes/TransitionNode";
 import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/projection";
 import { useAnalyticsStore } from "@/store/analyticsStore";
+import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 import { type PaletteNodeKind, PETRI_NODE_MIME } from "@/ui/Palette";
 
@@ -54,6 +54,7 @@ const HIGHLIGHT_STYLE: CSSProperties = {
 export function Canvas(): JSX.Element {
   const net = useNetStore((s) => s.net);
   const editable = useNetStore((s) => s.mode === "build");
+  const drawing = useBuildStore((s) => s.draft !== null);
   const highlight = useAnalyticsStore((s) => s.highlight);
   const { screenToFlowPosition, fitView } = useReactFlow();
 
@@ -139,16 +140,6 @@ export function Canvas(): JSX.Element {
     });
   }, []);
 
-  const onConnect = useCallback((c: Connection) => {
-    if (c.source && c.target) useNetStore.getState().connect(c.source, c.target);
-  }, []);
-
-  const isValidConnection = useCallback(
-    (c: Connection | ArcFlowEdge): boolean =>
-      !!c.source && !!c.target && NetOps.canConnect(useNetStore.getState().net, c.source, c.target),
-    [],
-  );
-
   const onMoveEnd = useCallback((_event: unknown, viewport: Viewport) => {
     useNetStore.getState().setViewport(viewport);
   }, []);
@@ -173,7 +164,7 @@ export function Canvas(): JSX.Element {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: drop target for palette drag-create; all pointer interaction is React Flow's pane below.
-    <div className="h-full w-full bg-white" onDragOver={onDragOver} onDrop={onDrop}>
+    <div className="relative h-full w-full bg-white" onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -182,15 +173,13 @@ export function Canvas(): JSX.Element {
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         onSelectionChange={onSelectionChange}
-        onConnect={onConnect}
-        isValidConnection={isValidConnection}
         onMoveEnd={onMoveEnd}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         connectionMode={ConnectionMode.Loose}
         nodeOrigin={[0.5, 0.5]}
         nodesDraggable={editable}
-        nodesConnectable={editable}
+        nodesConnectable={false}
         elementsSelectable={editable}
         deleteKeyCode={null}
         panOnScroll
@@ -209,6 +198,7 @@ export function Canvas(): JSX.Element {
         />
         <Controls showInteractive={false} />
       </ReactFlow>
+      {drawing && <ArcDrawLayer />}
     </div>
   );
 }

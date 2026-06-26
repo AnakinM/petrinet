@@ -38,7 +38,8 @@ export interface NetState {
   addTransition: (position: Vec2) => void;
   /** Commit a finished drag of one or more nodes (coalesced into a single history entry). */
   moveNodes: (moves: { id: string; position: Vec2 }[]) => void;
-  connect: (source: string, target: string) => void;
+  /** Create an arc `source`→`target` with optional interior bends (from click-to-draw). */
+  connect: (source: string, target: string, bends?: Vec2[]) => void;
   rename: (id: string, name: string) => void;
   setTokens: (placeId: string, tokens: number) => void;
   setMultiplicity: (arcId: string, multiplicity: number) => void;
@@ -79,7 +80,8 @@ export const useNetStore = create<NetState>()(
         set((s) => ({
           net: moves.reduce((net, m) => NetOps.moveNode(net, m.id, m.position), s.net),
         })),
-      connect: (source, target) => set((s) => ({ net: NetOps.connect(s.net, source, target) })),
+      connect: (source, target, bends) =>
+        set((s) => ({ net: NetOps.connect(s.net, source, target, bends) })),
       rename: (id, name) => set((s) => ({ net: NetOps.rename(s.net, id, name) })),
       setTokens: (placeId, tokens) =>
         set((s) => ({ net: NetOps.setTokens(s.net, placeId, tokens) })),
