@@ -307,6 +307,17 @@ export class NetOps {
       ?.position;
   }
 
+  /**
+   * Centers of every node (places then transitions), optionally excluding one id — the set a
+   * placing ghost or a dragged node aligns its center against.
+   */
+  static nodeCenters(net: PetriNet, exceptId?: string): Vec2[] {
+    const centers: Vec2[] = [];
+    for (const p of net.places) if (p.id !== exceptId) centers.push(p.position);
+    for (const t of net.transitions) if (t.id !== exceptId) centers.push(t.position);
+    return centers;
+  }
+
   /** Border point of node `id` along the direction from its center toward `toward`. */
   static borderPoint(net: PetriNet, id: string, toward: Vec2): Vec2 {
     const place = net.places.find((p) => p.id === id);

@@ -22,9 +22,13 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useState,
 } from "react";
+import { AlignmentGuides, type Guide } from "@/domain/alignment";
 import { GridSnap } from "@/domain/gridSnap";
+import { NetOps } from "@/domain/netOps";
 import type { PetriNet, Vec2 } from "@/domain/types";
+import { AlignmentGuideLayer } from "@/flow/AlignmentGuideLayer";
 import { ArcDrawLayer } from "@/flow/ArcDrawLayer";
 import { ArcEdge } from "@/flow/edges/ArcEdge";
 import { ArcGeometry } from "@/flow/edges/arcGeometry";
@@ -72,6 +76,7 @@ export function Canvas(): JSX.Element {
     FlowProjection.toNodes(net),
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<ArcFlowEdge>(FlowProjection.toEdges(net));
+  const [dragGuides, setDragGuides] = useState<Guide[]>([]);
   const initialViewport = useMemo(() => useNetStore.getState().viewport, []);
 
   // Re-derive the view whenever the domain net changes (edit, undo/redo, import), preserving
@@ -107,11 +112,29 @@ export function Canvas(): JSX.Element {
     }
   }, [highlight, setNodes, fitView]);
 
-  // Snap each live drag position change to the grid so a dragged node tracks the grid (B2). Only
-  // position changes carry a center to snap; everything else passes through untouched. Arc bends
-  // are dragged through their own waypoint handlers, not here, so they stay freeform.
+  // Resolve a node's live position to the grid/alignment (B2+B3). A lone drag aligns to its
+  // siblings and surfaces guides; a group drag falls back to plain snap. Only position changes
+  // carry a center; arc bends are dragged through their own waypoint handlers, so they stay
+  // freeform.
   const handleNodesChange = useCallback(
     (changes: NodeChange<PetriFlowNode>[]) => {
+      const positions = changes.flatMap((c) =>
+        c.type === "position" && c.position
+          ? [{ change: c, id: c.id, position: c.position, dragging: c.dragging }]
+          : [],
+      );
+      if (positions.length === 1) {
+        const pc = positions[0];
+        const { position, guides } = AlignmentGuides.resolve(
+          pc.position,
+          NetOps.nodeCenters(useNetStore.getState().net, pc.id),
+          snap,
+        );
+        setDragGuides(pc.dragging ? guides : []);
+        onNodesChange(changes.map((c) => (c === pc.change ? { ...c, position } : c)));
+        return;
+      }
+      setDragGuides((g) => (g.length === 0 ? g : []));
       onNodesChange(
         snap
           ? changes.map((c) =>
@@ -131,8 +154,9 @@ export function Canvas(): JSX.Element {
   const onNodeDrag = useCallback(
     (_event: unknown, _node: PetriFlowNode, draggedNodes: PetriFlowNode[]) => {
       const current = useNetStore.getState().net;
+      const single = draggedNodes.length === 1;
       const moved = new Map(
-        draggedNodes.map((n) => [n.id, snap ? GridSnap.snap(n.position) : n.position]),
+        draggedNodes.map((n) => [n.id, dragCenter(current, n.id, n.position, snap, single)]),
       );
       setEdges((prev) =>
         prev.map((edge) => {
@@ -156,12 +180,15 @@ export function Canvas(): JSX.Element {
 
   const onNodeDragStop = useCallback(
     (_event: unknown, _node: PetriFlowNode, draggedNodes: PetriFlowNode[]) => {
+      const net = useNetStore.getState().net;
+      const single = draggedNodes.length === 1;
       useNetStore.getState().moveNodes(
         draggedNodes.map((n) => ({
           id: n.id,
-          position: snap ? GridSnap.snap(n.position) : n.position,
+          position: dragCenter(net, n.id, n.position, snap, single),
         })),
       );
+      setDragGuides([]);
     },
     [snap],
   );
@@ -250,8 +277,15 @@ export function Canvas(): JSX.Element {
       </ReactFlow>
       {drawing && <ArcDrawLayer />}
       {placing && <PlacingLayer kind={tool === "place" ? "place" : "transition"} />}
+      <AlignmentGuideLayer guides={dragGuides} />
     </div>
   );
+}
+
+/** Resolve a dragged node's center: align to siblings on a lone drag, otherwise just grid-snap. */
+function dragCenter(net: PetriNet, id: string, pos: Vec2, snap: boolean, single: boolean): Vec2 {
+  if (single) return AlignmentGuides.resolve(pos, NetOps.nodeCenters(net, id), snap).position;
+  return snap ? GridSnap.snap(pos) : pos;
 }
 
 /** Strip React Flow's selection flag from every element, keeping array identity if none were set. */

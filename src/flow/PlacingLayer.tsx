@@ -6,9 +6,11 @@ import {
   useEffect,
   useState,
 } from "react";
-import { GridSnap } from "@/domain/gridSnap";
+import { type Alignment, AlignmentGuides, type Guide } from "@/domain/alignment";
+import { NetOps } from "@/domain/netOps";
 import { NodeGeometry } from "@/domain/nodeGeometry";
 import type { Vec2 } from "@/domain/types";
+import { AlignmentGuideLayer } from "@/flow/AlignmentGuideLayer";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 
@@ -20,14 +22,16 @@ const BAR_HEIGHT = NodeGeometry.TRANSITION_BAR_HEIGHT;
  * The placing layer, mounted only while a Place/Transition Palette tool is active. Like
  * {@link ArcDrawLayer} it lays a screen-space capture overlay over the canvas — which also makes the
  * nodes' arc-start handles inert, so placing and arc-draw stay exclusive. A semi-transparent ghost
- * follows the cursor through a {@link ViewportPortal} (flow-space, so it pans/zooms), a click drops
- * that kind of node where the ghost sits (the tool stays active to place several), and Esc or
- * right-click returns to Idle. A freshly placed node is not selected.
+ * follows the cursor through a {@link ViewportPortal} (flow-space, so it pans/zooms), snapped to the
+ * grid and pulled to align with the other nodes' centers (rose guides show the alignment). A click
+ * drops that kind of node where the ghost sits (the tool stays active to place several), Esc or
+ * right-click returns to Idle, and a freshly placed node is not selected.
  */
 export function PlacingLayer({ kind }: { kind: "place" | "transition" }): JSX.Element {
   const { screenToFlowPosition } = useReactFlow();
   const snap = useBuildStore((s) => s.snap);
   const [cursor, setCursor] = useState<Vec2 | null>(null);
+  const [guides, setGuides] = useState<Guide[]>([]);
 
   // Esc exits the tool; the listener lives only while this layer is mounted (i.e. while placing).
   useEffect(() => {
@@ -38,17 +42,21 @@ export function PlacingLayer({ kind }: { kind: "place" | "transition" }): JSX.El
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Where the node would land: the cursor in flow-space, snapped to the grid when snap is on.
-  const flowAt = (e: { clientX: number; clientY: number }): Vec2 => {
-    const at = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-    return snap ? GridSnap.snap(at) : at;
+  // Where the node would land: the cursor snapped/aligned against the other node centers.
+  const resolveAt = (e: { clientX: number; clientY: number }): Alignment => {
+    const raw = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    return AlignmentGuides.resolve(raw, NetOps.nodeCenters(useNetStore.getState().net), snap);
   };
 
-  const onPointerMove = (e: ReactPointerEvent): void => setCursor(flowAt(e));
+  const onPointerMove = (e: ReactPointerEvent): void => {
+    const r = resolveAt(e);
+    setCursor(r.position);
+    setGuides(r.guides);
+  };
 
   const onClick = (e: ReactMouseEvent): void => {
     e.stopPropagation();
-    const at = flowAt(e);
+    const at = resolveAt(e).position;
     const store = useNetStore.getState();
     if (kind === "place") store.addPlace(at);
     else store.addTransition(at);
@@ -71,6 +79,7 @@ export function PlacingLayer({ kind }: { kind: "place" | "transition" }): JSX.El
         onClick={onClick}
         onContextMenu={onContextMenu}
       />
+      <AlignmentGuideLayer guides={guides} />
       {cursor && (
         <ViewportPortal>
           <div
