@@ -1,0 +1,113 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+# Never let two deploys race over the same container; queue them instead.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Checks & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun run test
+
+  deploy:
+    name: Build & Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          load: true
+          tags: petrinet:latest
+          platforms: linux/amd64
+
+      - name: Install docker-pussh
+        run: |
+          mkdir -p ~/.docker/cli-plugins
+          curl -sSL https://raw.githubusercontent.com/psviderski/unregistry/v0.1.0/docker-pussh \
+            -o ~/.docker/cli-plugins/docker-pussh
+          chmod +x ~/.docker/cli-plugins/docker-pussh
+
+      - name: Push image to VPS
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat <<EOF > ~/.ssh/config
+          Host vps
+              HostName ${{ secrets.VPS_HOST }}
+              User ${{ secrets.VPS_USER }}
+              IdentityFile ~/.ssh/id_ed25519
+              StrictHostKeyChecking no
+              UserKnownHostsFile /dev/null
+          EOF
+          docker pussh petrinet:latest vps:2212
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: 2212
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            APP_CONTAINER_NAME="petrinet"
+            APP_IMAGE="petrinet:latest"
+
+            echo "Stopping and removing old container ${APP_CONTAINER_NAME} (if any)..."
+            docker stop ${APP_CONTAINER_NAME} || true
+            docker rm ${APP_CONTAINER_NAME} || true
+
+            echo "Running new container ${APP_CONTAINER_NAME}..."
+
+            LABELS=""
+            LABELS="${LABELS} -l traefik.enable=true"
+            LABELS="${LABELS} -l traefik.http.routers.petrinet.rule=Host(\`petrinet.anikiej.com\`)"
+            LABELS="${LABELS} -l traefik.http.routers.petrinet.entrypoints=websecure"
+            LABELS="${LABELS} -l traefik.http.routers.petrinet.tls.certresolver=ovh"
+            LABELS="${LABELS} -l traefik.http.services.petrinet.loadbalancer.server.port=3000"
+
+            docker run -d \
+              --name ${APP_CONTAINER_NAME} \
+              --restart always \
+              --network traefik-public \
+              ${LABELS} \
+              ${APP_IMAGE}
+
+            echo "Deployment of ${APP_CONTAINER_NAME} complete."
+
+            echo "Removing dangling images..."
+            docker image prune -f --filter "dangling=true"
