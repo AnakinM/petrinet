@@ -275,6 +275,9 @@ export function Canvas(): JSX.Element {
         nodesDraggable={editable}
         nodesConnectable={false}
         elementsSelectable={editable}
+        // Simulate fires a transition on each click; a fast double-click must not be hijacked
+        // into a zoom. Build keeps the default zoom-on-double-click.
+        zoomOnDoubleClick={editable}
         deleteKeyCode={null}
         panOnScroll
         // Marquee (select) tool: left-drag the empty pane rubber-bands nodes (a drag on a selected
