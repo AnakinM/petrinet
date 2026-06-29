@@ -39,7 +39,7 @@ export function AnalyticsPanel(): JSX.Element | null {
     >
       <ResizeHandle />
       <PanelHeader activeTab={activeTab} />
-      <div className="min-h-0 flex-1 overflow-auto p-3">
+      <div className="min-h-0 flex-1 overflow-auto p-4">
         {empty || result === null ? (
           <p className="text-slate-400 text-sm">Nothing to analyse. Add places and transitions.</p>
         ) : (
@@ -60,7 +60,7 @@ function PanelHeader({ activeTab }: { activeTab: AnalyticsTab }): JSX.Element {
   const stale = useAnalyticsStore((s) => s.stale);
   return (
     <div className="shrink-0 border-slate-200 border-b">
-      <div className="flex items-center gap-2 px-3 py-2">
+      <div className="flex items-center gap-2 px-4 py-2">
         <h2 className="font-semibold text-slate-800 text-sm">Analytics</h2>
         {stale && (
           <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-700 text-xs">
@@ -85,7 +85,7 @@ function PanelHeader({ activeTab }: { activeTab: AnalyticsTab }): JSX.Element {
           </button>
         </div>
       </div>
-      <div className="flex gap-1 px-2 pb-2">
+      <div className="flex gap-1 px-4 pb-2">
         <TabButton tab="properties" active={activeTab === "properties"}>
           Properties
         </TabButton>
