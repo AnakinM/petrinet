@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { PetriNet } from "@/domain/types";
@@ -93,5 +93,43 @@ describe("Canvas token tool", () => {
     clickNode(container, "t1");
     expect(tokensOf("p1")).toBe(0);
     expect(useNetStore.getState().selection).toEqual({ nodes: [], edges: [] });
+  });
+});
+
+describe("Canvas paste selection projection", () => {
+  const ORIGIN = { x: 0, y: 0 };
+  const NET: PetriNet = {
+    places: [{ id: "p1", name: "p1", tokens: 0, position: ORIGIN }],
+    transitions: [{ id: "t1", name: "t1", position: { x: 48, y: 0 } }],
+    arcs: [],
+  };
+
+  beforeEach(() => {
+    useNetStore.getState().setNet(NET);
+    useNetStore.setState({ clipboard: null, _pasteCount: 0 });
+    useBuildStore.getState().setTool("idle");
+  });
+
+  it("renders the pasted cluster as selected and deselects the originals", () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <Canvas />
+      </ReactFlowProvider>,
+    );
+    // Paste after mount (mirrors real use; mounting clobbers a pre-seeded selection to empty).
+    act(() => {
+      const store = useNetStore.getState();
+      store.select({ nodes: ["p1", "t1"], edges: [] });
+      store.copy();
+      store.paste();
+    });
+    const pastedIds = useNetStore.getState().selection.nodes;
+    expect(pastedIds).toHaveLength(2);
+    for (const id of pastedIds) {
+      expect(container.querySelector(`[data-id="${id}"]`)?.classList.contains("selected")).toBe(
+        true,
+      );
+    }
+    expect(container.querySelector('[data-id="p1"]')?.classList.contains("selected")).toBe(false);
   });
 });

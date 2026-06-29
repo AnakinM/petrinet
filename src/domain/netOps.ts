@@ -8,6 +8,13 @@ export type ArcEnd = "src" | "dest";
 /** A node's kind — used to scope name-uniqueness checks (places and transitions namespace separately). */
 export type NodeKind = "place" | "transition";
 
+/** What {@link NetOps.paste} produced: the new net plus the ids of the inserted nodes and arcs. */
+export interface PasteResult {
+  net: PetriNet;
+  nodeIds: string[];
+  arcIds: string[];
+}
+
 /**
  * Immutable Build-mode transforms on the {@link PetriNet}. Every method returns a NEW net
  * (inputs are never mutated) so the store's zundo history can snapshot each edit; a no-op
@@ -35,6 +42,73 @@ export class NetOps {
       position,
     };
     return { ...net, transitions: [...net.transitions, transition] };
+  }
+
+  // --- copy / paste ---------------------------------------------------------
+
+  /**
+   * The sub-net induced by `nodeIds`: those places/transitions plus every arc whose **both**
+   * endpoints are in the set (an arc with only one endpoint inside is dropped). Deep-cloned, so the
+   * result is self-contained — a clipboard snapshot that survives later edits to the source net.
+   */
+  static inducedSubgraph(net: PetriNet, nodeIds: string[]): PetriNet {
+    const ids = new Set(nodeIds);
+    return structuredClone({
+      places: net.places.filter((p) => ids.has(p.id)),
+      transitions: net.transitions.filter((t) => ids.has(t.id)),
+      arcs: net.arcs.filter((a) => ids.has(a.source) && ids.has(a.target)),
+    });
+  }
+
+  /**
+   * Paste `clip` into `net`, translated by `offset`. Each node gets a fresh id and the next free
+   * sequential name (allocated against the growing net so a multi-node paste can't self-collide);
+   * node positions and arc polylines shift by `offset`; arc endpoints remap to the new node ids.
+   * Tokens, rotation, magnetic flags, multiplicity, label offsets, and unknown `_extra` carry
+   * verbatim. Returns the new net and the inserted ids so the caller can select the paste.
+   */
+  static paste(net: PetriNet, clip: PetriNet, offset: Vec2): PasteResult {
+    const idMap = new Map<string, string>();
+    const nodeIds: string[] = [];
+    let places = net.places;
+    let transitions = net.transitions;
+
+    for (const p of clip.places) {
+      const id = newId();
+      idMap.set(p.id, id);
+      const name = NetOps._freeName({ places, transitions, arcs: net.arcs }, "place");
+      places = [...places, { ...p, id, name, position: NetOps._shift(p.position, offset) }];
+      nodeIds.push(id);
+    }
+    for (const t of clip.transitions) {
+      const id = newId();
+      idMap.set(t.id, id);
+      const name = NetOps._freeName({ places, transitions, arcs: net.arcs }, "transition");
+      transitions = [
+        ...transitions,
+        { ...t, id, name, position: NetOps._shift(t.position, offset) },
+      ];
+      nodeIds.push(id);
+    }
+
+    const arcIds: string[] = [];
+    const pasted: Arc[] = [];
+    for (const a of clip.arcs) {
+      const source = idMap.get(a.source);
+      const target = idMap.get(a.target);
+      if (source === undefined || target === undefined) continue; // induced subgraph keeps both
+      const id = newId();
+      pasted.push({
+        ...a,
+        id,
+        source,
+        target,
+        points: a.points.map((pt) => NetOps._shift(pt, offset)),
+      });
+      arcIds.push(id);
+    }
+
+    return { net: { places, transitions, arcs: [...net.arcs, ...pasted] }, nodeIds, arcIds };
   }
 
   // --- move (drag commit) ---------------------------------------------------
@@ -292,6 +366,11 @@ export class NetOps {
   }
 
   // --- internals ------------------------------------------------------------
+
+  /** Translate a point by `offset` (returns a fresh Vec2). */
+  private static _shift(p: Vec2, offset: Vec2): Vec2 {
+    return { x: p.x + offset.x, y: p.y + offset.y };
+  }
 
   /** The lowest `P<n>`/`T<n>` (n ≥ 1) not currently in use for `kind`, filling gaps left by deletes. */
   private static _freeName(net: PetriNet, kind: NodeKind): string {

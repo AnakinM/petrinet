@@ -92,8 +92,15 @@ export function Canvas(): JSX.Element {
   // below tracks changes), so a layout nudge re-paints the glow on the moved node.
   useEffect(() => {
     const lit = new Set(useAnalyticsStore.getState().highlight);
-    setNodes((prev) => withHighlight(withSelection(FlowProjection.toNodes(net), prev), lit));
-    setEdges((prev) => withSelection(FlowProjection.toEdges(net), prev));
+    // Project the domain selection (netStore) onto React Flow. Carrying the *domain* selection
+    // rather than RF's previous flags is what lets a paste preselect its brand-new ids — they were
+    // never selected in RF before, but netStore.paste set them. RF mirrors back via
+    // onSelectionChange, a stable fixpoint since this effect only re-runs on a net change.
+    const { nodes: selNodes, edges: selEdges } = useNetStore.getState().selection;
+    const nodeSel = new Set(selNodes);
+    const edgeSel = new Set(selEdges);
+    setNodes(withHighlight(withSelection(FlowProjection.toNodes(net), nodeSel), lit));
+    setEdges(withSelection(FlowProjection.toEdges(net), edgeSel));
   }, [net, setNodes, setEdges]);
 
   // Paint the analytics highlight onto the matching nodes and frame them — clicking a diagnostic
@@ -336,11 +343,15 @@ function clearSelected<T extends { selected?: boolean }>(items: T[]): T[] {
   return items.map((i) => (i.selected ? { ...i, selected: false } : i));
 }
 
-/** Carry forward React Flow's selection highlight by id when re-deriving from the domain. */
-function withSelection<T extends { id: string; selected?: boolean }>(next: T[], prev: T[]): T[] {
-  const selected = new Set(prev.filter((p) => p.selected).map((p) => p.id));
-  if (selected.size === 0) return next;
-  return next.map((n) => (selected.has(n.id) ? { ...n, selected: true } : n));
+/** Mark exactly the elements whose id is in `selected` as selected when re-deriving from the domain. */
+function withSelection<T extends { id: string; selected?: boolean }>(
+  next: T[],
+  selected: Set<string>,
+): T[] {
+  return next.map((n) => {
+    const want = selected.has(n.id);
+    return (n.selected ?? false) === want ? n : { ...n, selected: want };
+  });
 }
 
 /**

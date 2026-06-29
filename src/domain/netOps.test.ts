@@ -364,3 +364,135 @@ describe("NetOps.remove", () => {
     expect(after.arcs).toHaveLength(1);
   });
 });
+
+/** A richer fragment for copy/paste: p1 → t1 → p2, with tokens, rotation, label, weight, _extra. */
+function copyNet(): PetriNet {
+  return {
+    places: [
+      {
+        id: "p1",
+        name: "P1",
+        tokens: 2,
+        position: { x: 0, y: 0 },
+        labelPosition: { x: 1, y: 2 },
+        _extra: { note: "keep" },
+      },
+      { id: "p2", name: "P2", tokens: 0, position: { x: 100, y: 0 } },
+    ],
+    transitions: [{ id: "t1", name: "T1", position: { x: 50, y: 0 }, gui: { rotation: 90 } }],
+    arcs: [
+      {
+        id: "a1",
+        source: "p1",
+        target: "t1",
+        srcMagnetic: true,
+        destMagnetic: true,
+        multiplicity: 3,
+        points: [
+          { x: 10, y: 0 },
+          { x: 40, y: 0 },
+        ],
+      },
+      {
+        id: "a2",
+        source: "t1",
+        target: "p2",
+        srcMagnetic: true,
+        destMagnetic: false,
+        multiplicity: 1,
+        points: [
+          { x: 60, y: 0 },
+          { x: 90, y: 0 },
+        ],
+      },
+    ],
+  };
+}
+
+describe("NetOps.inducedSubgraph", () => {
+  it("keeps selected nodes and only arcs with both endpoints selected", () => {
+    const clip = NetOps.inducedSubgraph(copyNet(), ["p1", "t1"]);
+    expect(clip.places.map((p) => p.id)).toEqual(["p1"]);
+    expect(clip.transitions.map((t) => t.id)).toEqual(["t1"]);
+    expect(clip.arcs.map((a) => a.id)).toEqual(["a1"]); // a2 → p2 not selected, dropped
+  });
+
+  it("drops every arc when only one node is selected", () => {
+    expect(NetOps.inducedSubgraph(copyNet(), ["p1"]).arcs).toEqual([]);
+  });
+
+  it("returns an empty fragment for an empty selection", () => {
+    expect(NetOps.inducedSubgraph(copyNet(), [])).toEqual({
+      places: [],
+      transitions: [],
+      arcs: [],
+    });
+  });
+
+  it("deep-clones so later edits to the source can't leak in", () => {
+    const source = copyNet();
+    const clip = NetOps.inducedSubgraph(source, ["p1"]);
+    expect(clip.places[0]).not.toBe(source.places[0]);
+    expect(clip.places[0].position).not.toBe(source.places[0].position);
+    expect(clip.places[0]._extra).toEqual({ note: "keep" });
+  });
+});
+
+describe("NetOps.paste", () => {
+  const OFFSET = { x: 24, y: 24 };
+
+  it("assigns fresh ids and the next free sequential names", () => {
+    const base = copyNet();
+    const clip = NetOps.inducedSubgraph(base, ["p1", "p2", "t1"]);
+    const { net, nodeIds, arcIds } = NetOps.paste(base, clip, OFFSET);
+    expect(net.places.slice(2).map((p) => p.name)).toEqual(["P3", "P4"]); // P1/P2 taken
+    expect(net.transitions.slice(1).map((t) => t.name)).toEqual(["T2"]); // T1 taken
+    expect(nodeIds).toHaveLength(3);
+    expect(arcIds).toHaveLength(2);
+    expect(nodeIds).not.toContain("p1");
+  });
+
+  it("translates node positions and arc polylines by the offset", () => {
+    const base = copyNet();
+    const clip = NetOps.inducedSubgraph(base, ["p1", "t1"]);
+    const { net } = NetOps.paste(base, clip, OFFSET);
+    expect(net.places[net.places.length - 1].position).toEqual({ x: 24, y: 24 });
+    expect(net.arcs[net.arcs.length - 1].points).toEqual([
+      { x: 34, y: 24 },
+      { x: 64, y: 24 },
+    ]);
+  });
+
+  it("remaps arc endpoints to the new node ids", () => {
+    const base = copyNet();
+    const clip = NetOps.inducedSubgraph(base, ["p1", "t1"]);
+    const { net, nodeIds, arcIds } = NetOps.paste(base, clip, OFFSET);
+    const arc = net.arcs.find((a) => a.id === arcIds[0]);
+    expect(nodeIds).toContain(arc?.source);
+    expect(nodeIds).toContain(arc?.target);
+    expect(arc?.source).not.toBe("p1");
+    expect(arc?.target).not.toBe("t1");
+  });
+
+  it("carries tokens, rotation, label, magnetic flags, weight, and _extra verbatim", () => {
+    const base = copyNet();
+    const clip = NetOps.inducedSubgraph(base, ["p1", "p2", "t1"]);
+    const { net } = NetOps.paste(base, clip, OFFSET);
+    const place = net.places.find((p) => p.name === "P3");
+    expect(place?.tokens).toBe(2);
+    expect(place?.labelPosition).toEqual({ x: 1, y: 2 }); // relative offset, NOT translated
+    expect(place?._extra).toEqual({ note: "keep" });
+    expect(net.transitions.find((t) => t.name === "T2")?.gui).toEqual({ rotation: 90 });
+    const arc = net.arcs.find((a) => a.multiplicity === 3 && a.id !== "a1");
+    expect(arc?.srcMagnetic).toBe(true);
+    expect(arc?.destMagnetic).toBe(true);
+  });
+
+  it("allocates distinct names so a multi-node paste can't self-collide", () => {
+    const base = copyNet();
+    const clip = NetOps.inducedSubgraph(base, ["p1", "p2"]);
+    const names = NetOps.paste(base, clip, OFFSET).net.places.map((p) => p.name);
+    expect(names).toEqual(["P1", "P2", "P3", "P4"]);
+    expect(new Set(names).size).toBe(names.length);
+  });
+});

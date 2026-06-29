@@ -32,6 +32,12 @@ export default function App(): JSX.Element {
       } else if (mod && e.key.toLowerCase() === "y") {
         e.preventDefault();
         netHistory.redo();
+      } else if (mod && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        useNetStore.getState().copy();
+      } else if (mod && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        useNetStore.getState().paste();
       } else if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         useNetStore.getState().removeSelected();
