@@ -72,6 +72,10 @@ export function Canvas(): JSX.Element {
   // Tools only act in Build; this also keeps a left-over placing tool from bleeding into Simulate.
   const placing = editable && (tool === "place" || tool === "transition");
   const marquee = editable && tool === "select";
+  // Token tool: places become pure click targets (selection + drag suppressed below), so a click
+  // can't nudge or select them. onNodeClick edits M0; onNodeClick's presence also keeps the node
+  // wrappers clickable (RF gives them pointer-events when a click handler exists).
+  const tokenTool = editable && tool === "token";
   const highlight = useAnalyticsStore((s) => s.highlight);
   const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
 
@@ -88,8 +92,15 @@ export function Canvas(): JSX.Element {
   // below tracks changes), so a layout nudge re-paints the glow on the moved node.
   useEffect(() => {
     const lit = new Set(useAnalyticsStore.getState().highlight);
-    setNodes((prev) => withHighlight(withSelection(FlowProjection.toNodes(net), prev), lit));
-    setEdges((prev) => withSelection(FlowProjection.toEdges(net), prev));
+    // Project the domain selection (netStore) onto React Flow. Carrying the *domain* selection
+    // rather than RF's previous flags is what lets a paste preselect its brand-new ids — they were
+    // never selected in RF before, but netStore.paste set them. RF mirrors back via
+    // onSelectionChange, a stable fixpoint since this effect only re-runs on a net change.
+    const { nodes: selNodes, edges: selEdges } = useNetStore.getState().selection;
+    const nodeSel = new Set(selNodes);
+    const edgeSel = new Set(selEdges);
+    setNodes(withHighlight(withSelection(FlowProjection.toNodes(net), nodeSel), lit));
+    setEdges(withSelection(FlowProjection.toEdges(net), edgeSel));
   }, [net, setNodes, setEdges]);
 
   // Paint the analytics highlight onto the matching nodes and frame them — clicking a diagnostic
@@ -217,6 +228,16 @@ export function Canvas(): JSX.Element {
     });
   }, []);
 
+  // Token tool: clicking a place adds a token, shift-click removes one (mirrors the Simulate place).
+  // `setTokens` clamps at 0, so shift-click at 0 is a safe no-op. Clicks on transitions are ignored.
+  // The tool is Build-only (it resets to idle on entering Simulate), so the tool check is sufficient.
+  const onNodeClick = useCallback((event: ReactMouseEvent, node: PetriFlowNode): void => {
+    if (useBuildStore.getState().tool !== "token") return;
+    const place = useNetStore.getState().net.places.find((p) => p.id === node.id);
+    if (!place) return;
+    useNetStore.getState().setTokens(place.id, place.tokens + (event.shiftKey ? -1 : 1));
+  }, []);
+
   const onMoveEnd = useCallback((_event: unknown, viewport: Viewport) => {
     useNetStore.getState().setViewport(viewport);
   }, []);
@@ -266,18 +287,20 @@ export function Canvas(): JSX.Element {
         onEdgesChange={onEdgesChange}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
+        onNodeClick={onNodeClick}
         onSelectionChange={onSelectionChange}
         onMoveEnd={onMoveEnd}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         connectionMode={ConnectionMode.Loose}
         nodeOrigin={[0.5, 0.5]}
-        nodesDraggable={editable}
+        nodesDraggable={editable && !tokenTool}
         nodesConnectable={false}
-        elementsSelectable={editable}
-        // Simulate fires a transition on each click; a fast double-click must not be hijacked
-        // into a zoom. Build keeps the default zoom-on-double-click.
-        zoomOnDoubleClick={editable}
+        elementsSelectable={editable && !tokenTool}
+        // Zoom-on-double-click only with no tool active (idle Build). Any active tool turns a place
+        // into a rapid click target (e.g. Token add) and Simulate fires transitions on click, so a
+        // fast double-click there must not be hijacked into a zoom.
+        zoomOnDoubleClick={editable && tool === "idle"}
         deleteKeyCode={null}
         panOnScroll
         // Marquee (select) tool: left-drag the empty pane rubber-bands nodes (a drag on a selected
@@ -320,11 +343,15 @@ function clearSelected<T extends { selected?: boolean }>(items: T[]): T[] {
   return items.map((i) => (i.selected ? { ...i, selected: false } : i));
 }
 
-/** Carry forward React Flow's selection highlight by id when re-deriving from the domain. */
-function withSelection<T extends { id: string; selected?: boolean }>(next: T[], prev: T[]): T[] {
-  const selected = new Set(prev.filter((p) => p.selected).map((p) => p.id));
-  if (selected.size === 0) return next;
-  return next.map((n) => (selected.has(n.id) ? { ...n, selected: true } : n));
+/** Mark exactly the elements whose id is in `selected` as selected when re-deriving from the domain. */
+function withSelection<T extends { id: string; selected?: boolean }>(
+  next: T[],
+  selected: Set<string>,
+): T[] {
+  return next.map((n) => {
+    const want = selected.has(n.id);
+    return (n.selected ?? false) === want ? n : { ...n, selected: want };
+  });
 }
 
 /**

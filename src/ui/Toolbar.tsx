@@ -53,7 +53,7 @@ export function Toolbar(): JSX.Element {
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
 
   return (
-    <header className="flex items-center gap-2 border-slate-200 border-b bg-white px-3 py-2">
+    <header className="relative z-20 flex items-center gap-2 border-slate-300 border-b-[3px] bg-white px-3 py-2 shadow-[0_4px_8px_-4px_rgba(15,23,42,0.15)]">
       <span className="mr-2 flex items-center gap-1.5">
         <img src="/apple-touch-icon.png" alt="" width={24} height={24} className="h-6 w-6" />
         <span className="font-semibold text-slate-800 text-sm">PetriNet</span>

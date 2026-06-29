@@ -1,5 +1,6 @@
 import { type TemporalState, temporal } from "zundo";
 import { create, useStore } from "zustand";
+import { GridSnap } from "@/domain/gridSnap";
 import type { ArcEnd } from "@/domain/netOps";
 import { NetOps } from "@/domain/netOps";
 import type { PetriNet, Vec2 } from "@/domain/types";
@@ -30,6 +31,10 @@ export interface NetState {
   selection: Selection;
   mode: Mode;
   viewport: Viewport | null;
+  /** Session-only copy buffer (a self-contained sub-net); never tracked by undo/redo. */
+  clipboard: PetriNet | null;
+  /** Times the current clipboard has been pasted; drives the cascading paste offset. Internal. */
+  _pasteCount: number;
 
   // --- structural edits (each is one undo step) ---
   /** Replace the whole net (import / new), clearing selection. */
@@ -53,6 +58,10 @@ export interface NetState {
   /** Remove the given ids (nodes drop their incident arcs); clears selection. */
   remove: (ids: string[]) => void;
   removeSelected: () => void;
+  /** Copy the current selection's induced subgraph to the clipboard (resets the paste cascade). */
+  copy: () => void;
+  /** Paste the clipboard as a cascaded, fully-selected duplicate — recorded as one undo entry. */
+  paste: () => void;
 
   // --- transient UI state (never tracked by undo/redo) ---
   select: (selection: Selection) => void;
@@ -72,6 +81,8 @@ export const useNetStore = create<NetState>()(
       selection: EMPTY_SELECTION,
       mode: "build",
       viewport: restored?.viewport ?? null,
+      clipboard: null,
+      _pasteCount: 0,
 
       setNet: (net) => set({ net, selection: EMPTY_SELECTION }),
       addPlace: (position) => set((s) => ({ net: NetOps.addPlace(s.net, position) })),
@@ -106,6 +117,24 @@ export const useNetStore = create<NetState>()(
           ),
           selection: EMPTY_SELECTION,
         })),
+      copy: () =>
+        set((s) => {
+          const clip = NetOps.inducedSubgraph(s.net, s.selection.nodes);
+          // Empty selection or arcs-only → nothing to copy; keep any existing clipboard.
+          if (clip.places.length === 0 && clip.transitions.length === 0) return {};
+          return { clipboard: clip, _pasteCount: 0 };
+        }),
+      paste: () =>
+        set((s) => {
+          if (!s.clipboard) return {};
+          const step = (s._pasteCount + 1) * GridSnap.SIZE;
+          const result = NetOps.paste(s.net, s.clipboard, { x: step, y: step });
+          return {
+            net: result.net,
+            selection: { nodes: result.nodeIds, edges: result.arcIds },
+            _pasteCount: s._pasteCount + 1,
+          };
+        }),
 
       select: (selection) => set({ selection }),
       setMode: (mode) => set({ mode }),
