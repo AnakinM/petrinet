@@ -5,6 +5,7 @@ import { ArcStartHandles } from "@/flow/nodes/ArcStartHandles";
 import { NodeHandles } from "@/flow/nodes/NodeHandles";
 import { PlaceTokens } from "@/flow/nodes/tokens";
 import type { PlaceFlowNode } from "@/flow/projection";
+import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 import { useSimStore } from "@/store/simStore";
 
@@ -20,6 +21,8 @@ const CIRCLE =
 export function PlaceNode({ data, selected }: NodeProps<PlaceFlowNode>): JSX.Element {
   const { place } = data;
   const simulating = useNetStore((s) => s.mode === "simulate");
+  // Token tool (Build): the place is a click target (Canvas onNodeClick edits M0); hint it.
+  const tokenMode = useBuildStore((s) => s.tool === "token") && !simulating;
   // In Simulate the live working marking overrides M0; in Build no marking is held for
   // this id, so it falls back to the persisted (M0) token count.
   const liveTokens = useSimStore((s) => s.marking[place.id]);
@@ -66,7 +69,11 @@ export function PlaceNode({ data, selected }: NodeProps<PlaceFlowNode>): JSX.Ele
           {tokens}
         </button>
       ) : (
-        <div className={CIRCLE}>{tokens}</div>
+        <div
+          className={`${CIRCLE} ${tokenMode ? "cursor-pointer hover:ring-2 hover:ring-slate-300" : ""}`}
+        >
+          {tokens}
+        </div>
       )}
       <span
         className="pointer-events-none absolute top-1/2 left-1/2 whitespace-nowrap text-slate-700 text-xs"

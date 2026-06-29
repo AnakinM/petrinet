@@ -72,6 +72,10 @@ export function Canvas(): JSX.Element {
   // Tools only act in Build; this also keeps a left-over placing tool from bleeding into Simulate.
   const placing = editable && (tool === "place" || tool === "transition");
   const marquee = editable && tool === "select";
+  // Token tool: places become pure click targets (selection + drag suppressed below), so a click
+  // can't nudge or select them. onNodeClick edits M0; onNodeClick's presence also keeps the node
+  // wrappers clickable (RF gives them pointer-events when a click handler exists).
+  const tokenTool = editable && tool === "token";
   const highlight = useAnalyticsStore((s) => s.highlight);
   const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
 
@@ -217,6 +221,16 @@ export function Canvas(): JSX.Element {
     });
   }, []);
 
+  // Token tool: clicking a place adds a token, shift-click removes one (mirrors the Simulate place).
+  // `setTokens` clamps at 0, so shift-click at 0 is a safe no-op. Clicks on transitions are ignored.
+  // The tool is Build-only (it resets to idle on entering Simulate), so the tool check is sufficient.
+  const onNodeClick = useCallback((event: ReactMouseEvent, node: PetriFlowNode): void => {
+    if (useBuildStore.getState().tool !== "token") return;
+    const place = useNetStore.getState().net.places.find((p) => p.id === node.id);
+    if (!place) return;
+    useNetStore.getState().setTokens(place.id, place.tokens + (event.shiftKey ? -1 : 1));
+  }, []);
+
   const onMoveEnd = useCallback((_event: unknown, viewport: Viewport) => {
     useNetStore.getState().setViewport(viewport);
   }, []);
@@ -266,15 +280,16 @@ export function Canvas(): JSX.Element {
         onEdgesChange={onEdgesChange}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
+        onNodeClick={onNodeClick}
         onSelectionChange={onSelectionChange}
         onMoveEnd={onMoveEnd}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         connectionMode={ConnectionMode.Loose}
         nodeOrigin={[0.5, 0.5]}
-        nodesDraggable={editable}
+        nodesDraggable={editable && !tokenTool}
         nodesConnectable={false}
-        elementsSelectable={editable}
+        elementsSelectable={editable && !tokenTool}
         // Simulate fires a transition on each click; a fast double-click must not be hijacked
         // into a zoom. Build keeps the default zoom-on-double-click.
         zoomOnDoubleClick={editable}

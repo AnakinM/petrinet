@@ -25,6 +25,12 @@ export function Palette(): JSX.Element {
         <span className="h-5 w-5 rounded-[2px] border border-current border-dashed" />
         Select
       </ToolButton>
+      <ToolButton active={tool === "token"} onClick={() => toggleTool("token")}>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-current">
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+        </span>
+        Token
+      </ToolButton>
     </section>
   );
 }
