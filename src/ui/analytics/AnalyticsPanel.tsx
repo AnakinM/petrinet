@@ -35,7 +35,7 @@ export function AnalyticsPanel(): JSX.Element | null {
   return (
     <aside
       style={{ width }}
-      className="absolute inset-y-0 right-0 z-10 flex flex-col border-slate-200 border-l bg-white shadow-lg"
+      className="absolute inset-y-0 right-0 z-10 flex flex-col border-slate-300 border-l-[3px] bg-white shadow-lg"
     >
       <ResizeHandle />
       <PanelHeader activeTab={activeTab} />
