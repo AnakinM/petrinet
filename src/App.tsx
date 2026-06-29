@@ -45,7 +45,7 @@ export default function App(): JSX.Element {
       <Toolbar />
       <ReactFlowProvider>
         <div className="flex min-h-0 flex-1">
-          <aside className="flex w-64 shrink-0 flex-col border-slate-200 border-r bg-slate-50">
+          <aside className="flex w-52 shrink-0 flex-col border-slate-200 border-r bg-slate-50">
             {buildMode && <Palette />}
             <PropertiesPanel />
             <SidebarFooter />

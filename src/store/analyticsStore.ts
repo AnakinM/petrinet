@@ -51,8 +51,8 @@ export interface AnalyticsState {
 }
 
 const STORAGE_KEY = "petrinet.analytics.v1";
-/** The left sidebar (`w-64`) is the hard floor: the panel may occlude the canvas, never it. */
-const SIDEBAR_PX = 256;
+/** The left sidebar (`w-52`) is the hard floor: the panel may occlude the canvas, never it. */
+const SIDEBAR_PX = 208;
 const MIN_WIDTH = 280;
 const DEFAULT_WIDTH = 360;
 
