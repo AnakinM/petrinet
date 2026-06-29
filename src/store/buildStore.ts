@@ -40,6 +40,8 @@ export interface BuildState {
   tool: BuildTool;
   /** Whether node centers snap to the 24px grid on placement and drag (persisted). */
   snap: boolean;
+  /** One-shot request to focus + select the Properties Name field (Enter-to-rename, Build only). */
+  nameFocusRequested: boolean;
   /** Begin drawing an arc from `source`, with the cursor at `at`. */
   startArc: (source: string, at: Vec2) => void;
   /** Track the live cursor and the node (if any) under it. */
@@ -54,12 +56,17 @@ export interface BuildState {
   setTool: (tool: BuildTool) => void;
   /** Flip snap-to-grid and persist the new state. */
   toggleSnap: () => void;
+  /** Raise the one-shot Name-field focus request (consumed by the Properties panel). */
+  requestNameFocus: () => void;
+  /** Clear the focus request once the Name field has taken focus. */
+  consumeNameFocus: () => void;
 }
 
 export const useBuildStore = create<BuildState>((set) => ({
   draft: null,
   tool: "idle",
   snap: loadSnap(),
+  nameFocusRequested: false,
   startArc: (source, at) => set({ draft: { source, bends: [], cursor: at, hoverTarget: null } }),
   moveDraft: (cursor, hoverTarget) =>
     set((s) => (s.draft ? { draft: { ...s.draft, cursor, hoverTarget } } : s)),
@@ -77,4 +84,6 @@ export const useBuildStore = create<BuildState>((set) => ({
       localStorage.setItem(SNAP_STORAGE_KEY, String(snap));
       return { snap };
     }),
+  requestNameFocus: () => set({ nameFocusRequested: true }),
+  consumeNameFocus: () => set({ nameFocusRequested: false }),
 }));

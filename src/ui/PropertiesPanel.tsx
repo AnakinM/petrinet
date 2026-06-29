@@ -1,6 +1,7 @@
-import { type JSX, useState } from "react";
+import { type JSX, type Ref, useEffect, useRef, useState } from "react";
 import { NetOps, type NodeKind } from "@/domain/netOps";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
+import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 import { HistoryList } from "@/ui/HistoryList";
 
@@ -122,11 +123,22 @@ function ArcEditor({ arc }: { arc: Arc }): JSX.Element {
 function NameField({ id, name, kind }: { id: string; name: string; kind: NodeKind }): JSX.Element {
   const net = useNetStore((s) => s.net);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const focusRequested = useBuildStore((s) => s.nameFocusRequested);
+  // Enter-to-rename: when the App keydown handler raises the one-shot request, take focus and
+  // select all (so typing replaces the name), then consume the request.
+  useEffect(() => {
+    if (!focusRequested) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+    useBuildStore.getState().consumeNameFocus();
+  }, [focusRequested]);
   return (
     <div>
       <FieldLabel>Name</FieldLabel>
       <CommitField
         key={`name-${name}`}
+        inputRef={inputRef}
         defaultValue={name}
         invalid={error !== null}
         onCommit={(raw) => {
@@ -158,14 +170,17 @@ function CommitField({
   onCommit,
   type = "text",
   invalid = false,
+  inputRef,
 }: {
   defaultValue: string | number;
   onCommit: (raw: string) => void;
   type?: "text" | "number";
   invalid?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
 }): JSX.Element {
   return (
     <input
+      ref={inputRef}
       type={type}
       defaultValue={defaultValue}
       onBlur={(e) => onCommit(e.target.value)}

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PetriNet } from "@/domain/types";
+import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 import { PropertiesPanel } from "@/ui/PropertiesPanel";
 
@@ -66,5 +67,26 @@ describe("PropertiesPanel name uniqueness", () => {
     await commitName("Drain", "Emit");
     expect(screen.getByText(/already exists/i)).toBeInTheDocument();
     expect(useNetStore.getState().net.transitions.find((t) => t.id === "t2")?.name).toBe("Drain");
+  });
+});
+
+describe("PropertiesPanel name-focus request (Enter-to-rename)", () => {
+  beforeEach(() => {
+    useNetStore.getState().setNet(NET);
+    useBuildStore.getState().consumeNameFocus();
+  });
+  afterEach(cleanup);
+
+  it("focuses and selects the Name field, then consumes the request", () => {
+    show("p1");
+    const input = screen.getByDisplayValue("Buffer") as HTMLInputElement;
+    expect(input).not.toHaveFocus();
+
+    act(() => useBuildStore.getState().requestNameFocus());
+
+    expect(input).toHaveFocus();
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe("Buffer".length);
+    expect(useBuildStore.getState().nameFocusRequested).toBe(false);
   });
 });

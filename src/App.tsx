@@ -1,6 +1,7 @@
 import { ReactFlowProvider } from "@xyflow/react";
 import { type JSX, useEffect } from "react";
 import { Canvas } from "@/flow/Canvas";
+import { useBuildStore } from "@/store/buildStore";
 import { netHistory, useNetStore } from "@/store/netStore";
 import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
 import { Palette } from "@/ui/Palette";
@@ -34,6 +35,13 @@ export default function App(): JSX.Element {
       } else if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         useNetStore.getState().removeSelected();
+      } else if (e.key === "Enter") {
+        // A single selected place/transition: jump focus into the Properties Name field to rename.
+        const { selection } = useNetStore.getState();
+        if (selection.nodes.length === 1 && selection.edges.length === 0) {
+          e.preventDefault();
+          useBuildStore.getState().requestNameFocus();
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
