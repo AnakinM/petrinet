@@ -290,9 +290,10 @@ export function Canvas(): JSX.Element {
         nodesDraggable={editable && !tokenTool}
         nodesConnectable={false}
         elementsSelectable={editable && !tokenTool}
-        // Simulate fires a transition on each click; a fast double-click must not be hijacked
-        // into a zoom. Build keeps the default zoom-on-double-click.
-        zoomOnDoubleClick={editable}
+        // Zoom-on-double-click only with no tool active (idle Build). Any active tool turns a place
+        // into a rapid click target (e.g. Token add) and Simulate fires transitions on click, so a
+        // fast double-click there must not be hijacked into a zoom.
+        zoomOnDoubleClick={editable && tool === "idle"}
         deleteKeyCode={null}
         panOnScroll
         // Marquee (select) tool: left-drag the empty pane rubber-bands nodes (a drag on a selected
