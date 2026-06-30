@@ -97,6 +97,35 @@ export function RedoIcon(): JSX.Element {
   );
 }
 
+/** A filled triangle — start auto-running the simulation. */
+export function PlayIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <path d="M7 5v14l11-7z" fill="currentColor" stroke="none" />
+    </ToolbarIcon>
+  );
+}
+
+/** Two filled bars — pause auto-running. */
+export function PauseIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <rect x="7" y="5" width="3.5" height="14" fill="currentColor" stroke="none" />
+      <rect x="13.5" y="5" width="3.5" height="14" fill="currentColor" stroke="none" />
+    </ToolbarIcon>
+  );
+}
+
+/** A triangle meeting a bar — fire one step. */
+export function StepIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <path d="M6 5v14l9-7z" fill="currentColor" stroke="none" />
+      <path d="M18 5v14" />
+    </ToolbarIcon>
+  );
+}
+
 /**
  * The GitHub "Octocat" mark — solid/fill-based (unlike the stroke toolbar glyphs), 16px.
  * Used in the left-sidebar footer link row.

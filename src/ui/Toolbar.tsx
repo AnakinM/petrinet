@@ -4,14 +4,17 @@ import { ImageFile, NpnFile } from "@/lib/download";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
-import { useSimStore } from "@/store/simStore";
+import { AUTO_RUN_SPEEDS, useSimStore } from "@/store/simStore";
 import {
   ExportIcon,
   GridIcon,
   ImageIcon,
   ImportIcon,
   NewIcon,
+  PauseIcon,
+  PlayIcon,
   RedoIcon,
+  StepIcon,
   UndoIcon,
 } from "@/ui/icons";
 
@@ -113,15 +116,67 @@ export function Toolbar(): JSX.Element {
         </>
       )}
       <div className="ml-auto flex items-center gap-2">
-        {simulating && (
-          <ToolbarButton onClick={() => useSimStore.getState().reset()}>Reset</ToolbarButton>
-        )}
+        {simulating && <SimTransport />}
         <ToolbarButton onClick={() => useAnalyticsStore.getState().toggle()} active={analyticsOpen}>
           Analytics
         </ToolbarButton>
         <ModeToggle mode={mode} />
       </div>
     </header>
+  );
+}
+
+/**
+ * Simulate-mode auto-run transport: Play/Pause, single Step, a speed selector, and Reset. The firing
+ * timer lives here (a mounted-only effect, so it stops when Simulate is left) and ticks `step` while
+ * `playing`; the pure engine does the actual firing.
+ */
+function SimTransport(): JSX.Element {
+  const playing = useSimStore((s) => s.playing);
+  const speed = useSimStore((s) => s.speed);
+  const canFire = useSimStore((s) => s.enabled.size > 0);
+
+  // Fire one transition per (1000 / speed) ms while playing. step() clears `playing` itself once it
+  // reaches a dead marking, and that re-render tears the interval down via this effect's cleanup.
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setInterval(() => useSimStore.getState().step(), 1000 / speed);
+    return () => window.clearInterval(id);
+  }, [playing, speed]);
+
+  return (
+    <div className="flex items-center gap-1">
+      <ToolbarButton
+        onClick={() => (playing ? useSimStore.getState().pause() : useSimStore.getState().play())}
+        disabled={!playing && !canFire}
+        ariaLabel={playing ? "Pause auto-run" : "Play auto-run"}
+        title={playing ? "Pause" : "Auto-run: fire a random enabled transition each tick"}
+      >
+        {playing ? <PauseIcon /> : <PlayIcon />}
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => useSimStore.getState().step()}
+        disabled={!canFire}
+        ariaLabel="Fire one step"
+        title="Fire one random enabled transition"
+      >
+        <StepIcon />
+      </ToolbarButton>
+      <select
+        value={speed}
+        onChange={(e) => useSimStore.getState().setSpeed(Number(e.target.value))}
+        aria-label="Auto-run speed"
+        title="Auto-run speed (transitions per second)"
+        className="rounded border border-slate-300 bg-white px-1.5 py-1 text-slate-700 text-sm"
+      >
+        {AUTO_RUN_SPEEDS.map((s) => (
+          <option key={s} value={s}>
+            {s}/s
+          </option>
+        ))}
+      </select>
+      <ToolbarButton onClick={() => useSimStore.getState().reset()}>Reset</ToolbarButton>
+    </div>
   );
 }
 
