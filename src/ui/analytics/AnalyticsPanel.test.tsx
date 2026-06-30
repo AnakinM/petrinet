@@ -233,4 +233,16 @@ describe("AnalyticsPanel", () => {
     // Every property carries a "?" help affordance exposed to assistive tech.
     expect(screen.getAllByRole("img", { name: /^Help:/ }).length).toBeGreaterThanOrEqual(6);
   });
+
+  it("classifies a simple cycle as every structural class", async () => {
+    openWith(CYCLE, "properties");
+    render(<AnalyticsPanel />);
+    await userEvent.click(screen.getByRole("button", { name: "Classification" }));
+    expect(screen.getByText("Ordinary")).toBeInTheDocument();
+    expect(screen.getByText("State machine")).toBeInTheDocument();
+    expect(screen.getByText("Marked graph")).toBeInTheDocument();
+    expect(screen.getByText("Free choice")).toBeInTheDocument();
+    // The P1 ⇄ P2 cycle satisfies all four classes.
+    expect(screen.getAllByText("Yes")).toHaveLength(4);
+  });
 });

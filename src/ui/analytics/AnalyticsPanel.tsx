@@ -2,6 +2,7 @@ import { type JSX, type PointerEvent as ReactPointerEvent, useEffect, useState }
 import type { AnalysisResult } from "@/domain/analysis/types";
 import { type AnalyticsTab, useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
+import { ClassificationTab } from "@/ui/analytics/ClassificationTab";
 import { InvariantsTab } from "@/ui/analytics/InvariantsTab";
 import { PropertiesTab } from "@/ui/analytics/PropertiesTab";
 import { StructureTab } from "@/ui/analytics/StructureTab";
@@ -52,6 +53,7 @@ export function AnalyticsPanel(): JSX.Element | null {
 
 function TabBody({ tab, result }: { tab: AnalyticsTab; result: AnalysisResult }): JSX.Element {
   if (tab === "properties") return <PropertiesTab result={result} />;
+  if (tab === "classification") return <ClassificationTab />;
   if (tab === "invariants") return <InvariantsTab result={result} />;
   return <StructureTab result={result} />;
 }
@@ -85,9 +87,12 @@ function PanelHeader({ activeTab }: { activeTab: AnalyticsTab }): JSX.Element {
           </button>
         </div>
       </div>
-      <div className="flex gap-1 px-4 pb-2">
+      <div className="flex flex-wrap gap-1 px-4 pb-2">
         <TabButton tab="properties" active={activeTab === "properties"}>
           Properties
+        </TabButton>
+        <TabButton tab="classification" active={activeTab === "classification"}>
+          Classification
         </TabButton>
         <TabButton tab="invariants" active={activeTab === "invariants"}>
           Invariants
