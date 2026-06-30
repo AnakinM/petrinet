@@ -245,4 +245,12 @@ describe("AnalyticsPanel", () => {
     // The P1 ⇄ P2 cycle satisfies all four classes.
     expect(screen.getAllByText("Yes")).toHaveLength(4);
   });
+
+  it("answers a reachability query on the Structure tab", async () => {
+    openWith(CYCLE, "structure");
+    render(<AnalyticsPanel />);
+    // The form seeds with M0, which is trivially reachable from itself.
+    await userEvent.click(screen.getByRole("button", { name: "Check reachable" }));
+    expect(screen.getByText("This marking is reachable from M0.")).toBeInTheDocument();
+  });
 });

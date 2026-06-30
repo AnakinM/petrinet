@@ -5,6 +5,7 @@ import { NetNames } from "@/domain/netNames";
 import type { Place } from "@/domain/types";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
+import { ReachabilityQuery } from "@/ui/analytics/ReachabilityQuery";
 import { DISPLAY_CAP, HighlightChip, Overflow, Section } from "@/ui/analytics/widgets";
 
 /**
@@ -134,6 +135,8 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
           .
         </p>
       )}
+
+      <ReachabilityQuery net={net} />
     </div>
   );
 }
