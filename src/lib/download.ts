@@ -1,4 +1,5 @@
 import { NpnCodec } from "@/codec/npn";
+import { PnmlCodec } from "@/codec/pnml";
 import type { PetriNet } from "@/domain/types";
 import { NetSvg } from "@/flow/svgExport";
 
@@ -98,5 +99,23 @@ export class ImageFile {
 
   private static _ext(filename: string, ext: string): string {
     return filename.endsWith(`.${ext}`) ? filename : `${filename}.${ext}`;
+  }
+}
+
+/**
+ * Browser-side PNML interop: a download of the net serialized to ISO/IEC 15909-2 PNML, and an
+ * `<input type="file">` open that parses `.pnml`/`.xml`. {@link PnmlCodec} owns the bytes; this owns
+ * the Blob/anchor/picker mechanics, mirroring {@link NpnFile}.
+ */
+export class PnmlFile {
+  /** Download `net` serialized to PNML. */
+  static save(net: PetriNet, filename = "net.pnml"): void {
+    const blob = new Blob([PnmlCodec.serialize(net)], { type: "application/xml" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename.endsWith(".pnml") ? filename : `${filename}.pnml`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 }

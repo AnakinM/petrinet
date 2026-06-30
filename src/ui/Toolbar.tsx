@@ -1,6 +1,6 @@
 import { type JSX, type ReactNode, useEffect, useRef, useState } from "react";
 import type { PetriNet } from "@/domain/types";
-import { ImageFile, NpnFile } from "@/lib/download";
+import { ImageFile, NpnFile, PnmlFile } from "@/lib/download";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
@@ -92,7 +92,7 @@ export function Toolbar(): JSX.Element {
         <ExportIcon />
         Export
       </ToolbarButton>
-      <ImageExportMenu />
+      <ExportAsMenu />
       <span className="mx-1 h-5 w-px bg-slate-200" />
       <ToolbarButton onClick={netHistory.undo} disabled={simulating || !canUndo}>
         <UndoIcon />
@@ -180,8 +180,8 @@ function SimTransport(): JSX.Element {
   );
 }
 
-/** Export the current net as an image: a small dropdown offering PNG (raster) or SVG (vector). */
-function ImageExportMenu(): JSX.Element {
+/** Export the net in a non-native format: a dropdown offering PNML, PNG (raster), or SVG (vector). */
+function ExportAsMenu(): JSX.Element {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -202,8 +202,10 @@ function ImageExportMenu(): JSX.Element {
     };
   }, [open]);
 
-  const exportAs = (kind: "png" | "svg"): void => {
-    if (kind === "png") ImageFile.savePng(imageNet());
+  const exportAs = (kind: "pnml" | "png" | "svg"): void => {
+    // PNML is a structural export (M0, like .npn); the image formats capture what's on screen.
+    if (kind === "pnml") PnmlFile.save(useNetStore.getState().net);
+    else if (kind === "png") ImageFile.savePng(imageNet());
     else ImageFile.saveSvg(imageNet());
     setOpen(false);
   };
@@ -213,13 +215,14 @@ function ImageExportMenu(): JSX.Element {
       <ToolbarButton
         onClick={() => setOpen((o) => !o)}
         active={open}
-        title="Export the net as an image"
+        title="Export the net as PNML, PNG, or SVG"
       >
         <ImageIcon />
-        Image
+        Export as
       </ToolbarButton>
       {open && (
         <div className="absolute top-full left-0 z-30 mt-1 flex min-w-[8rem] flex-col rounded border border-slate-300 bg-white py-1 shadow-lg">
+          <MenuItem onClick={() => exportAs("pnml")}>PNML</MenuItem>
           <MenuItem onClick={() => exportAs("png")}>PNG image</MenuItem>
           <MenuItem onClick={() => exportAs("svg")}>SVG vector</MenuItem>
         </div>
