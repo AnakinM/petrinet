@@ -1,11 +1,19 @@
-import type { JSX, ReactNode } from "react";
+import { type JSX, type ReactNode, useEffect, useRef, useState } from "react";
 import type { PetriNet } from "@/domain/types";
-import { NpnFile } from "@/lib/download";
+import { ImageFile, NpnFile } from "@/lib/download";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { useSimStore } from "@/store/simStore";
-import { ExportIcon, GridIcon, ImportIcon, NewIcon, RedoIcon, UndoIcon } from "@/ui/icons";
+import {
+  ExportIcon,
+  GridIcon,
+  ImageIcon,
+  ImportIcon,
+  NewIcon,
+  RedoIcon,
+  UndoIcon,
+} from "@/ui/icons";
 
 const EMPTY_NET: PetriNet = { places: [], transitions: [], arcs: [] };
 
@@ -23,6 +31,17 @@ function importNet(): void {
 
 function exportNet(): void {
   NpnFile.save(useNetStore.getState().net);
+}
+
+/**
+ * The net to render to an image: M0 in Build, but the live working marking in Simulate, so the
+ * export always matches what the user currently sees on the canvas.
+ */
+function imageNet(): PetriNet {
+  const { net, mode } = useNetStore.getState();
+  if (mode !== "simulate") return net;
+  const { marking } = useSimStore.getState();
+  return { ...net, places: net.places.map((p) => ({ ...p, tokens: marking[p.id] ?? p.tokens })) };
 }
 
 /** Enter Simulate: drop any active Build tool, clear the selection, lock the net, snapshot M0. */
@@ -70,6 +89,7 @@ export function Toolbar(): JSX.Element {
         <ExportIcon />
         Export
       </ToolbarButton>
+      <ImageExportMenu />
       <span className="mx-1 h-5 w-px bg-slate-200" />
       <ToolbarButton onClick={netHistory.undo} disabled={simulating || !canUndo}>
         <UndoIcon />
@@ -102,6 +122,72 @@ export function Toolbar(): JSX.Element {
         <ModeToggle mode={mode} />
       </div>
     </header>
+  );
+}
+
+/** Export the current net as an image: a small dropdown offering PNG (raster) or SVG (vector). */
+function ImageExportMenu(): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // While open, close on an outside click or Escape (the menu has no backdrop of its own).
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const exportAs = (kind: "png" | "svg"): void => {
+    if (kind === "png") ImageFile.savePng(imageNet());
+    else ImageFile.saveSvg(imageNet());
+    setOpen(false);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <ToolbarButton
+        onClick={() => setOpen((o) => !o)}
+        active={open}
+        title="Export the net as an image"
+      >
+        <ImageIcon />
+        Image
+      </ToolbarButton>
+      {open && (
+        <div className="absolute top-full left-0 z-30 mt-1 flex min-w-[8rem] flex-col rounded border border-slate-300 bg-white py-1 shadow-lg">
+          <MenuItem onClick={() => exportAs("png")}>PNG image</MenuItem>
+          <MenuItem onClick={() => exportAs("svg")}>SVG vector</MenuItem>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuItem({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: ReactNode;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="px-3 py-1 text-left text-slate-700 text-sm hover:bg-slate-100"
+    >
+      {children}
+    </button>
   );
 }
 

@@ -1,5 +1,6 @@
 import { NpnCodec } from "@/codec/npn";
 import type { PetriNet } from "@/domain/types";
+import { NetSvg } from "@/flow/svgExport";
 
 /**
  * The browser-side boundary between a {@link PetriNet} and an `.npn` file: a
@@ -43,5 +44,59 @@ export class NpnFile {
       });
       input.click();
     });
+  }
+}
+
+/**
+ * Browser-side image export of a {@link PetriNet}. {@link NetSvg} owns the (pure, tested) SVG bytes;
+ * this owns the Blob/anchor/canvas mechanics. SVG is a direct download; PNG is rasterized from that
+ * same SVG via an offscreen canvas — no extra dependency, and the self-contained SVG (vector shapes
+ * and text, no external refs) keeps the canvas untainted so `toBlob` succeeds.
+ */
+export class ImageFile {
+  /** PNG raster scale — 2× keeps lines and labels crisp on hi-dpi screens and in print. */
+  static readonly PNG_SCALE = 2;
+
+  /** Download `net` as an `.svg` vector image. */
+  static saveSvg(net: PetriNet, filename = "net.svg"): void {
+    const blob = new Blob([NetSvg.serialize(net)], { type: "image/svg+xml;charset=utf-8" });
+    ImageFile._download(URL.createObjectURL(blob), ImageFile._ext(filename, "svg"));
+  }
+
+  /** Rasterize `net` to a `.png` (2× scale) and download it. Asynchronous: the image must decode first. */
+  static savePng(net: PetriNet, filename = "net.png"): void {
+    const blob = new Blob([NetSvg.serialize(net)], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = (): void => {
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(w * ImageFile.PNG_SCALE));
+      canvas.height = Math.max(1, Math.round(h * ImageFile.PNG_SCALE));
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.scale(ImageFile.PNG_SCALE, ImageFile.PNG_SCALE);
+        ctx.drawImage(img, 0, 0);
+      }
+      URL.revokeObjectURL(url);
+      canvas.toBlob((png) => {
+        if (png) ImageFile._download(URL.createObjectURL(png), ImageFile._ext(filename, "png"));
+      }, "image/png");
+    };
+    img.onerror = (): void => URL.revokeObjectURL(url);
+    img.src = url;
+  }
+
+  private static _download(url: string, filename: string): void {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private static _ext(filename: string, ext: string): string {
+    return filename.endsWith(`.${ext}`) ? filename : `${filename}.${ext}`;
   }
 }

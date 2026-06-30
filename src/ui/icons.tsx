@@ -66,6 +66,17 @@ export function ExportIcon(): JSX.Element {
   );
 }
 
+/** A framed picture (sun + mountain) — export the net as an image. */
+export function ImageIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="1.5" />
+      <path d="m21 15-4-4-9 9" />
+    </ToolbarIcon>
+  );
+}
+
 /** A curved arrow back to the left — Undo. */
 export function UndoIcon(): JSX.Element {
   return (
