@@ -207,4 +207,30 @@ describe("AnalyticsPanel", () => {
     // No tokens remain, so there is nothing to highlight — the row must not be a clickable button.
     expect(screen.queryByRole("button", { name: /p=0/ })).not.toBeInTheDocument();
   });
+
+  it("renders an invariant's structural vector and spotlights its support on click", async () => {
+    openWith(CYCLE, "invariants");
+    render(<AnalyticsPanel />);
+    // The chip shows the readable sum and, alongside it, the structural weight vector.
+    const chip = screen.getByRole("button", { name: /P1 \+ P2/ });
+    expect(chip.textContent).toMatch(/\(1, 1\)/);
+    await userEvent.click(chip);
+    expect(useAnalyticsStore.getState().highlight).toEqual(["P1", "P2"]);
+  });
+
+  it("summarises cycle coverage on the Structure tab", () => {
+    openWith(CYCLE, "structure");
+    render(<AnalyticsPanel />);
+    // The whole conservative cycle (P1, P2, t1, t2) lies on one strongly-connected component.
+    expect(screen.getByText(/lie on a cycle/)).toBeInTheDocument();
+  });
+
+  it("shows labelled status pills and per-property help tooltips on the Properties tab", () => {
+    openWith(CYCLE, "properties");
+    render(<AnalyticsPanel />);
+    // Verdicts render as labelled pills (icon + word), not icon-only badges.
+    expect(screen.getAllByText("Yes").length).toBeGreaterThan(0);
+    // Every property carries a "?" help affordance exposed to assistive tech.
+    expect(screen.getAllByRole("img", { name: /^Help:/ }).length).toBeGreaterThanOrEqual(6);
+  });
 });
