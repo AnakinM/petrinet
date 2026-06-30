@@ -4,12 +4,9 @@ import type { PetriNet } from "@/domain/types";
 import { NetSvg } from "@/flow/svgExport";
 
 /**
- * The browser-side boundary between a {@link PetriNet} and an `.npn` file: a
- * BOM-prefixed, byte-faithful download and an `<input type="file">` open/parse.
- *
- * Cohesive home for the file <-> net round-trip in the DOM; the codec owns the
- * bytes, this owns the Blob/anchor/picker mechanics. {@link NpnFile.open} rejects
- * with {@link NpnParseError} on malformed input so the caller surfaces a clear error.
+ * Browser-side download of a {@link PetriNet} as a byte-faithful `.npn` file (UTF-8 BOM, no trailing
+ * newline). The codec owns the bytes; this owns the Blob/anchor mechanics. Opening any supported net
+ * file lives on {@link NetFile}, which auto-detects the format.
  */
 export class NpnFile {
   /** Trigger a download of `net` serialized to `.npn` (UTF-8 BOM, no trailing newline). */
@@ -24,27 +21,38 @@ export class NpnFile {
     anchor.click();
     URL.revokeObjectURL(url);
   }
+}
 
-  /**
-   * Open the file picker and resolve with the parsed net and chosen filename.
-   * The promise stays pending if the user cancels (no `change` fires); it rejects
-   * if the chosen file is not valid `.npn`.
-   */
+/**
+ * Opens any supported net file through one picker, auto-detecting the format: native `.npn` (JSON) or
+ * `.pnml` / `.xml` (PNML). The codec selection (by extension, falling back to a leading `<` for
+ * XML) stays here so the UI just asks for "a net"; parse errors reject so the caller surfaces them.
+ */
+export class NetFile {
+  /** Open the file picker for `.npn`/`.pnml` and resolve with the parsed net and chosen filename. */
   static open(): Promise<{ name: string; net: PetriNet }> {
     return new Promise((resolve, reject) => {
       const input = document.createElement("input");
       input.type = "file";
-      input.accept = ".npn,application/json";
+      input.accept = ".npn,.pnml,.xml,application/json,application/xml";
       input.addEventListener("change", () => {
         const file = input.files?.[0];
         if (!file) return;
         file
           .text()
-          .then((text) => resolve({ name: file.name, net: NpnCodec.parse(text) }))
+          .then((text) => resolve({ name: file.name, net: NetFile._parse(file.name, text) }))
           .catch(reject);
       });
       input.click();
     });
+  }
+
+  /** Choose the codec by extension, falling back to a leading `<` (XML) for an unknown extension. */
+  private static _parse(name: string, text: string): PetriNet {
+    const lower = name.toLowerCase();
+    const isPnml =
+      lower.endsWith(".pnml") || lower.endsWith(".xml") || text.trimStart().startsWith("<");
+    return isPnml ? PnmlCodec.parse(text) : NpnCodec.parse(text);
   }
 }
 

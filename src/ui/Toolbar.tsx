@@ -1,6 +1,6 @@
 import { type JSX, type ReactNode, useEffect, useRef, useState } from "react";
 import type { PetriNet } from "@/domain/types";
-import { ImageFile, NpnFile, PnmlFile } from "@/lib/download";
+import { ImageFile, NetFile, NpnFile, PnmlFile } from "@/lib/download";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
@@ -27,7 +27,7 @@ function newNet(): void {
 }
 
 function importNet(): void {
-  NpnFile.open()
+  NetFile.open()
     .then(({ net }) => useNetStore.getState().setNet(net))
     .catch((error: Error) => window.alert(`Import failed: ${error.message}`));
 }
