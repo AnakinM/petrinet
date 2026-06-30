@@ -4,13 +4,13 @@ import type { AnalysisResult, PropertyResult, Verdict } from "@/domain/analysis/
 import { NetNames } from "@/domain/netNames";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
-import { DISPLAY_CAP, HighlightChip } from "@/ui/analytics/widgets";
-import { CheckIcon, CrossIcon, QuestionIcon } from "@/ui/icons";
+import { DISPLAY_CAP, HighlightChip, StatusCard } from "@/ui/analytics/widgets";
 
 /**
- * Verdict chips for the net's properties. The algebraic ones (structural boundedness, conservative)
- * resolve from the live slice; the behavioural ones (safe, live, reversible, deadlock-free) read
- * `indeterminate` until the on-demand reachability pass runs, then carry a one-line witness.
+ * Status + Reasons cards for the net's properties. The algebraic ones (structural boundedness,
+ * conservative) resolve from the live slice; the behavioural ones (safe, live, reversible,
+ * deadlock-free) read `indeterminate` until the on-demand reachability pass runs, then carry a
+ * one-line witness with bulleted reasons.
  */
 export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Element {
   const { boundedness, conservative, live, quasiLive, reversible, deadlockFree } = result;
@@ -19,25 +19,35 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
   const lit = useAnalyticsStore((s) => s.highlight).join(",");
   return (
     <div className="flex flex-col gap-2">
-      <PropertyRow
-        label="Bounded"
-        value={{ verdict: boundedness.bounded, ...boundedDetail(result) }}
+      <StatusCard title="Bounded" verdict={boundedness.bounded} {...boundedDetail(result)} />
+      <StatusCard title="Safe" verdict={boundedness.safe} {...safeDetail(result)} />
+      <StatusCard
+        title="Conservative"
+        verdict={conservative.verdict}
+        detail={conservative.detail}
+        items={conservative.items}
       />
-      <PropertyRow label="Safe" value={{ verdict: boundedness.safe, ...safeDetail(result) }} />
-      <PropertyRow label="Conservative" value={conservative} />
-      <PropertyRow
-        label="Live"
-        value={live}
-        sub={liveSub(live, quasiLive, result.diagnostics.deadTransitions, transitionName, lit)}
+      <StatusCard title="Live" verdict={live.verdict} detail={live.detail} items={live.items}>
+        {liveSub(live, quasiLive, result.diagnostics.deadTransitions, transitionName, lit)}
+      </StatusCard>
+      <StatusCard
+        title="Reversible"
+        verdict={reversible.verdict}
+        detail={reversible.detail}
+        items={reversible.items}
       />
-      <PropertyRow label="Reversible" value={reversible} />
-      <PropertyRow label="Deadlock-free" value={deadlockFree} />
+      <StatusCard
+        title="Deadlock-free"
+        verdict={deadlockFree.verdict}
+        detail={deadlockFree.detail}
+        items={deadlockFree.items}
+      />
     </div>
   );
 }
 
 /**
- * The Live row's quasi-live sub-note. When a transition never fires its name becomes a chip that
+ * The Live card's quasi-live sub-note. When a transition never fires its name becomes a chip that
  * spotlights it on the canvas (ids from the structured diagnostics, not the detail text). The list
  * is clipped to {@link DISPLAY_CAP} so it agrees with the Structure tab's dead-transition list.
  */
@@ -50,9 +60,11 @@ function liveSub(
 ): ReactNode {
   if (live.verdict === "yes") return undefined;
   const prefix = `Quasi-live: ${PILL_LABELS[quasiLive.verdict].toLowerCase()}`;
-  if (quasiLive.verdict !== "no" || dead.length === 0) return `${prefix}. ${quasiLive.detail}`;
+  if (quasiLive.verdict !== "no" || dead.length === 0) {
+    return <span className="text-slate-500 text-xs">{`${prefix}. ${quasiLive.detail}`}</span>;
+  }
   return (
-    <span className="flex flex-wrap items-center gap-1">
+    <span className="flex flex-wrap items-center gap-1 text-slate-500 text-xs">
       <span>{prefix}. Never fires:</span>
       {dead.slice(0, DISPLAY_CAP).map((id) => (
         <HighlightChip key={id} ids={[id]} lit={lit} size="chip">
@@ -69,7 +81,7 @@ function unsettledDetail(result: AnalysisResult): string {
   return result.stateSpaceExceeded ? STATE_CAP_EXCEEDED : NOT_COMPUTED;
 }
 
-/** A detail without its verdict — the lead plus optional bullet items, spread into a {@link PropertyResult}. */
+/** A detail without its verdict — the lead plus optional bullet items, spread into a {@link StatusCard}. */
 type Detail = Omit<PropertyResult, "verdict">;
 
 function boundedDetail(result: AnalysisResult): Detail {
@@ -105,61 +117,4 @@ function safeDetail(result: AnalysisResult): Detail {
   return { detail: unsettledDetail(result) };
 }
 
-function PropertyRow({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: PropertyResult;
-  sub?: ReactNode;
-}): JSX.Element {
-  return (
-    <div className="flex items-stretch gap-2 rounded border border-slate-200 p-2 shadow-sm">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-medium text-slate-700 text-sm">{label}</span>
-        <span className="text-slate-400 text-xs">{value.detail}</span>
-        {value.items && value.items.length > 0 && (
-          <ul className="list-disc pl-4 text-slate-400 text-xs">
-            {value.items.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        )}
-        {sub && <span className="text-slate-400 text-xs">{sub}</span>}
-      </div>
-      <VerdictIcon verdict={value.verdict} />
-    </div>
-  );
-}
-
 const PILL_LABELS: Record<Verdict, string> = { yes: "Yes", no: "No", indeterminate: "Unknown" };
-
-const VERDICT_ICON: Record<
-  Verdict,
-  { tone: string; Icon: (p: { className?: string }) => JSX.Element }
-> = {
-  yes: { tone: "bg-green-500", Icon: CheckIcon },
-  no: { tone: "bg-red-500", Icon: CrossIcon },
-  indeterminate: { tone: "bg-amber-500", Icon: QuestionIcon },
-};
-
-/**
- * Solid circular verdict badge: green check / red cross / amber question with a white glyph. Sits
- * vertically centered at the box's right edge; its diameter tracks the box height, capped at ~44px.
- */
-function VerdictIcon({ verdict }: { verdict: Verdict }): JSX.Element {
-  const { tone, Icon } = VERDICT_ICON[verdict];
-  return (
-    <div className="flex shrink-0 items-center">
-      <span
-        role="img"
-        aria-label={PILL_LABELS[verdict]}
-        title={PILL_LABELS[verdict]}
-        className={`flex aspect-square h-full max-h-11 min-h-9 min-w-9 max-w-11 items-center justify-center rounded-full text-white ${tone}`}
-      >
-        <Icon className="h-1/2 w-1/2" />
-      </span>
-    </div>
-  );
-}
