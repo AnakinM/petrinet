@@ -30,6 +30,7 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
     <div className="flex flex-col gap-4">
       <InvariantSection
         title="Place invariants"
+        help="A place invariant (P-invariant) is a positive place weighting whose weighted token sum is unchanged by every firing — a conservation law."
         kind="place"
         invariants={invariants.place}
         truncated={invariants.placeTruncated}
@@ -43,6 +44,7 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
       />
       <InvariantSection
         title="Transition invariants"
+        help="A transition invariant (T-invariant) is a multiset of firings that, run from a marking, returns the net to that same marking."
         kind="transition"
         invariants={invariants.transition}
         truncated={invariants.transitionTruncated}
@@ -60,6 +62,7 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
 
 function InvariantSection({
   title,
+  help,
   kind,
   invariants,
   truncated,
@@ -72,6 +75,7 @@ function InvariantSection({
   emptyNote,
 }: {
   title: string;
+  help: string;
   kind: "place" | "transition";
   invariants: Invariant[];
   truncated: boolean;
@@ -84,7 +88,7 @@ function InvariantSection({
   emptyNote: string;
 }): JSX.Element {
   return (
-    <Section title={title}>
+    <Section title={title} help={help}>
       {truncated ? (
         // A truncated family yields an empty list that does NOT mean "none" — say so per-family, so
         // an overflow on one family never hides the other family that computed fine.

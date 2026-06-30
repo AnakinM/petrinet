@@ -27,7 +27,10 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
 
   return (
     <div className="flex flex-col gap-4">
-      <Section title="Loops">
+      <Section
+        title="Loops"
+        help="Cyclic structure: nodes that lie on a directed cycle, grouped by strongly-connected component."
+      >
         {d.acyclic ? (
           <Note>The net is acyclic.</Note>
         ) : (
@@ -47,7 +50,10 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
         )}
       </Section>
 
-      <Section title="Dead transitions">
+      <Section
+        title="Dead transitions"
+        help="Transitions that can never fire from any reachable marking (needs the reachability pass)."
+      >
         {!behaviouralRan ? (
           <Hint />
         ) : !stateSpaceComplete ? (
@@ -66,7 +72,10 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
         )}
       </Section>
 
-      <Section title="Deadlock markings">
+      <Section
+        title="Deadlock markings"
+        help="Reachable markings in which no transition is enabled — the net is stuck."
+      >
         {!behaviouralRan ? (
           <Hint />
         ) : d.deadlocks.length > 0 ? (
@@ -90,7 +99,10 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
         )}
       </Section>
 
-      <Section title="Net facts">
+      <Section
+        title="Net facts"
+        help="Static graph facts: connectedness, and source / sink / isolated nodes by their incident arcs."
+      >
         <dl className="flex flex-col gap-2 text-sm">
           <Fact label="Connected" value={d.connected ? "Yes" : "No"} />
           <FactChips label="Source places" ids={d.sourcePlaces} nameOf={placeName} lit={lit} />

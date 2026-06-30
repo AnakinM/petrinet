@@ -15,6 +15,24 @@ const VERDICT_META: Record<
   indeterminate: { label: "Unknown", tone: "bg-amber-500", Icon: QuestionIcon },
 };
 
+/**
+ * A small "?" help affordance. The explanation shows as a native tooltip on hover — matching the
+ * app's other title-based hints (nodes, the resize grip) and never clipping inside the scrolling
+ * panel — and is exposed to assistive tech via aria-label.
+ */
+export function HelpTip({ text }: { text: string }): JSX.Element {
+  return (
+    <span
+      role="img"
+      title={text}
+      aria-label={`Help: ${text}`}
+      className="inline-flex h-3.5 w-3.5 shrink-0 cursor-help select-none items-center justify-center rounded-full border border-slate-300 font-normal text-[9px] text-slate-400 normal-case leading-none"
+    >
+      ?
+    </span>
+  );
+}
+
 /** A labelled status pill — coloured icon + word (Yes / No / Unknown) — for a property's verdict. */
 export function StatusBadge({ verdict }: { verdict: Verdict }): JSX.Element {
   const { label, tone, Icon } = VERDICT_META[verdict];
@@ -38,18 +56,23 @@ export function StatusCard({
   verdict,
   detail,
   items,
+  help,
   children,
 }: {
   title: string;
   verdict: Verdict;
   detail?: string;
   items?: string[];
+  help?: string;
   children?: ReactNode;
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-1.5 rounded border border-slate-200 p-2.5 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-medium text-slate-700 text-sm">{title}</span>
+        <span className="flex items-center gap-1 font-medium text-slate-700 text-sm">
+          {title}
+          {help && <HelpTip text={help} />}
+        </span>
         <StatusBadge verdict={verdict} />
       </div>
       {detail && <p className="text-slate-500 text-xs">{detail}</p>}
@@ -80,11 +103,22 @@ export function Overflow({ total }: { total: number }): JSX.Element | null {
   );
 }
 
-/** A titled panel section with the shared uppercase heading. */
-export function Section({ title, children }: { title: string; children: ReactNode }): JSX.Element {
+/** A titled panel section with the shared uppercase heading and an optional "?" help tooltip. */
+export function Section({
+  title,
+  help,
+  children,
+}: {
+  title: string;
+  help?: string;
+  children: ReactNode;
+}): JSX.Element {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">{title}</h3>
+      <h3 className="flex items-center gap-1 font-semibold text-slate-500 text-xs uppercase tracking-wide">
+        {title}
+        {help && <HelpTip text={help} />}
+      </h3>
       {children}
     </section>
   );

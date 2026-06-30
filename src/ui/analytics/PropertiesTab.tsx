@@ -19,15 +19,32 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
   const lit = useAnalyticsStore((s) => s.highlight).join(",");
   return (
     <div className="flex flex-col gap-2">
-      <StatusCard title="Bounded" verdict={boundedness.bounded} {...boundedDetail(result)} />
-      <StatusCard title="Safe" verdict={boundedness.safe} {...safeDetail(result)} />
+      <StatusCard
+        title="Bounded"
+        verdict={boundedness.bounded}
+        help="Bounded if some finite k caps the tokens in every place across all reachable markings — no place can grow without limit."
+        {...boundedDetail(result)}
+      />
+      <StatusCard
+        title="Safe"
+        verdict={boundedness.safe}
+        help="Safe (1-bounded) if no reachable marking ever puts more than one token in any place."
+        {...safeDetail(result)}
+      />
       <StatusCard
         title="Conservative"
         verdict={conservative.verdict}
         detail={conservative.detail}
         items={conservative.items}
+        help="Conservative if a positive place weighting keeps the weighted token total constant under every firing; strictly conservative if the plain token count never changes."
       />
-      <StatusCard title="Live" verdict={live.verdict} detail={live.detail} items={live.items}>
+      <StatusCard
+        title="Live"
+        verdict={live.verdict}
+        detail={live.detail}
+        items={live.items}
+        help="Live if, from every reachable marking, each transition can eventually be made to fire again — none becomes permanently dead."
+      >
         {liveSub(live, quasiLive, result.diagnostics.deadTransitions, transitionName, lit)}
       </StatusCard>
       <StatusCard
@@ -35,12 +52,14 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
         verdict={reversible.verdict}
         detail={reversible.detail}
         items={reversible.items}
+        help="Reversible if the initial marking M0 is reachable again from every reachable marking."
       />
       <StatusCard
         title="Deadlock-free"
         verdict={deadlockFree.verdict}
         detail={deadlockFree.detail}
         items={deadlockFree.items}
+        help="Deadlock-free if every reachable marking enables at least one transition — the net never fully stalls."
       />
     </div>
   );
