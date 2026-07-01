@@ -7,6 +7,7 @@ import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
 import { Palette } from "@/ui/Palette";
 import { PropertiesPanel } from "@/ui/PropertiesPanel";
 import { SidebarFooter } from "@/ui/SidebarFooter";
+import { SimControls } from "@/ui/SimControls";
 import { Toolbar } from "@/ui/Toolbar";
 
 function isTextEntry(target: EventTarget | null): boolean {
@@ -60,7 +61,7 @@ export default function App(): JSX.Element {
       <ReactFlowProvider>
         <div className="flex min-h-0 flex-1">
           <aside className="relative z-10 flex w-52 shrink-0 flex-col border-slate-300 border-r-[3px] bg-slate-50 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.15)]">
-            {buildMode && <Palette />}
+            {buildMode ? <Palette /> : <SimControls />}
             <PropertiesPanel />
             <SidebarFooter />
           </aside>

@@ -17,6 +17,10 @@ import type { Marking, PetriNet } from "@/domain/types";
  */
 const EMPTY_HISTORY: History = { m0: {}, steps: [], cursor: -1 };
 
+/** Auto-run speeds, in transitions fired per second; `DEFAULT_SPEED` is the initial selection. */
+export const AUTO_RUN_SPEEDS = [1, 2, 5, 10] as const;
+const DEFAULT_SPEED = 2;
+
 export interface SimState {
   /** Working marking, advanced by firing; distinct from the persisted M0. */
   marking: Marking;
@@ -24,6 +28,10 @@ export interface SimState {
   enabled: Set<string>;
   /** Firing log with a scrub cursor; in-memory only, reset on `start`/`reset`. */
   history: History;
+  /** Auto-run is firing on a timer; the transport's interval hook starts/stops on this flag. */
+  playing: boolean;
+  /** Auto-run rate in transitions per second (one of {@link AUTO_RUN_SPEEDS}). */
+  speed: number;
   /** Engine bound to the net captured at `start`; `null` outside Simulate. */
   _engine: PetriNetEngine | null;
   /** Snapshot of M0 taken at `start`, restored by `reset`. */
@@ -33,6 +41,17 @@ export interface SimState {
   start: (net: PetriNet) => void;
   /** Fire an enabled transition, advancing the marking and recording a history step; ignores disabled/unknown ids. */
   fire: (id: string) => void;
+  /**
+   * Fire one auto-run step: pick a uniformly-random enabled transition (the v1 conflict policy) and
+   * fire it. With nothing enabled the run has reached a dead marking, so it stops (clears `playing`).
+   */
+  step: () => void;
+  /** Begin auto-running (no-op at a dead marking, where there is nothing to fire). */
+  play: () => void;
+  /** Pause auto-running. */
+  pause: () => void;
+  /** Set the auto-run rate (transitions per second). */
+  setSpeed: (speed: number) => void;
   /**
    * Adjust a place's tokens by `delta` (clamped at 0) and recompute enabledness. A manual marking
    * edit, not a firing — it is not recorded in `history` (which logs only fired transitions).
@@ -50,6 +69,8 @@ export const useSimStore = create<SimState>((set, get) => ({
   marking: {},
   enabled: new Set<string>(),
   history: EMPTY_HISTORY,
+  playing: false,
+  speed: DEFAULT_SPEED,
   _engine: null,
   _m0: {},
 
@@ -62,6 +83,7 @@ export const useSimStore = create<SimState>((set, get) => ({
       marking: m0,
       enabled: new Set(engine.enabledTransitions(m0)),
       history: SimHistory.init(m0),
+      playing: false,
     });
   },
 
@@ -75,6 +97,22 @@ export const useSimStore = create<SimState>((set, get) => ({
       history: SimHistory.record(history, id, next),
     });
   },
+
+  step: () => {
+    const { enabled, fire } = get();
+    if (enabled.size === 0) {
+      set({ playing: false });
+      return;
+    }
+    const ids = [...enabled];
+    fire(ids[Math.floor(Math.random() * ids.length)]);
+  },
+
+  play: () => {
+    if (get().enabled.size > 0) set({ playing: true });
+  },
+  pause: () => set({ playing: false }),
+  setSpeed: (speed) => set({ speed }),
 
   spawnToken: (placeId, delta) => {
     const { _engine, marking } = get();
@@ -98,6 +136,7 @@ export const useSimStore = create<SimState>((set, get) => ({
       marking: _m0,
       enabled: new Set(_engine.enabledTransitions(_m0)),
       history: SimHistory.init(_m0),
+      playing: false,
     });
   },
 
@@ -108,5 +147,6 @@ export const useSimStore = create<SimState>((set, get) => ({
       marking: {},
       enabled: new Set<string>(),
       history: EMPTY_HISTORY,
+      playing: false,
     }),
 }));

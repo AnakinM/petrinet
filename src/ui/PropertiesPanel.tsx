@@ -15,7 +15,7 @@ export function PropertiesPanel(): JSX.Element {
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-slate-200 border-t p-3">
       <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">
-        {simulating ? "Simulation" : "Properties"}
+        {simulating ? "History" : "Properties"}
       </h2>
       {simulating ? <HistoryList /> : renderBody(net, selection, count)}
     </section>

@@ -7,9 +7,10 @@ import type {
   Boundedness,
   InvariantSet,
   PropertyResult,
+  Verdict,
 } from "@/domain/analysis/types";
 import { NetNames } from "@/domain/netNames";
-import type { PetriNet } from "@/domain/types";
+import type { Marking, PetriNet } from "@/domain/types";
 
 /** Behavioural verdict shown until the on-demand reachability pass has run for the current net. */
 export const NOT_COMPUTED = "Not yet computed. Run Re-analyze.";
@@ -108,6 +109,36 @@ export class NetAnalysis {
       stateSpaceExceeded: rg.exceeded,
       stateSpaceComplete: rg.complete,
       exploredStates: rg.states,
+    };
+  }
+
+  /**
+   * Is `target` reachable from M0? Builds the reachability graph and reports a three-valued verdict
+   * with a one-line explanation: reachable, not reachable (only on a fully-built graph), or
+   * indeterminate when the search was cut off by the state cap or by unboundedness.
+   */
+  static reachable(
+    net: PetriNet,
+    target: Marking,
+    cap: number = ReachabilityGraph.STATE_CAP,
+  ): { verdict: Verdict; detail: string } {
+    const rg = new ReachabilityGraph(net, cap);
+    const verdict = rg.queryReachable(target);
+    if (verdict === "yes") {
+      return { verdict, detail: "This marking is reachable from M0." };
+    }
+    if (verdict === "no") {
+      const states = rg.states.toLocaleString("en-US");
+      return {
+        verdict,
+        detail: `Not reachable: the complete reachability graph (${states} markings) does not contain it.`,
+      };
+    }
+    return {
+      verdict,
+      detail: rg.unbounded
+        ? "Unknown — the net is unbounded, so its reachable markings cannot be fully enumerated."
+        : STATE_CAP_EXCEEDED,
     };
   }
 

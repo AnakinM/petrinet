@@ -66,6 +66,17 @@ export function ExportIcon(): JSX.Element {
   );
 }
 
+/** A framed picture (sun + mountain) — export the net as an image. */
+export function ImageIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="1.5" />
+      <path d="m21 15-4-4-9 9" />
+    </ToolbarIcon>
+  );
+}
+
 /** A curved arrow back to the left — Undo. */
 export function UndoIcon(): JSX.Element {
   return (
@@ -82,6 +93,45 @@ export function RedoIcon(): JSX.Element {
     <ToolbarIcon>
       <path d="M15 7l5 5-5 5" />
       <path d="M20 12H10a5 5 0 0 0-5 5v1" />
+    </ToolbarIcon>
+  );
+}
+
+/** A filled triangle — start auto-running the simulation. */
+export function PlayIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <path d="M7 5v14l11-7z" fill="currentColor" stroke="none" />
+    </ToolbarIcon>
+  );
+}
+
+/** Two filled bars — pause auto-running. */
+export function PauseIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <rect x="7" y="5" width="3.5" height="14" fill="currentColor" stroke="none" />
+      <rect x="13.5" y="5" width="3.5" height="14" fill="currentColor" stroke="none" />
+    </ToolbarIcon>
+  );
+}
+
+/** A triangle meeting a bar — fire one step. */
+export function StepIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <path d="M6 5v14l9-7z" fill="currentColor" stroke="none" />
+      <path d="M18 5v14" />
+    </ToolbarIcon>
+  );
+}
+
+/** An open book — the "Guide" link glyph (stroke-based, matches the toolbar weight). */
+export function BookIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <path d="M2 4h6a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H2z" />
+      <path d="M22 4h-6a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H22z" />
     </ToolbarIcon>
   );
 }

@@ -4,7 +4,7 @@ import type { AnalysisResult } from "@/domain/analysis/types";
 import { useNetStore } from "@/store/netStore";
 
 /** Which analytics tab is showing. */
-export type AnalyticsTab = "properties" | "invariants" | "structure";
+export type AnalyticsTab = "properties" | "classification" | "invariants" | "structure";
 
 /**
  * Analytics-panel UI state, deliberately **separate from the net store and its zundo history**:

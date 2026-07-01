@@ -47,6 +47,10 @@ export class ReachabilityGraph {
   private readonly _liveByTerminalScc: boolean;
   /** The graph is one strongly-connected component (the reversibility witness; trust when complete). */
   private readonly _singleScc: boolean;
+  /** Stable place order for canonicalizing a marking key — shared by exploration and queries. */
+  private readonly _placeIds: string[];
+  /** Canonical keys of every marking actually reached from M0 (drives {@link reaches}). */
+  private readonly _reachedKeys: Set<string>;
 
   constructor(net: PetriNet, cap: number = ReachabilityGraph.STATE_CAP) {
     const engine = new PetriNetEngine(net);
@@ -61,7 +65,7 @@ export class ReachabilityGraph {
     const fired = new Set<string>();
     const deadlockNodes: number[] = [];
 
-    const key = (m: Marking): string => placeIds.map((id) => m[id] ?? 0).join(",");
+    const key = (m: Marking): string => ReachabilityGraph._key(placeIds, m);
     const addNode = (m: Marking, from: number, t: string): number => {
       const index = markings.length;
       markings.push(m);
@@ -134,6 +138,8 @@ export class ReachabilityGraph {
     this.unbounded = unbounded;
     this.complete = !exceeded && !unbounded;
     this.states = markings.length;
+    this._placeIds = placeIds;
+    this._reachedKeys = new Set(indexByKey.keys());
 
     this._bound = ReachabilityGraph._maxTokens(markings, placeIds);
     this._deadlocks = deadlockNodes.map((node) => ({
@@ -198,6 +204,26 @@ export class ReachabilityGraph {
   /** Transitions firing on no edge. Conclusive only once exploration is {@link complete}. */
   deadTransitions(): string[] {
     return this.complete ? this._deadTransitions : [];
+  }
+
+  /** True iff `target` was reached from M0 (compared on the canonical per-place token vector). */
+  reaches(target: Marking): boolean {
+    return this._reachedKeys.has(ReachabilityGraph._key(this._placeIds, target));
+  }
+
+  /**
+   * Is `target` reachable from M0? "yes" when it is among the explored markings; "no" only when the
+   * whole finite graph was built and it is absent; otherwise "indeterminate" — it may lie beyond the
+   * part explored before the cap or the unboundedness cut-off.
+   */
+  queryReachable(target: Marking): Verdict {
+    if (this.reaches(target)) return "yes";
+    return this.complete ? "no" : "indeterminate";
+  }
+
+  /** Canonical marking key: the per-place token counts in `placeIds` order, comma-joined. */
+  private static _key(placeIds: string[], m: Marking): string {
+    return placeIds.map((id) => m[id] ?? 0).join(",");
   }
 
   private static _maxTokens(markings: Marking[], placeIds: string[]): number {

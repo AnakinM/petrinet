@@ -169,4 +169,32 @@ describe("ReachabilityGraph", () => {
       expect(g.isLive()).toBe("no");
     });
   });
+
+  describe("reachability queries", () => {
+    it("answers yes for the initial and the other reachable marking", () => {
+      const g = new ReachabilityGraph(bounceNet());
+      expect(g.queryReachable({ p1: 1, p2: 0 })).toBe("yes");
+      expect(g.queryReachable({ p1: 0, p2: 1 })).toBe("yes");
+      expect(g.reaches({ p1: 0, p2: 1 })).toBe(true);
+    });
+
+    it("answers no for an unreachable marking once the graph is complete", () => {
+      const g = new ReachabilityGraph(bounceNet());
+      expect(g.complete).toBe(true);
+      expect(g.queryReachable({ p1: 1, p2: 1 })).toBe("no");
+    });
+
+    it("answers indeterminate for an unexplored marking of an unbounded net", () => {
+      // A source transition pumps p1 without bound; the search is cut at the covering marking.
+      const producer: PetriNet = {
+        places: [place("p1", 0)],
+        transitions: [transition("t1")],
+        arcs: [arc("t1", "p1")],
+      };
+      const g = new ReachabilityGraph(producer);
+      expect(g.complete).toBe(false);
+      expect(g.queryReachable({ p1: 999 })).toBe("indeterminate");
+      expect(g.queryReachable({ p1: 0 })).toBe("yes"); // M0 stays reachable
+    });
+  });
 });

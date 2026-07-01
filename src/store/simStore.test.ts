@@ -99,4 +99,64 @@ describe("simStore", () => {
       expect(sim().marking).toEqual({});
     });
   });
+
+  describe("auto-run", () => {
+    // p1(1) -> t1 and p2(1) -> t2: two transitions enabled at once (a conflict to choose from).
+    const choiceNet = (): PetriNet => ({
+      places: [place("p1", 1), place("p2", 1), place("a"), place("b")],
+      transitions: [transition("t1"), transition("t2")],
+      arcs: [arc("p1", "t1"), arc("t1", "a"), arc("p2", "t2"), arc("t2", "b")],
+    });
+
+    it("steps by firing one enabled transition and recording it", () => {
+      sim().start(net());
+      sim().step();
+      expect(sim().marking).toEqual({ p1: 0, p2: 1 });
+      expect(sim().history.steps).toHaveLength(1);
+    });
+
+    it("only ever steps a currently-enabled transition", () => {
+      sim().start(choiceNet());
+      sim().step();
+      // Exactly one of the two enabled transitions fired; the other stays enabled.
+      const outcomes = [
+        { p1: 0, p2: 1, a: 1, b: 0 },
+        { p1: 1, p2: 0, a: 0, b: 1 },
+      ];
+      expect(outcomes).toContainEqual(sim().marking);
+      expect(sim().enabled.size).toBe(1);
+    });
+
+    it("stops the run when a step reaches a dead marking", () => {
+      sim().start(net());
+      sim().fire("t1"); // drains p1 -> nothing enabled
+      useSimStore.setState({ playing: true });
+      sim().step();
+      expect(sim().playing).toBe(false);
+      expect(sim().marking).toEqual({ p1: 0, p2: 1 });
+    });
+
+    it("plays and pauses, but never plays at a dead marking", () => {
+      sim().start(net());
+      sim().play();
+      expect(sim().playing).toBe(true);
+      sim().pause();
+      expect(sim().playing).toBe(false);
+
+      sim().fire("t1"); // now dead
+      sim().play();
+      expect(sim().playing).toBe(false);
+    });
+
+    it("reset and stop both halt auto-running", () => {
+      sim().start(net());
+      sim().play();
+      sim().reset();
+      expect(sim().playing).toBe(false);
+
+      sim().play();
+      sim().stop();
+      expect(sim().playing).toBe(false);
+    });
+  });
 });

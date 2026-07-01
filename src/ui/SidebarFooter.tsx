@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from "react";
-import { BugIcon, GitHubIcon } from "@/ui/icons";
+import { BookIcon, BugIcon, GitHubIcon } from "@/ui/icons";
 
+const GUIDE_URL = "/guide";
 const REPO_URL = "https://github.com/AnakinM/petrinet";
 const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
 
@@ -12,6 +13,9 @@ const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
 export function SidebarFooter(): JSX.Element {
   return (
     <footer className="shrink-0 border-slate-200 border-t px-3 py-2">
+      <FooterLink href={GUIDE_URL} label="Guide">
+        <BookIcon />
+      </FooterLink>
       <FooterLink href={REPO_URL} label="GitHub">
         <GitHubIcon />
       </FooterLink>
