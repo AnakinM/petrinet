@@ -7,6 +7,11 @@ import { SidebarFooter } from "@/ui/SidebarFooter";
 describe("SidebarFooter links", () => {
   afterEach(cleanup);
 
+  it("links to the guide page", () => {
+    render(<SidebarFooter />);
+    expect(screen.getByRole("link", { name: "Guide" })).toHaveAttribute("href", "/guide");
+  });
+
   it("links to the GitHub repository in a new tab", () => {
     render(<SidebarFooter />);
     const link = screen.getByRole("link", { name: "GitHub" });

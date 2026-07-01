@@ -126,6 +126,16 @@ export function StepIcon(): JSX.Element {
   );
 }
 
+/** An open book — the "Guide" link glyph (stroke-based, matches the toolbar weight). */
+export function BookIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <path d="M2 4h6a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H2z" />
+      <path d="M22 4h-6a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H22z" />
+    </ToolbarIcon>
+  );
+}
+
 /**
  * The GitHub "Octocat" mark — solid/fill-based (unlike the stroke toolbar glyphs), 16px.
  * Used in the left-sidebar footer link row.
