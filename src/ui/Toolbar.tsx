@@ -1,10 +1,7 @@
 import { type JSX, type ReactNode, useEffect, useRef, useState } from "react";
-import type { PetriNet } from "@/domain/types";
-import { ImageFile, NetFile, NpnFile, PnmlFile } from "@/lib/download";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
-import { type Mode, netHistory, useNetStore, useTemporal } from "@/store/netStore";
-import { useSimStore } from "@/store/simStore";
+import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import {
   ExportIcon,
   GridIcon,
@@ -14,53 +11,15 @@ import {
   RedoIcon,
   UndoIcon,
 } from "@/ui/icons";
-
-const EMPTY_NET: PetriNet = { places: [], transitions: [], arcs: [] };
-
-function newNet(): void {
-  if (window.confirm("Discard the current net and start a new one?")) {
-    useNetStore.getState().setNet(EMPTY_NET);
-  }
-}
-
-function importNet(): void {
-  NetFile.open()
-    .then(({ net }) => useNetStore.getState().setNet(net))
-    .catch((error: Error) => window.alert(`Import failed: ${error.message}`));
-}
-
-function exportNet(): void {
-  NpnFile.save(useNetStore.getState().net);
-}
-
-/**
- * The net to render to an image: M0 in Build, but the live working marking in Simulate, so the
- * export always matches what the user currently sees on the canvas.
- */
-function imageNet(): PetriNet {
-  const { net, mode } = useNetStore.getState();
-  if (mode !== "simulate") return net;
-  const { marking } = useSimStore.getState();
-  return { ...net, places: net.places.map((p) => ({ ...p, tokens: marking[p.id] ?? p.tokens })) };
-}
-
-/** Enter Simulate: drop any active Build tool, clear the selection, lock the net, snapshot M0. */
-function enterSimulate(): void {
-  const store = useNetStore.getState();
-  if (store.mode === "simulate") return;
-  useBuildStore.getState().setTool("idle");
-  store.select({ nodes: [], edges: [] });
-  store.setMode("simulate");
-  useSimStore.getState().start(store.net);
-}
-
-/** Return to Build and drop the simulation working copy. */
-function enterBuild(): void {
-  const store = useNetStore.getState();
-  if (store.mode === "build") return;
-  store.setMode("build");
-  useSimStore.getState().stop();
-}
+import { ModeToggle } from "@/ui/ModeToggle";
+import {
+  exportNet,
+  exportPng,
+  exportPnml,
+  exportSvg,
+  importNet,
+  newNet,
+} from "@/ui/toolbarActions";
 
 /** Top bar: New / Import / Export, undo / redo, and the Build ↔ Simulate toggle. */
 export function Toolbar(): JSX.Element {
@@ -146,9 +105,9 @@ function ExportAsMenu(): JSX.Element {
 
   const exportAs = (kind: "pnml" | "png" | "svg"): void => {
     // PNML is a structural export (M0, like .npn); the image formats capture what's on screen.
-    if (kind === "pnml") PnmlFile.save(useNetStore.getState().net);
-    else if (kind === "png") ImageFile.savePng(imageNet());
-    else ImageFile.saveSvg(imageNet());
+    if (kind === "pnml") exportPnml();
+    else if (kind === "png") exportPng();
+    else exportSvg();
     setOpen(false);
   };
 
@@ -185,44 +144,6 @@ function MenuItem({
       type="button"
       onClick={onClick}
       className="px-3 py-1 text-left text-slate-700 text-sm hover:bg-slate-100"
-    >
-      {children}
-    </button>
-  );
-}
-
-function ModeToggle({ mode }: { mode: Mode }): JSX.Element {
-  return (
-    <div className="flex overflow-hidden rounded border border-slate-300 text-sm">
-      <ModeTab active={mode === "build"} onClick={enterBuild}>
-        Build
-      </ModeTab>
-      <ModeTab active={mode === "simulate"} onClick={enterSimulate}>
-        Simulate
-      </ModeTab>
-    </div>
-  );
-}
-
-function ModeTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: string;
-}): JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={
-        active
-          ? "bg-slate-700 px-3 py-1 text-white"
-          : "bg-white px-3 py-1 text-slate-700 hover:bg-slate-50"
-      }
     >
       {children}
     </button>

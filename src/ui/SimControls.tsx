@@ -1,27 +1,22 @@
-import { type JSX, type ReactNode, useEffect } from "react";
+import type { JSX, ReactNode } from "react";
 import { AUTO_RUN_SPEEDS, useSimStore } from "@/store/simStore";
 import { PauseIcon, PlayIcon, StepIcon } from "@/ui/icons";
+import { useAutoRunTimer } from "@/ui/useAutoRunTimer";
 
 /**
  * Simulate-mode transport, pinned at the top of the left sidebar (the Simulate-mode counterpart to
  * the Build-mode {@link Palette}). Play/Pause auto-runs, Step fires one transition, Reset returns to
  * M0, and the selector sets the auto-run rate.
  *
- * The firing timer lives here as a mounted-only effect: the panel is rendered only in Simulate, so
- * leaving Simulate unmounts it and tears the interval down. While `playing`, it ticks `step` every
- * (1000 / speed) ms; the pure engine does the actual firing. `step()` clears `playing` itself once it
- * reaches a dead marking, and that re-render removes the interval via this effect's cleanup.
+ * The auto-run firing loop is the shared {@link useAutoRunTimer} hook. This panel renders only in
+ * Simulate, so leaving Simulate unmounts it and tears the interval down.
  */
 export function SimControls(): JSX.Element {
   const playing = useSimStore((s) => s.playing);
   const speed = useSimStore((s) => s.speed);
   const canFire = useSimStore((s) => s.enabled.size > 0);
 
-  useEffect(() => {
-    if (!playing) return;
-    const id = window.setInterval(() => useSimStore.getState().step(), 1000 / speed);
-    return () => window.clearInterval(id);
-  }, [playing, speed]);
+  useAutoRunTimer();
 
   return (
     <section className="flex flex-col gap-3 p-3">

@@ -97,6 +97,24 @@ export function RedoIcon(): JSX.Element {
   );
 }
 
+/** Three stacked lines — the mobile "more actions" (hamburger) menu. */
+export function MenuIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </ToolbarIcon>
+  );
+}
+
+/** Four framing corners — zoom the viewport to fit the whole net. */
+export function FitViewIcon(): JSX.Element {
+  return (
+    <ToolbarIcon>
+      <path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3" />
+    </ToolbarIcon>
+  );
+}
+
 /** A filled triangle — start auto-running the simulation. */
 export function PlayIcon(): JSX.Element {
   return (

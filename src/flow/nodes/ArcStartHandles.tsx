@@ -1,6 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import type { JSX, PointerEvent as ReactPointerEvent } from "react";
 import { useBuildStore } from "@/store/buildStore";
+import { useIsMobile } from "@/ui/useIsMobile";
 
 // Small indigo circle straddling the node's left/right border. Hidden by default, it fades in
 // while the node is hovered (group-hover on the node wrapper) and stays while it is selected.
@@ -11,6 +12,10 @@ const DOT =
  * The arc-start affordance: two circles on a node's left/right border. Pressing one begins a
  * click-to-draw arc from this node (which border is just the launch point — the real endpoint
  * is computed by border geometry). Body clicks still select the node. Build mode only.
+ *
+ * Desktop only: these are hover/selection dots with no touch analogue, and on a phone a stray tap
+ * near a selected node's border would start an unwanted draw — so on mobile the explicit Arc tool
+ * is the single path and these are hidden.
  */
 export function ArcStartHandles({
   nodeId,
@@ -22,7 +27,8 @@ export function ArcStartHandles({
   const { screenToFlowPosition } = useReactFlow();
   // Drawing an arc is an Idle-mode action; a placing/select tool hides the handles entirely.
   const idle = useBuildStore((s) => s.tool === "idle");
-  if (!idle) return null;
+  const isMobile = useIsMobile();
+  if (!idle || isMobile) return null;
   const visibility = selected ? "opacity-100" : "opacity-0 group-hover:opacity-100";
 
   const start = (e: ReactPointerEvent): void => {

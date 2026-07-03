@@ -31,6 +31,7 @@ import { NetOps } from "@/domain/netOps";
 import type { PetriNet, Vec2 } from "@/domain/types";
 import { AlignmentGuideLayer } from "@/flow/AlignmentGuideLayer";
 import { ArcDrawLayer } from "@/flow/ArcDrawLayer";
+import { ArcDraw } from "@/flow/arcDraw";
 import { ArcEdge } from "@/flow/edges/ArcEdge";
 import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { PlaceNode } from "@/flow/nodes/PlaceNode";
@@ -40,6 +41,7 @@ import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/pro
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
+import { useIsMobile } from "@/ui/useIsMobile";
 
 // Stable module-level references: recreating these each render makes React Flow warn.
 const NODE_TYPES: NodeTypes = { place: PlaceNode, transition: TransitionNode };
@@ -76,6 +78,14 @@ export function Canvas(): JSX.Element {
   // can't nudge or select them. onNodeClick edits M0; onNodeClick's presence also keeps the node
   // wrappers clickable (RF gives them pointer-events when a click handler exists).
   const tokenTool = editable && tool === "token";
+  // Arc tool: an explicit tap-to-connect tool (tap source → tap target). Like the token tool it
+  // suppresses node drag/select so a tap starts/finishes the arc instead of moving or selecting.
+  const arcTool = editable && tool === "arc";
+  const isMobile = useIsMobile();
+  // Suppress node drag + marquee-select for any tool that turns a tap into its own action: token,
+  // arc, and — on touch only, where placing has no capture overlay — the placing tools (so a tap
+  // just drops a node and never nudges/selects an existing one).
+  const lockNodes = tokenTool || arcTool || (isMobile && placing);
   const highlight = useAnalyticsStore((s) => s.highlight);
   const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
 
@@ -228,15 +238,56 @@ export function Canvas(): JSX.Element {
     });
   }, []);
 
-  // Token tool: clicking a place adds a token, shift-click removes one (mirrors the Simulate place).
-  // `setTokens` clamps at 0, so shift-click at 0 is a safe no-op. Clicks on transitions are ignored.
-  // The tool is Build-only (it resets to idle on entering Simulate), so the tool check is sufficient.
-  const onNodeClick = useCallback((event: ReactMouseEvent, node: PetriFlowNode): void => {
-    if (useBuildStore.getState().tool !== "token") return;
-    const place = useNetStore.getState().net.places.find((p) => p.id === node.id);
-    if (!place) return;
-    useNetStore.getState().setTokens(place.id, place.tokens + (event.shiftKey ? -1 : 1));
-  }, []);
+  // Node taps drive the token and arc tools (both suppress RF drag/select, so a tap is unambiguous).
+  //  · Token: clicking a place adds a token, shift-click removes one (mirrors the Simulate place);
+  //    `setTokens` clamps at 0, so shift-click at 0 is a safe no-op, and transition taps are ignored.
+  //  · Arc: the first tap starts a draw from the node; a later tap finishes on a valid target. On
+  //    desktop the draw's capture overlay owns the finish, so there this branch only ever starts.
+  // Both tools are Build-only (they reset to idle on entering Simulate), so the tool check suffices.
+  const onNodeClick = useCallback(
+    (event: ReactMouseEvent, node: PetriFlowNode): void => {
+      const activeTool = useBuildStore.getState().tool;
+      if (activeTool === "token") {
+        const place = useNetStore.getState().net.places.find((p) => p.id === node.id);
+        if (!place) return;
+        useNetStore.getState().setTokens(place.id, place.tokens + (event.shiftKey ? -1 : 1));
+        return;
+      }
+      if (activeTool === "arc") {
+        const at = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+        const draft = useBuildStore.getState().draft;
+        if (!draft) {
+          useBuildStore.getState().startArc(node.id, at);
+          return;
+        }
+        ArcDraw.applyTap(ArcDraw.resolveTap(useNetStore.getState().net, draft, at, node.id), draft);
+      }
+    },
+    [screenToFlowPosition],
+  );
+
+  // Empty-canvas taps on touch, where the place/arc tools run without a capture overlay (so
+  // one-finger pan and pinch-zoom stay live): drop that kind of node at the tap, or add a bend to
+  // the arc in progress. On desktop these tools mount a capture overlay that consumes the click
+  // first, so this handler is guarded to mobile and never fires there.
+  const onPaneClick = useCallback(
+    (event: ReactMouseEvent): void => {
+      if (!isMobile) return;
+      const activeTool = useBuildStore.getState().tool;
+      const at = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      if (activeTool === "arc") {
+        const draft = useBuildStore.getState().draft;
+        if (draft) useBuildStore.getState().addBend(at);
+        return;
+      }
+      if (activeTool !== "place" && activeTool !== "transition") return;
+      const current = useNetStore.getState().net;
+      const pos = AlignmentGuides.resolve(at, NetOps.nodeCenters(current), snap).position;
+      if (activeTool === "place") useNetStore.getState().addPlace(pos);
+      else useNetStore.getState().addTransition(pos);
+    },
+    [isMobile, screenToFlowPosition, snap],
+  );
 
   const onMoveEnd = useCallback((_event: unknown, viewport: Viewport) => {
     useNetStore.getState().setViewport(viewport);
@@ -251,6 +302,9 @@ export function Canvas(): JSX.Element {
   const onContextMenu = useCallback(
     (event: ReactMouseEvent): void => {
       event.preventDefault();
+      // On touch, a long-press fires a synthetic contextmenu; the right-click policy (clear
+      // selection / remove a bend) is a mouse affordance, so suppress the native menu and bail.
+      if (isMobile) return;
       const { net, selection, mode } = useNetStore.getState();
       if (mode !== "build") return;
 
@@ -274,12 +328,15 @@ export function Canvas(): JSX.Element {
         useNetStore.getState().select({ nodes: [], edges: [] });
       }
     },
-    [screenToFlowPosition, getViewport, setNodes, setEdges],
+    [isMobile, screenToFlowPosition, getViewport, setNodes, setEdges],
   );
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: canvas-only right-click policy; all other pointer interaction is React Flow's pane below.
-    <div className="relative h-full w-full bg-white" onContextMenu={onContextMenu}>
+    <div
+      className={`relative h-full w-full bg-white${isMobile ? " canvas-surface" : ""}`}
+      onContextMenu={onContextMenu}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -288,19 +345,21 @@ export function Canvas(): JSX.Element {
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         onSelectionChange={onSelectionChange}
         onMoveEnd={onMoveEnd}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         connectionMode={ConnectionMode.Loose}
         nodeOrigin={[0.5, 0.5]}
-        nodesDraggable={editable && !tokenTool}
+        nodesDraggable={editable && !lockNodes}
         nodesConnectable={false}
-        elementsSelectable={editable && !tokenTool}
+        elementsSelectable={editable && !lockNodes}
         // Zoom-on-double-click only with no tool active (idle Build). Any active tool turns a place
         // into a rapid click target (e.g. Token add) and Simulate fires transitions on click, so a
-        // fast double-click there must not be hijacked into a zoom.
-        zoomOnDoubleClick={editable && tool === "idle"}
+        // fast double-click there must not be hijacked into a zoom. Off on touch too, where a
+        // double-tap on a node would otherwise fight rapid taps (pinch still zooms).
+        zoomOnDoubleClick={editable && tool === "idle" && !isMobile}
         deleteKeyCode={null}
         panOnScroll
         // Marquee (select) tool: left-drag the empty pane rubber-bands nodes (a drag on a selected
@@ -311,21 +370,32 @@ export function Canvas(): JSX.Element {
         selectionMode={SelectionMode.Partial}
         minZoom={0.1}
         maxZoom={4}
+        // Touch: forgive finger jitter so a tap still registers as a click (place / bend / select /
+        // fire) rather than a micro-drag or micro-pan that would swallow it. Desktop keeps RF's
+        // defaults (a stricter click distance suits a mouse).
+        {...(isMobile ? { nodeDragThreshold: 6, nodeClickDistance: 6, paneClickDistance: 6 } : {})}
         {...(initialViewport
           ? { defaultViewport: initialViewport }
           : { fitView: true, fitViewOptions: { padding: 0.2 } })}
       >
         <Background variant={BackgroundVariant.Lines} gap={24} color="#e2e8f0" />
-        <MiniMap
-          pannable
-          zoomable
-          nodeStrokeColor="#334155"
-          nodeColor={(node) => (node.type === "transition" ? "#334155" : "#ffffff")}
-        />
-        <Controls showInteractive={false} />
+        {/* The minimap and zoom controls sit where the mobile tool dock does; pinch replaces them. */}
+        {!isMobile && (
+          <>
+            <MiniMap
+              pannable
+              zoomable
+              nodeStrokeColor="#334155"
+              nodeColor={(node) => (node.type === "transition" ? "#334155" : "#ffffff")}
+            />
+            <Controls showInteractive={false} />
+          </>
+        )}
       </ReactFlow>
-      {drawing && <ArcDrawLayer />}
-      {placing && <PlacingLayer kind={tool === "place" ? "place" : "transition"} />}
+      {/* Desktop draws through a capture overlay; touch routes taps via React Flow (above) and
+          mounts only the preview, and places without an overlay so pan/pinch stay live. */}
+      {drawing && <ArcDrawLayer interactive={!isMobile} />}
+      {placing && !isMobile && <PlacingLayer kind={tool === "place" ? "place" : "transition"} />}
       <AlignmentGuideLayer guides={dragGuides} />
     </div>
   );
