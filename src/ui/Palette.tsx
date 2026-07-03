@@ -1,10 +1,12 @@
 import type { JSX, ReactNode } from "react";
 import { useBuildStore } from "@/store/buildStore";
+import { TOOLS } from "@/ui/buildTools";
 
 /**
  * Mutually-exclusive placing tools. Clicking a tool activates it (a ghost then follows the cursor
  * and clicks drop that kind of node); clicking the active tool again returns to Idle. Build mode
- * only — the panel above Properties.
+ * only — the panel above Properties. Tools come from the shared {@link TOOLS} descriptor, so the
+ * desktop palette and the mobile dock render the same set.
  */
 export function Palette(): JSX.Element {
   const tool = useBuildStore((s) => s.tool);
@@ -13,24 +15,12 @@ export function Palette(): JSX.Element {
   return (
     <section className="flex flex-col gap-3 p-3">
       <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Palette</h2>
-      <ToolButton active={tool === "place"} onClick={() => toggleTool("place")}>
-        <span className="h-5 w-5 rounded-full border-2 border-current" />
-        Place
-      </ToolButton>
-      <ToolButton active={tool === "transition"} onClick={() => toggleTool("transition")}>
-        <span className="h-5 w-[7px] bg-current" />
-        Transition
-      </ToolButton>
-      <ToolButton active={tool === "select"} onClick={() => toggleTool("select")}>
-        <span className="h-5 w-5 rounded-[2px] border border-current border-dashed" />
-        Select
-      </ToolButton>
-      <ToolButton active={tool === "token"} onClick={() => toggleTool("token")}>
-        <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-current">
-          <span className="h-1.5 w-1.5 rounded-full bg-current" />
-        </span>
-        Token
-      </ToolButton>
+      {TOOLS.map((t) => (
+        <ToolButton key={t.id} active={tool === t.id} onClick={() => toggleTool(t.id)}>
+          {t.swatch}
+          {t.label}
+        </ToolButton>
+      ))}
     </section>
   );
 }

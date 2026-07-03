@@ -11,6 +11,7 @@ import type { Vec2 } from "@/domain/types";
 import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { ARC_COLOR, type ArcFlowEdge } from "@/flow/projection";
 import { useNetStore } from "@/store/netStore";
+import { useIsMobile } from "@/ui/useIsMobile";
 
 /** An in-progress handle drag: the active point index plus a live draft polyline. */
 type Drag =
@@ -33,6 +34,7 @@ export function ArcEdge({
   selected,
 }: EdgeProps<ArcFlowEdge>): JSX.Element | null {
   const editable = useNetStore((s) => s.mode === "build");
+  const isMobile = useIsMobile();
   const { screenToFlowPosition } = useReactFlow();
   const [drag, setDrag] = useState<Drag | null>(null);
   // Last waypoint press, for manual double-tap detection (native dblclick is unreliable
@@ -121,6 +123,7 @@ export function ArcEdge({
                 key={`pt-${i}`}
                 point={p}
                 variant={end0 ? "endpoint" : "waypoint"}
+                touch={isMobile}
                 onPointerDown={(e) => {
                   // Double-tapping an interior waypoint removes it (endpoints are not removable).
                   if (!end0 && tapIsDouble(i)) {
@@ -150,6 +153,7 @@ export function ArcEdge({
                 key={`seg-${i}`}
                 point={mid}
                 variant="insert"
+                touch={isMobile}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -163,39 +167,52 @@ export function ArcEdge({
   );
 }
 
-const DOT_BASE = "nodrag nopan pointer-events-auto absolute rounded-full";
 const HANDLE_Z = 1001;
-const DOT_VARIANT: Record<"endpoint" | "waypoint" | "insert", string> = {
-  endpoint:
-    "h-[10px] w-[10px] cursor-grab border border-white bg-indigo-500 active:cursor-grabbing",
-  waypoint:
-    "h-[10px] w-[10px] cursor-grab border-2 border-indigo-500 bg-white active:cursor-grabbing",
-  insert:
-    "h-[9px] w-[9px] cursor-copy border border-indigo-400 bg-white opacity-40 hover:opacity-100",
+type DotVariant = "endpoint" | "waypoint" | "insert";
+// The visible handle (an inner element) keeps its small size at every breakpoint; the outer element
+// is the pointer target, widened to a comfortable ~24px on touch (see {@link Dot}).
+const DOT_VISUAL: Record<DotVariant, string> = {
+  endpoint: "h-[10px] w-[10px] border border-white bg-indigo-500",
+  waypoint: "h-[10px] w-[10px] border-2 border-indigo-500 bg-white",
+  insert: "h-[9px] w-[9px] border border-indigo-400 bg-white opacity-40 group-hover:opacity-100",
+};
+const DOT_CURSOR: Record<DotVariant, string> = {
+  endpoint: "cursor-grab active:cursor-grabbing",
+  waypoint: "cursor-grab active:cursor-grabbing",
+  insert: "cursor-copy",
 };
 
-/** A draggable/clickable edit handle positioned at a flow-space point. */
+/**
+ * A draggable/clickable edit handle at a flow-space point. The outer element is the hit target
+ * (enlarged to ~24px on touch so a finger can grab it); the inner element is the small visible dot,
+ * unchanged across breakpoints.
+ */
 function Dot({
   point,
   variant,
+  touch,
   onPointerDown,
   onPointerMove,
   onPointerUp,
   onClick,
 }: {
   point: Vec2;
-  variant: "endpoint" | "waypoint" | "insert";
+  variant: DotVariant;
+  touch: boolean;
   onPointerDown: (e: ReactPointerEvent) => void;
   onPointerMove?: (e: ReactPointerEvent) => void;
   onPointerUp?: (e: ReactPointerEvent) => void;
   onClick?: (e: ReactMouseEvent) => void;
 }): JSX.Element {
+  const hit = touch ? 24 : variant === "insert" ? 9 : 10;
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: pointer-driven canvas edit handle, like a React Flow node — not a semantic control.
     // biome-ignore lint/a11y/useKeyWithClickEvents: dragging/clicking a waypoint on the canvas has no keyboard analogue.
     <div
-      className={`${DOT_BASE} ${DOT_VARIANT[variant]}`}
+      className={`group nodrag nopan pointer-events-auto absolute flex items-center justify-center ${DOT_CURSOR[variant]}`}
       style={{
+        width: hit,
+        height: hit,
         transform: `translate(-50%, -50%) translate(${point.x}px, ${point.y}px)`,
         // Sit above React Flow's nodes (and their connection handles, which a magnetic
         // endpoint lands on) so an endpoint on a node border stays grabbable. 1001 clears
@@ -206,6 +223,8 @@ function Dot({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onClick={onClick}
-    />
+    >
+      <span className={`rounded-full ${DOT_VISUAL[variant]}`} />
+    </div>
   );
 }

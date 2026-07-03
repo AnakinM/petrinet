@@ -8,6 +8,7 @@ import {
 import { NetOps } from "@/domain/netOps";
 import { NodeGeometry } from "@/domain/nodeGeometry";
 import type { PetriNet, Vec2 } from "@/domain/types";
+import { ArcDraw } from "@/flow/arcDraw";
 import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { type ArcDraft, useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
@@ -21,13 +22,20 @@ const HIT_PAD = 6;
 /**
  * The click-to-draw arc layer, mounted only while an arc is in progress (see {@link ArcDraft}).
  *
- * It renders a screen-space capture overlay that owns the draw state machine — move tracks the
- * cursor, a click on empty canvas drops a bend, a click on a valid target node finishes the arc
- * (an invalid target or the source itself is ignored and the draw continues), and Esc or
- * right-click cancels. The rubber-band line and the valid/invalid hover ring are drawn in
- * flow-space through a {@link ViewportPortal} so they pan and zoom with the canvas.
+ * When `interactive` (desktop, the default) it renders a screen-space capture overlay that owns the
+ * draw state machine — move tracks the cursor, a click on empty canvas drops a bend, a click on a
+ * valid target node finishes the arc (an invalid target or the source itself is ignored and the
+ * draw continues), and Esc or right-click cancels. When not interactive (touch) the capture overlay
+ * is omitted and taps route through React Flow's node/pane handlers instead (so one-finger pan and
+ * pinch-zoom stay live mid-draw); only the preview is drawn. Either way the rubber-band line and the
+ * valid/invalid hover ring are drawn in flow-space through a {@link ViewportPortal} so they pan and
+ * zoom with the canvas.
  */
-export function ArcDrawLayer(): JSX.Element | null {
+export function ArcDrawLayer({
+  interactive = true,
+}: {
+  interactive?: boolean;
+}): JSX.Element | null {
   const draft = useBuildStore((s) => s.draft);
   const net = useNetStore((s) => s.net);
   const { screenToFlowPosition } = useReactFlow();
@@ -56,15 +64,7 @@ export function ArcDrawLayer(): JSX.Element | null {
     const at = flowAt(e);
     const current = useNetStore.getState().net;
     const hit = NetOps.nodeAt(current, at, HIT_PAD);
-    if (hit) {
-      // Finish only on a valid target; the source itself or an invalid pair is ignored.
-      if (hit !== draft.source && NetOps.canConnect(current, draft.source, hit)) {
-        useNetStore.getState().connect(draft.source, hit, draft.bends);
-        useBuildStore.getState().cancelArc();
-      }
-      return;
-    }
-    useBuildStore.getState().addBend(at);
+    ArcDraw.applyTap(ArcDraw.resolveTap(current, draft, at, hit), draft);
   };
 
   const onContextMenu = (e: ReactMouseEvent): void => {
@@ -81,15 +81,17 @@ export function ArcDrawLayer(): JSX.Element | null {
 
   return (
     <>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: pointer-driven canvas draw surface, not a semantic control. */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: bend/finish clicks on the canvas have no keyboard analogue; Esc cancels via the window listener above. */}
-      <div
-        className={`absolute inset-0 ${cursorClass}`}
-        style={{ zIndex: 1100 }}
-        onPointerMove={onPointerMove}
-        onClick={onClick}
-        onContextMenu={onContextMenu}
-      />
+      {interactive && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: pointer-driven canvas draw surface, not a semantic control.
+        // biome-ignore lint/a11y/useKeyWithClickEvents: bend/finish clicks on the canvas have no keyboard analogue; Esc cancels via the window listener above.
+        <div
+          className={`absolute inset-0 ${cursorClass}`}
+          style={{ zIndex: 1100 }}
+          onPointerMove={onPointerMove}
+          onClick={onClick}
+          onContextMenu={onContextMenu}
+        />
+      )}
       <ViewportPortal>
         <svg
           aria-hidden="true"

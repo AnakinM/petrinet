@@ -4,11 +4,13 @@ import { Canvas } from "@/flow/Canvas";
 import { useBuildStore } from "@/store/buildStore";
 import { netHistory, useNetStore } from "@/store/netStore";
 import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
+import { MobileShell } from "@/ui/mobile/MobileShell";
 import { Palette } from "@/ui/Palette";
 import { PropertiesPanel } from "@/ui/PropertiesPanel";
 import { SidebarFooter } from "@/ui/SidebarFooter";
 import { SimControls } from "@/ui/SimControls";
 import { Toolbar } from "@/ui/Toolbar";
+import { useIsMobile } from "@/ui/useIsMobile";
 
 function isTextEntry(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
@@ -19,6 +21,7 @@ function isTextEntry(target: EventTarget | null): boolean {
 }
 
 export default function App(): JSX.Element {
+  const isMobile = useIsMobile();
   const buildMode = useNetStore((s) => s.mode === "build");
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
@@ -54,6 +57,10 @@ export default function App(): JSX.Element {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // Below the breakpoint, swap in the touch shell; the desktop layout is left byte-identical. The
+  // keydown handler above still runs on mobile — harmless, and useful with an attached keyboard.
+  if (isMobile) return <MobileShell />;
 
   return (
     <div className="flex h-screen w-screen flex-col">

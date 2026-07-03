@@ -133,3 +133,63 @@ describe("Canvas paste selection projection", () => {
     expect(container.querySelector('[data-id="p1"]')?.classList.contains("selected")).toBe(false);
   });
 });
+
+describe("Canvas arc tool", () => {
+  const ORIGIN = { x: 0, y: 0 };
+  const NET: PetriNet = {
+    places: [
+      { id: "p1", name: "p1", tokens: 0, position: ORIGIN },
+      { id: "p2", name: "p2", tokens: 0, position: { x: 120, y: 0 } },
+    ],
+    transitions: [{ id: "t1", name: "t1", position: { x: 60, y: 0 } }],
+    arcs: [],
+  };
+
+  beforeEach(() => {
+    useNetStore.getState().setNet(NET);
+    useBuildStore.getState().setTool("arc");
+  });
+  afterEach(() => {
+    useBuildStore.getState().cancelArc();
+    useBuildStore.getState().setTool("idle");
+  });
+
+  function renderCanvas(): HTMLElement {
+    return render(
+      <ReactFlowProvider>
+        <Canvas />
+      </ReactFlowProvider>,
+    ).container;
+  }
+
+  function tapNode(container: HTMLElement, id: string): void {
+    const el = container.querySelector(`[data-id="${id}"]`);
+    if (!el) throw new Error(`node ${id} not rendered`);
+    fireEvent.click(el);
+  }
+
+  it("starts a draw from the first tapped node without creating an arc", () => {
+    const container = renderCanvas();
+    tapNode(container, "p1");
+    expect(useBuildStore.getState().draft?.source).toBe("p1");
+    expect(useNetStore.getState().net.arcs).toHaveLength(0);
+  });
+
+  it("connects source → valid target on the second tap and ends the draw", () => {
+    const container = renderCanvas();
+    tapNode(container, "p1");
+    tapNode(container, "t1");
+    const { arcs } = useNetStore.getState().net;
+    expect(arcs).toHaveLength(1);
+    expect(arcs[0]).toMatchObject({ source: "p1", target: "t1" });
+    expect(useBuildStore.getState().draft).toBeNull();
+  });
+
+  it("ignores a same-kind target and keeps drawing", () => {
+    const container = renderCanvas();
+    tapNode(container, "p1");
+    tapNode(container, "p2"); // place → place is not a valid connection
+    expect(useNetStore.getState().net.arcs).toHaveLength(0);
+    expect(useBuildStore.getState().draft?.source).toBe("p1");
+  });
+});

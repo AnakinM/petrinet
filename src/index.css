@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+/* Dynamic viewport height with a static fallback: browsers without `dvh` keep 100vh; modern mobile
+   browsers use 100dvh so the bottom tool dock clears the retracting URL bar. */
+.app-h-dynamic {
+  height: 100vh;
+}
+@supports (height: 100dvh) {
+  .app-h-dynamic {
+    height: 100dvh;
+  }
+}
+
+/* The canvas is a direct-manipulation surface: suppress the iOS long-press callout and text
+   selection so dragging a node or drawing an arc never selects a label or pops a selection bubble.
+   (React Flow sets `touch-action` on its own pane; this deliberately does not override that.) */
+.canvas-surface {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Stop pull-to-refresh / scroll-chaining at the app root; sheets and menus opt back into their own
+   scroll with `overscroll-contain`. */
+html,
+body {
+  overscroll-behavior: none;
+}

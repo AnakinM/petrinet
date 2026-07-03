@@ -6,6 +6,7 @@ import { ClassificationTab } from "@/ui/analytics/ClassificationTab";
 import { InvariantsTab } from "@/ui/analytics/InvariantsTab";
 import { PropertiesTab } from "@/ui/analytics/PropertiesTab";
 import { StructureTab } from "@/ui/analytics/StructureTab";
+import { useIsMobile } from "@/ui/useIsMobile";
 
 /**
  * Resizable right-side overlay rendering the current net's analysis. It floats above the canvas
@@ -13,6 +14,7 @@ import { StructureTab } from "@/ui/analytics/StructureTab";
  * always stays visible. Closed ⇒ renders nothing.
  */
 export function AnalyticsPanel(): JSX.Element | null {
+  const isMobile = useIsMobile();
   const open = useAnalyticsStore((s) => s.open);
   const width = useAnalyticsStore((s) => s.width);
   const activeTab = useAnalyticsStore((s) => s.activeTab);
@@ -35,12 +37,17 @@ export function AnalyticsPanel(): JSX.Element | null {
 
   return (
     <aside
-      style={{ width }}
-      className="absolute inset-y-0 right-0 z-10 flex flex-col border-slate-300 border-l-[3px] bg-white shadow-lg"
+      style={isMobile ? undefined : { width }}
+      className={
+        isMobile
+          ? "absolute inset-0 z-50 flex flex-col bg-white"
+          : "absolute inset-y-0 right-0 z-10 flex flex-col border-slate-300 border-l-[3px] bg-white shadow-lg"
+      }
     >
-      <ResizeHandle />
+      {/* Desktop floats a resizable right rail; mobile takes over the canvas area full-screen. */}
+      {!isMobile && <ResizeHandle />}
       <PanelHeader activeTab={activeTab} />
-      <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4">
         {empty || result === null ? (
           <p className="text-slate-400 text-sm">Nothing to analyse. Add places and transitions.</p>
         ) : (
