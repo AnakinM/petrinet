@@ -39,6 +39,8 @@ describe("Menu", () => {
     await userEvent.click(screen.getByRole("menuitem", { name: "One" }));
     expect(onSelect).toHaveBeenCalledOnce();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    // The chosen entry is gone, so the focus goes back to the trigger, not to the page.
+    expect(trigger()).toHaveFocus();
   });
 
   it("moves through the entries with the keyboard and skips disabled ones", async () => {
@@ -114,10 +116,14 @@ describe("Menu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("closes on Tab", async () => {
+  it("closes on Tab and lets the browser move on from the trigger", async () => {
     renderMenu([{ entries: [{ label: "One" }] }]);
     await userEvent.click(trigger());
-    await userEvent.tab();
+    const notPrevented = fireEvent.keyDown(screen.getByRole("menuitem", { name: "One" }), {
+      key: "Tab",
+    });
+    expect(notPrevented).toBe(true);
+    expect(trigger()).toHaveFocus();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
@@ -156,5 +162,19 @@ describe("Menu", () => {
     expect(link).toHaveAttribute("target", "_blank");
     fireEvent.click(link);
     expect(onSelect).toHaveBeenCalledOnce();
+  });
+
+  it("follows a link entry on Space, as on Enter", async () => {
+    const onSelect = vi.fn();
+    renderMenu([{ entries: [{ label: "Docs", href: "https://example.com", onSelect }] }]);
+    trigger().focus();
+    await userEvent.keyboard("{ArrowDown}");
+    const link = screen.getByRole("menuitem", { name: "Docs" });
+    expect(link).toHaveFocus();
+    const notPrevented = fireEvent.keyDown(link, { key: " " });
+    expect(notPrevented).toBe(false);
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(trigger()).toHaveFocus();
   });
 });
