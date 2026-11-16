@@ -11,6 +11,9 @@ interface ReportOptions {
   stale: boolean;
 }
 
+/** Why the full analysis stopped early on an unbounded net. */
+export const UNBOUNDED_NOTE = "The net is unbounded, so its reachability graph is infinite.";
+
 const VERDICT_WORDS: Record<Verdict, string> = { yes: "Yes", no: "No", indeterminate: "Unknown" };
 
 /**
@@ -22,7 +25,7 @@ export class AnalysisReport {
     const placeName = NetNames.resolver(net.places);
     const transitionName = NetNames.resolver(net.transitions);
     const nodeName = NetNames.resolver([...net.places, ...net.transitions]);
-    const lines: string[] = ["Analysis", "", AnalysisReport._status(result, opts.stale)];
+    const lines: string[] = ["Analysis", "", AnalysisReport.status(result, opts.stale)];
 
     lines.push("", "Properties");
     for (const [title, r] of AnalysisReport._properties(result)) {
@@ -97,14 +100,23 @@ export class AnalysisReport {
   }
 
   /** One line for the panel's bar state: not run, net changed since the last run, or up to date. */
-  private static _status(result: AnalysisResult, stale: boolean): string {
+  static status(result: AnalysisResult, stale: boolean): string {
     if (stale)
       return "The net changed after the last full analysis. The results may be out of date.";
     if (result.placeBounds === null) return "Some results need the full analysis.";
-    const base = `Analysis is up to date. Explored ${result.exploredStates.toLocaleString("en-US")} markings.`;
+    return AnalysisReport.upToDate(result);
+  }
+
+  /**
+   * The up-to-date line: how many markings the full analysis explored, plus the note for a capped or
+   * unbounded state space. The panel's Analyse bar shows the same line.
+   */
+  static upToDate(result: AnalysisResult): string {
+    const n = result.exploredStates;
+    const base = `Analysis is up to date. Explored ${n.toLocaleString("en-US")} marking${n === 1 ? "" : "s"}.`;
     if (result.stateSpaceComplete) return base;
     if (result.stateSpaceExceeded) return `${base} ${STATE_CAP_EXCEEDED}`;
-    return `${base} The net is unbounded, so its reachability graph is infinite.`;
+    return `${base} ${UNBOUNDED_NOTE}`;
   }
 
   private static _properties(result: AnalysisResult): [string, PropertyResult][] {

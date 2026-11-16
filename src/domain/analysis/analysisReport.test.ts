@@ -65,7 +65,7 @@ describe("AnalysisReport", () => {
       stale: false,
     });
     expect(text).toContain(
-      "Analysis is up to date. Explored 1 markings. The state space exceeded the 10,000-marking cap.",
+      "Analysis is up to date. Explored 1 marking. The state space exceeded the 10,000-marking cap.",
     );
     expect(text).toContain("Lower limits only");
     expect(text).toContain("P1: at least 1");
