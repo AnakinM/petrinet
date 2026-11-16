@@ -1,5 +1,6 @@
 import { NpnCodec } from "@/codec/npn";
 import { PnmlCodec, PnmlParseError, type PnmlRefusalReason } from "@/codec/pnml";
+import { TIKZ_FILE_NAME, TikzCodec } from "@/codec/tikz";
 import type { PetriNet } from "@/domain/types";
 import { NetSvg } from "@/flow/svgExport";
 
@@ -88,10 +89,11 @@ export class NetFile {
 }
 
 /**
- * Browser-side image export of a {@link PetriNet}. {@link NetSvg} owns the (pure, tested) SVG bytes;
- * this owns the Blob/anchor/canvas mechanics. SVG is a direct download; PNG is rasterized from that
- * same SVG via an offscreen canvas, with no extra dependency. The self-contained SVG (vector shapes
- * and text, no external refs) keeps the canvas untainted so `toBlob` succeeds.
+ * Browser-side picture export of a {@link PetriNet}. {@link NetSvg} and {@link TikzCodec} own the
+ * (pure, tested) bytes; this owns the Blob/anchor/canvas/clipboard mechanics. SVG and TikZ are
+ * direct downloads. PNG is rasterized from that same SVG via an offscreen canvas, with no extra
+ * dependency, and the clipboard copy uses that same PNG. The self-contained SVG (vector shapes and
+ * text, no external refs) keeps the canvas untainted so `toBlob` succeeds.
  */
 export class ImageFile {
   /** PNG raster scale: 2× keeps lines and labels crisp on hi-dpi screens and in print. */
@@ -103,29 +105,63 @@ export class ImageFile {
     ImageFile._download(URL.createObjectURL(blob), ImageFile._ext(filename, "svg"));
   }
 
+  /** Download `net` as a LaTeX TikZ picture. */
+  static saveTikz(net: PetriNet, filename = TIKZ_FILE_NAME): void {
+    const blob = new Blob([TikzCodec.serialize(net)], { type: "text/x-tex;charset=utf-8" });
+    ImageFile._download(URL.createObjectURL(blob), ImageFile._ext(filename, "tex"));
+  }
+
   /** Rasterize `net` to a `.png` (2× scale) and download it. Asynchronous: the image must decode first. */
   static savePng(net: PetriNet, filename = "net.png"): void {
-    const blob = new Blob([NetSvg.serialize(net)], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = (): void => {
-      const w = img.naturalWidth || img.width;
-      const h = img.naturalHeight || img.height;
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(w * ImageFile.PNG_SCALE));
-      canvas.height = Math.max(1, Math.round(h * ImageFile.PNG_SCALE));
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.scale(ImageFile.PNG_SCALE, ImageFile.PNG_SCALE);
-        ctx.drawImage(img, 0, 0);
-      }
-      URL.revokeObjectURL(url);
-      canvas.toBlob((png) => {
-        if (png) ImageFile._download(URL.createObjectURL(png), ImageFile._ext(filename, "png"));
-      }, "image/png");
-    };
-    img.onerror = (): void => URL.revokeObjectURL(url);
-    img.src = url;
+    ImageFile._rasterize(net).then(
+      (png) => ImageFile._download(URL.createObjectURL(png), ImageFile._ext(filename, "png")),
+      // A picture that cannot be drawn downloads nothing, as before.
+      () => {},
+    );
+  }
+
+  /** True when this browser can put a picture on the clipboard (not in an insecure page or an old browser). */
+  static canCopy(): boolean {
+    return typeof ClipboardItem === "function" && typeof navigator.clipboard?.write === "function";
+  }
+
+  /**
+   * Copy `net` to the clipboard as the same PNG picture that {@link savePng} downloads. Call it
+   * directly in the click handler: Safari allows the write only when the `ClipboardItem` is made
+   * during the click, so the item holds a promise for the PNG that is still being drawn.
+   */
+  static copyPng(net: PetriNet): Promise<void> {
+    const item = new ClipboardItem({ "image/png": ImageFile._rasterize(net) });
+    return navigator.clipboard.write([item]);
+  }
+
+  /** Draw the SVG picture of `net` on a canvas at {@link PNG_SCALE} and encode it as PNG. */
+  private static _rasterize(net: PetriNet): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const blob = new Blob([NetSvg.serialize(net)], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const failed = (): void => reject(new Error("The picture could not be drawn."));
+      const img = new Image();
+      img.onload = (): void => {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(w * ImageFile.PNG_SCALE));
+        canvas.height = Math.max(1, Math.round(h * ImageFile.PNG_SCALE));
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.scale(ImageFile.PNG_SCALE, ImageFile.PNG_SCALE);
+          ctx.drawImage(img, 0, 0);
+        }
+        URL.revokeObjectURL(url);
+        canvas.toBlob((png) => (png ? resolve(png) : failed()), "image/png");
+      };
+      img.onerror = (): void => {
+        URL.revokeObjectURL(url);
+        failed();
+      };
+      img.src = url;
+    });
   }
 
   private static _download(url: string, filename: string): void {
