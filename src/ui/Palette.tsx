@@ -14,7 +14,7 @@ export function Palette(): JSX.Element {
 
   return (
     <section className="flex flex-col gap-3 p-3">
-      <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Palette</h2>
+      <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">Palette</h2>
       {TOOLS.map((t) => (
         <ToolButton key={t.id} active={tool === t.id} onClick={() => toggleTool(t.id)}>
           {t.swatch}

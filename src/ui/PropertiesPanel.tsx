@@ -14,7 +14,7 @@ export function PropertiesPanel(): JSX.Element {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-slate-200 border-t p-3">
-      <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">
+      <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">
         {simulating ? "History" : "Properties"}
       </h2>
       {simulating ? <HistoryList /> : renderBody(net, selection, count)}
@@ -155,7 +155,7 @@ function NameField({ id, name, kind }: { id: string; name: string; kind: NodeKin
           useNetStore.getState().rename(id, trimmed);
         }}
       />
-      {error && <span className="mt-1 block text-red-600 text-xs">{error}</span>}
+      {error && <span className="mt-1 block text-red-600 text-sm">{error}</span>}
     </div>
   );
 }
@@ -223,7 +223,7 @@ function StepButton({ label, onClick }: { label: string; onClick: () => void }):
 }
 
 function FieldLabel({ children }: { children: string }): JSX.Element {
-  return <span className="mb-1 block text-slate-500 text-xs">{children}</span>;
+  return <span className="mb-1 block text-slate-500 text-sm">{children}</span>;
 }
 
 function Kind({ children }: { children: string }): JSX.Element {
