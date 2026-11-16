@@ -5,6 +5,7 @@ import type { ArcEnd } from "@/domain/netOps";
 import { NetOps } from "@/domain/netOps";
 import type { PetriNet, Vec2 } from "@/domain/types";
 import { SAMPLE_NET } from "@/flow/sampleNet";
+import { Analytics } from "@/lib/analytics";
 import { Autosave } from "@/store/autosave";
 
 /** Editor mode. Build allows structural editing; Simulate (M5) locks it. */
@@ -74,6 +75,17 @@ type TrackedState = { net: PetriNet };
 
 const restored = Autosave.load();
 
+/**
+ * Pass through the net that a visitor's add produced: a place, a transition, an arc or a paste.
+ * The first add that changes the net in a page load sends the "Edit net" usage event, which tells
+ * a visitor who built something apart from one who only looked at the sample. Import, New, the
+ * autosave restore, undo and redo replace the net without an add, so they never send it.
+ */
+function reportAdd(before: PetriNet, after: PetriNet): PetriNet {
+  if (after !== before) Analytics.trackOnce("Edit net");
+  return after;
+}
+
 export const useNetStore = create<NetState>()(
   temporal(
     (set) => ({
@@ -85,11 +97,13 @@ export const useNetStore = create<NetState>()(
       _pasteCount: 0,
 
       setNet: (net) => set({ net, selection: EMPTY_SELECTION }),
-      addPlace: (position) => set((s) => ({ net: NetOps.addPlace(s.net, position) })),
-      addTransition: (position) => set((s) => ({ net: NetOps.addTransition(s.net, position) })),
+      addPlace: (position) =>
+        set((s) => ({ net: reportAdd(s.net, NetOps.addPlace(s.net, position)) })),
+      addTransition: (position) =>
+        set((s) => ({ net: reportAdd(s.net, NetOps.addTransition(s.net, position)) })),
       moveNodes: (moves) => set((s) => ({ net: NetOps.moveNodes(s.net, moves) })),
       connect: (source, target, bends) =>
-        set((s) => ({ net: NetOps.connect(s.net, source, target, bends) })),
+        set((s) => ({ net: reportAdd(s.net, NetOps.connect(s.net, source, target, bends)) })),
       rename: (id, name) => set((s) => ({ net: NetOps.rename(s.net, id, name) })),
       setTokens: (placeId, tokens) =>
         set((s) => ({ net: NetOps.setTokens(s.net, placeId, tokens) })),
@@ -130,7 +144,7 @@ export const useNetStore = create<NetState>()(
           const step = (s._pasteCount + 1) * GridSnap.SIZE;
           const result = NetOps.paste(s.net, s.clipboard, { x: step, y: step });
           return {
-            net: result.net,
+            net: reportAdd(s.net, result.net),
             selection: { nodes: result.nodeIds, edges: result.arcIds },
             _pasteCount: s._pasteCount + 1,
           };

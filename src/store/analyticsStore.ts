@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { NetAnalysis } from "@/domain/analysis/netAnalysis";
 import type { AnalysisResult } from "@/domain/analysis/types";
+import { Analytics } from "@/lib/analytics";
 import { useNetStore } from "@/store/netStore";
 
 /** Which analytics tab is showing. */
@@ -109,6 +110,8 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
       const open = !get().open;
       set({ open, result: open ? algebraicResult() : get().result, stale: false, highlight: [] });
       persist(get());
+      // Visitor usage event. Restoring the panel as open at page load does not pass through here.
+      if (open) Analytics.track("Open Analysis panel");
     },
     close: () => {
       set({ open: false, highlight: [] });

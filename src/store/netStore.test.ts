@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import type { PetriNet } from "@/domain/types";
-import { useNetStore } from "@/store/netStore";
+import type { Analytics } from "@/lib/analytics";
+import { type netHistory, useNetStore } from "@/store/netStore";
 
 /** p1 (0,0) → t1 (48,0), one arc with both endpoints in the pair. */
 const NET: PetriNet = {
@@ -89,5 +90,61 @@ describe("netStore copy/paste", () => {
     paste();
     expect(useNetStore.getState().net.places).toHaveLength(1);
     expect(useNetStore.getState().net.arcs).toHaveLength(1);
+  });
+});
+
+describe("netStore Edit net usage event", () => {
+  /** Fresh store and Analytics modules, so the once-per-page-load memory starts empty. */
+  async function load(): Promise<{
+    track: MockInstance<typeof Analytics.track>;
+    store: typeof useNetStore;
+    history: typeof netHistory;
+  }> {
+    vi.resetModules();
+    const analytics = await import("@/lib/analytics");
+    const track = vi.spyOn(analytics.Analytics, "track").mockImplementation(() => {});
+    const fresh = await import("@/store/netStore");
+    return { track, store: fresh.useNetStore, history: fresh.netHistory };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("is not sent by import, New, undo or redo", async () => {
+    const { track, store, history } = await load();
+    store.getState().setNet(structuredClone(NET));
+    store.getState().setNet({ places: [], transitions: [], arcs: [] });
+    history.undo();
+    history.redo();
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  it("is sent once, on the first add of a place, transition or arc", async () => {
+    const { track, store } = await load();
+    store.getState().setNet(structuredClone(NET));
+    store.getState().addPlace({ x: 100, y: 0 });
+    expect(track).toHaveBeenCalledExactlyOnceWith("Edit net");
+    store.getState().addTransition({ x: 200, y: 0 });
+    store.getState().connect("t1", "p1");
+    expect(track).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts a paste", async () => {
+    const { track, store } = await load();
+    store.getState().setNet(structuredClone(NET));
+    store.getState().select({ nodes: ["p1"], edges: [] });
+    store.getState().copy();
+    store.getState().paste();
+    expect(track).toHaveBeenCalledExactlyOnceWith("Edit net");
+  });
+
+  it("counts an arc, but not a refused arc", async () => {
+    const { track, store } = await load();
+    store.getState().setNet(structuredClone(NET));
+    store.getState().connect("p1", "p1");
+    expect(track).not.toHaveBeenCalled();
+    store.getState().connect("t1", "p1");
+    expect(track).toHaveBeenCalledExactlyOnceWith("Edit net");
   });
 });
