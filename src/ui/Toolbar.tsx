@@ -86,7 +86,7 @@ export function Toolbar(): JSX.Element {
       )}
       <div className="ml-auto flex items-center gap-2">
         <ToolbarButton onClick={() => useAnalyticsStore.getState().toggle()} active={analyticsOpen}>
-          Analytics
+          Analysis
         </ToolbarButton>
         <ModeToggle mode={mode} />
       </div>
