@@ -97,8 +97,9 @@ export class PnmlCodec {
     const nodes = new Map<string, NodeRef>();
     for (const p of places) nodes.set(p.id, { position: p.position, isPlace: true });
     for (const t of transitions) nodes.set(t.id, { position: t.position, isPlace: false });
-    const refs = PnmlCodec._references(found);
+    const refs = PnmlCodec._references(found, nodes);
     const arcs = all("arc").map((el) => PnmlCodec._readArc(el, nodesOnly, nodes, refs));
+    PnmlCodec._checkParallelArcs(arcs);
     return { places, transitions, arcs };
   }
 
@@ -173,8 +174,9 @@ export class PnmlCodec {
     if (rootName !== "pnml" && rootName !== "net") {
       throw new PnmlParseError("missing the <pnml> root element.");
     }
+    PnmlCodec._checkNotTapn(doc.documentElement);
     // Every <net> counts, also one nested in a page, as WoPeD writes a subprocess.
-    const nets = doc.getElementsByTagNameNS("*", "net");
+    const nets = [...doc.getElementsByTagNameNS("*", "net")];
     if (nets.length === 0) throw new PnmlParseError("the file has no <net> element.");
     if (nets.length > 1) {
       throw new PnmlParseError(
@@ -183,6 +185,25 @@ export class PnmlCodec {
     }
     PnmlCodec._checkNetType(nets[0]);
     return nets[0];
+  }
+
+  /**
+   * TAPAAL's own `.tapn` file has a `<pnml>` root, but it keeps values in attributes (a place's
+   * `initialMarking`) and its timed and transport arcs belong to timed-arc nets, another net type.
+   */
+  private static _checkNotTapn(root: Element): void {
+    const timedArc = [...root.getElementsByTagNameNS("*", "arc")].some((el) =>
+      /^(timed|transport)$/i.test(el.getAttribute("type") ?? ""),
+    );
+    const markingAttribute = [...root.getElementsByTagNameNS("*", "place")].some((el) =>
+      el.hasAttribute("initialMarking"),
+    );
+    if (timedArc || markingAttribute) {
+      throw new PnmlParseError(
+        "the file is a TAPAAL net (.tapn), not PNML. In TAPAAL, export the net as PNML and open that file.",
+        timedArc ? "net-type" : "invalid",
+      );
+    }
   }
 
   /**
@@ -198,10 +219,20 @@ export class PnmlCodec {
       lower === "" ||
       lower === "p/t net" ||
       lower === "http://www.laas.fr/tina/tpn" ||
-      /ptnetb?(\.pntd)?$/.test(lower);
+      /(^|\/)ptnetb?(\.pntd)?$/.test(lower);
     if (!isPtNet) {
       throw new PnmlParseError(
         `the net type "${type}" is not a place/transition net. This editor opens only place/transition nets.`,
+        "net-type",
+      );
+    }
+    // Without a type, high-level labels still give a coloured or other high-level net away.
+    const highLevel = PnmlCodec._HIGH_LEVEL_LABELS.find(
+      (tag) => netEl.getElementsByTagNameNS("*", tag).length > 0,
+    );
+    if (type === "" && highLevel) {
+      throw new PnmlParseError(
+        `the net has no type but uses the high-level label <${highLevel}>. This editor opens only place/transition nets.`,
         "net-type",
       );
     }
@@ -225,6 +256,15 @@ export class PnmlCodec {
       }
     };
     visit(netEl);
+    // Some tools write special arcs as their own elements, such as <inhibitorArc> or <resetArc>.
+    for (const [name, list] of found) {
+      if (name !== "arc" && /arc$/i.test(name)) {
+        throw new PnmlParseError(
+          `the file has an <${name}> "${list[0].getAttribute("id") ?? ""}". This editor supports only normal arcs.`,
+          "unsupported-arc",
+        );
+      }
+    }
     return found;
   }
 
@@ -239,6 +279,24 @@ export class PnmlCodec {
         }
         seen.add(id);
       }
+    }
+  }
+
+  /**
+   * The engine checks each input arc alone and then subtracts them all, so two arcs from one place
+   * to one transition could take more tokens than the place holds. Refuse such a repeat.
+   */
+  private static _checkParallelArcs(arcs: Arc[]): void {
+    const seen = new Map<string, string>();
+    for (const arc of arcs) {
+      const key = JSON.stringify([arc.source, arc.target]);
+      const earlier = seen.get(key);
+      if (earlier !== undefined) {
+        throw new PnmlParseError(
+          `arcs "${earlier}" and "${arc.id}" both go from "${arc.source}" to "${arc.target}". This editor allows one arc each way between two nodes.`,
+        );
+      }
+      seen.set(key, arc.id);
     }
   }
 
@@ -280,8 +338,8 @@ export class PnmlCodec {
   ): Arc {
     const id = PnmlCodec._id(el, "arc");
     const owner = `arc "${id}"`;
-    const type = PnmlCodec._arcType(el);
-    if (type !== null && type.toLowerCase() !== "normal") {
+    const type = PnmlCodec._arcTypes(el).find((t) => t.toLowerCase() !== "normal");
+    if (type !== undefined) {
       throw new PnmlParseError(
         `${owner} has the type "${type}". This editor supports only normal arcs.`,
         "unsupported-arc",
@@ -326,7 +384,7 @@ export class PnmlCodec {
     refs: Map<string, string>,
   ): NodeRef & { id: string } {
     const written = el.getAttribute(end) ?? "";
-    const id = PnmlCodec._resolve(written, refs);
+    const id = refs.get(written) ?? written;
     const node = nodes.get(id);
     if (!node) throw new PnmlParseError(`${owner} references an unknown node "${written}".`);
     return { id, ...node };
@@ -334,23 +392,44 @@ export class PnmlCodec {
 
   /**
    * Reference places and transitions (in nets that span several pages) stand for a node that may
-   * sit on another page. Maps each reference id to the id it points at.
+   * sit on another page. Maps each reference id to the real node it ends at, which must exist and
+   * be of the same kind.
    */
-  private static _references(found: Map<string, Element[]>): Map<string, string> {
-    const refs = new Map<string, string>();
+  private static _references(
+    found: Map<string, Element[]>,
+    nodes: Map<string, NodeRef>,
+  ): Map<string, string> {
+    const refs = new Map<string, { ref: string; isPlace: boolean }>();
     for (const kind of ["referencePlace", "referenceTransition"]) {
       for (const el of found.get(kind) ?? []) {
         const id = PnmlCodec._id(el, kind);
         const ref = el.getAttribute("ref");
         if (!ref) throw new PnmlParseError(`the <${kind}> "${id}" has no ref attribute.`);
-        refs.set(id, ref);
+        refs.set(id, { ref, isPlace: kind === "referencePlace" });
       }
     }
-    return refs;
+    const resolved = new Map<string, string>();
+    for (const [id, { isPlace }] of refs) {
+      const target = PnmlCodec._resolve(id, refs);
+      const node = nodes.get(target);
+      if (!node) {
+        throw new PnmlParseError(
+          `the reference "${id}" points to "${target}", which is not in the file.`,
+        );
+      }
+      if (node.isPlace !== isPlace) {
+        const [own, other] = isPlace ? ["place", "transition"] : ["transition", "place"];
+        throw new PnmlParseError(
+          `the reference ${own} "${id}" points to the ${other} "${target}". It must point to a ${own}.`,
+        );
+      }
+      resolved.set(id, target);
+    }
+    return resolved;
   }
 
-  /** Follow a chain of references (a reference may point at another reference) to a real node. */
-  private static _resolve(id: string, refs: Map<string, string>): string {
+  /** Follow a chain of references (a reference may point at another reference) to its end. */
+  private static _resolve(id: string, refs: Map<string, { ref: string }>): string {
     const visited = new Set<string>();
     let current = id;
     for (let next = refs.get(current); next !== undefined; next = refs.get(current)) {
@@ -358,17 +437,20 @@ export class PnmlCodec {
         throw new PnmlParseError(`the reference "${id}" leads round in a circle.`);
       }
       visited.add(current);
-      current = next;
+      current = next.ref;
     }
     return current;
   }
 
-  /** An arc's type: TAPAAL writes a `type` attribute, PIPE and TINA a `<type value>` element. */
-  private static _arcType(el: Element): string | null {
+  /**
+   * Every type an arc states: TAPAAL writes a `type` attribute, PIPE and TINA a `<type value>`
+   * element, others a `<type>` label. All of them are checked, so one cannot hide another.
+   */
+  private static _arcTypes(el: Element): string[] {
     const label = PnmlCodec._directChild(el, "type");
-    const type =
-      el.getAttribute("type") || label?.getAttribute("value") || PnmlCodec._text(el, "type");
-    return type ? type.trim() : null;
+    return [el.getAttribute("type"), label?.getAttribute("value"), PnmlCodec._text(el, "type")]
+      .map((type) => type?.trim() ?? "")
+      .filter((type) => type !== "");
   }
 
   /** WoPeD marks its blocks with `tool="WoPeD"`, and it writes name offsets differently. */
@@ -407,24 +489,30 @@ export class PnmlCodec {
   }
 
   /**
-   * A whole-number label (a marking, a weight, a capacity), or null when absent. PIPE writes a
-   * token colour before the count ("Default,1"), so one such prefix is skipped. More colours mean
-   * a coloured net, and any other text that is not a whole number is refused.
+   * A whole-number label (a marking, a weight, a capacity), or null when absent. PIPE writes the
+   * token colour before the count ("Default,1"). Its plain "Default" colour is skipped; any other
+   * colour, or several, mean a coloured net. Any other text that is not a whole number is refused.
    */
   private static _count(el: Element, tag: string, owner: string, what: string): number | null {
     const raw = PnmlCodec._text(el, tag);
     if (raw === null) return null;
-    const parts = raw.split(",");
-    if (parts.length > 2) {
-      throw new PnmlParseError(
-        `${owner} has tokens of several colours in its ${what} ("${raw}"). This editor opens only place/transition nets.`,
-        "net-type",
-      );
+    const notWhole = (): PnmlParseError =>
+      new PnmlParseError(`${owner} has the ${what} "${raw}", which is not a whole number.`);
+    const parts = raw.split(",").map((part) => part.trim());
+    if (parts.length > 1) {
+      const colour = parts[0];
+      // An empty or numeric prefix ("1,000", ",3") is a malformed number, not a colour.
+      if (colour === "" || Number.isFinite(Number(colour))) throw notWhole();
+      if (parts.length > 2 || colour.toLowerCase() !== "default") {
+        const colours = parts.length > 2 ? "several colours" : `the colour "${colour}"`;
+        throw new PnmlParseError(
+          `${owner} has tokens of ${colours} in its ${what} ("${raw}"). This editor opens only place/transition nets, where all tokens are alike.`,
+          "net-type",
+        );
+      }
     }
-    const count = parts[parts.length - 1].trim();
-    if (!/^\d+$/.test(count)) {
-      throw new PnmlParseError(`${owner} has the ${what} "${raw}", which is not a whole number.`);
-    }
+    const count = parts[parts.length - 1];
+    if (!/^\d+$/.test(count) || !Number.isSafeInteger(Number(count))) throw notWhole();
     return Number(count);
   }
 
@@ -487,6 +575,9 @@ export class PnmlCodec {
     const n = Number(el.getAttribute(attr));
     return Number.isFinite(n) ? n : 0;
   }
+
+  /** Labels that only high-level nets (coloured nets and the like) have. */
+  private static readonly _HIGH_LEVEL_LABELS = ["hlinitialMarking", "hlinscription", "declaration"];
 
   /** The element kinds that carry ids which arcs and references point at. */
   private static readonly _ID_KINDS = [

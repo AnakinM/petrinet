@@ -454,6 +454,124 @@ describe("PnmlCodec.parse refusals", () => {
       /the reference "r1" leads round in a circle\./,
       "invalid",
     ],
+    [
+      "a PIPE colour other than Default",
+      doc(P("p1", "<initialMarking><value>Red,2</value></initialMarking>")),
+      /place "p1" has tokens of the colour "Red" in its initial marking/,
+      "net-type",
+    ],
+    [
+      "a weight in a PIPE colour other than Default",
+      doc(ARC("<inscription><value>Red,1</value></inscription>")),
+      /arc "a1" has tokens of the colour "Red" in its weight/,
+      "net-type",
+    ],
+    [
+      "a number with a comma in it",
+      doc(P("p1", "<initialMarking><text>1,000</text></initialMarking>")),
+      /place "p1" has the initial marking "1,000", which is not a whole number\./,
+      "invalid",
+    ],
+    [
+      "a number after another number",
+      doc(P("p1", "<initialMarking><text>1,5</text></initialMarking>")),
+      /place "p1" has the initial marking "1,5", which is not a whole number\./,
+      "invalid",
+    ],
+    [
+      "a number after an empty colour",
+      doc(P("p1", "<initialMarking><text>,3</text></initialMarking>")),
+      /place "p1" has the initial marking ",3", which is not a whole number\./,
+      "invalid",
+    ],
+    [
+      "a number too large to count exactly",
+      doc(P("p1", "<initialMarking><text>9007199254740993</text></initialMarking>")),
+      /which is not a whole number/,
+      "invalid",
+    ],
+    [
+      "two arcs from the same place to the same transition",
+      doc(
+        `${P("p1")}${T("t1")}<arc id="a1" source="p1" target="t1"/><arc id="a2" source="p1" target="t1"/>`,
+      ),
+      /arcs "a1" and "a2" both go from "p1" to "t1"\. This editor allows one arc each way between two nodes\./,
+      "invalid",
+    ],
+    [
+      "a second arc that reaches the same nodes through a reference",
+      doc(
+        `${P("p1")}${T("t1")}<referencePlace id="r1" ref="p1"/><arc id="a1" source="p1" target="t1"/><arc id="a2" source="r1" target="t1"/>`,
+      ),
+      /arcs "a1" and "a2" both go from "p1" to "t1"/,
+      "invalid",
+    ],
+    [
+      "an untyped net with a high-level marking",
+      doc(P("p1", "<hlinitialMarking><text>3'dot</text></hlinitialMarking>"), null),
+      /the net has no type but uses the high-level label <hlinitialMarking>/,
+      "net-type",
+    ],
+    [
+      "an untyped net with a high-level inscription",
+      doc(ARC("<hlinscription><text>2'dot</text></hlinscription>"), null),
+      /<hlinscription>/,
+      "net-type",
+    ],
+    [
+      "an untyped net with declarations",
+      doc(`${P("p1")}<declaration><structure/></declaration>`, null),
+      /<declaration>/,
+      "net-type",
+    ],
+    [
+      "a type that only ends in ptnet",
+      doc(P("p1"), "http://example.org/coloured-ptnet"),
+      /net type "http:\/\/example\.org\/coloured-ptnet" is not a place\/transition net/,
+      "net-type",
+    ],
+    [
+      "a reference place that points to a transition",
+      doc(`${P("p1")}${T("t1")}<referencePlace id="r1" ref="t1"/>`),
+      /the reference place "r1" points to the transition "t1"\. It must point to a place\./,
+      "invalid",
+    ],
+    [
+      "a reference transition that points to a place",
+      doc(`${P("p1")}${T("t1")}<referenceTransition id="r1" ref="p1"/>`),
+      /the reference transition "r1" points to the place "p1"\. It must point to a transition\./,
+      "invalid",
+    ],
+    [
+      "a reference to a node that is not in the file",
+      doc(`${T("t1")}<referencePlace id="r1" ref="zz"/><arc id="a1" source="r1" target="t1"/>`),
+      /the reference "r1" points to "zz", which is not in the file\./,
+      "invalid",
+    ],
+    [
+      "a special arc written as its own element",
+      doc(`${P("p1")}${T("t1")}<inhibitorArc id="a1" source="p1" target="t1"/>`),
+      /the file has an <inhibitorArc> "a1"\. This editor supports only normal arcs\./,
+      "unsupported-arc",
+    ],
+    [
+      "an arc that says normal in one place and inhibitor in another",
+      doc(ARC('<type value="inhibitor"/>', ' type="normal"')),
+      /arc "a1" has the type "inhibitor"/,
+      "unsupported-arc",
+    ],
+    [
+      "a TAPAAL .tapn file",
+      '<pnml><net id="TAPN1" type="P/T net"><place id="P0" initialMarking="3" name="P0"/><transition id="T0" name="T0"/><arc id="A0" source="T0" target="P0" type="normal"/></net></pnml>',
+      /the file is a TAPAAL net \(\.tapn\), not PNML\. In TAPAAL, export the net as PNML and open that file\./,
+      "invalid",
+    ],
+    [
+      "a TAPAAL .tapn file with timed and transport arcs",
+      '<pnml><net id="TAPN1" type="P/T net"><place id="P0" initialMarking="1"/><transition id="T0"/><arc id="A0" source="P0" target="T0" type="timed" inscription="[0,inf)"/><arc id="A1" source="P0" target="T0" type="transport"/></net></pnml>',
+      /the file is a TAPAAL net \(\.tapn\)/,
+      "net-type",
+    ],
   ])("refuses %s", (_, xml, message, reason) => {
     const error = refusal(xml);
     expect(error.message).toMatch(message);
@@ -469,6 +587,20 @@ describe("PnmlCodec.parse refusals", () => {
     ["TINA's tpn type", "http://www.laas.fr/tina/tpn"],
   ])("accepts %s", (_, type) => {
     expect(PnmlCodec.parse(doc(P("p1"), type)).places).toHaveLength(1);
+  });
+
+  it("accepts the Default colour in any case", () => {
+    const net = PnmlCodec.parse(
+      doc(P("p1", "<initialMarking><value>default,4</value></initialMarking>")),
+    );
+    expect(net.places[0].tokens).toBe(4);
+  });
+
+  it("accepts one arc each way between a place and a transition", () => {
+    const xml = doc(
+      `${P("p1")}${T("t1")}<arc id="a1" source="p1" target="t1"/><arc id="a2" source="t1" target="p1"/>`,
+    );
+    expect(PnmlCodec.parse(xml).arcs).toHaveLength(2);
   });
 
   it("accepts a capacity of 0, which PIPE writes for no limit", () => {
