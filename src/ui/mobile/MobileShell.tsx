@@ -43,7 +43,7 @@ function ArcCancelPill(): JSX.Element | null {
         <button
           type="button"
           onClick={() => useBuildStore.getState().cancelArc()}
-          className="touch-manipulation rounded-full bg-slate-700 px-3 py-1 font-medium text-white text-xs"
+          className="touch-manipulation rounded-full bg-slate-700 px-3 py-1 font-medium text-white text-sm"
         >
           Cancel
         </button>

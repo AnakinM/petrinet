@@ -82,7 +82,7 @@ function SimDock(): JSX.Element {
           value={speed}
           onChange={(e) => useSimStore.getState().setSpeed(Number(e.target.value))}
           aria-label="Auto-run speed"
-          className="rounded border border-slate-300 bg-white px-1 py-1 text-slate-700 text-xs"
+          className="rounded border border-slate-300 bg-white px-1 py-1 text-slate-700 text-sm"
         >
           {AUTO_RUN_SPEEDS.map((s) => (
             <option key={s} value={s}>

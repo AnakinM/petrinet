@@ -1,24 +1,7 @@
 import { IncidenceMatrix } from "@/domain/analysis/incidenceMatrix";
 import { TsvCell } from "@/domain/analysis/tsvCell";
+import { LatexText } from "@/domain/latexText";
 import type { PetriNet } from "@/domain/types";
-
-// Keep in sync with LATEX_ESCAPES in src/codec/tikz.ts (branch formats-tikz); to be merged into one module.
-const LATEX_ESCAPES: Record<string, string> = {
-  "\\": "\\textbackslash{}",
-  "<": "\\textless{}",
-  ">": "\\textgreater{}",
-  "|": "\\textbar{}",
-  "-": "{-}",
-  "{": "\\{",
-  "}": "\\}",
-  $: "\\$",
-  "&": "\\&",
-  "#": "\\#",
-  "^": "\\textasciicircum{}",
-  _: "\\_",
-  "%": "\\%",
-  "~": "\\textasciitilde{}",
-};
 
 /**
  * The incidence matrix as text for pasting: places as rows, transitions as columns, element names
@@ -55,6 +38,6 @@ export class MatrixFormat {
 
   /** Escapes the characters LaTeX treats as special so a name prints as typed. */
   static escapeLatex(text: string): string {
-    return text.replace(/\s+/g, " ").replace(/[\\{}$&#^_%~<>|-]/g, (c) => LATEX_ESCAPES[c]);
+    return LatexText.escape(text.replace(/\s+/g, " "));
   }
 }

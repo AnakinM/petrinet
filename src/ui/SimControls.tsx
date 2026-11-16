@@ -20,7 +20,7 @@ export function SimControls(): JSX.Element {
 
   return (
     <section className="flex flex-col gap-3 p-3">
-      <h2 className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Simulation</h2>
+      <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">Simulation</h2>
       <PrimaryButton
         onClick={() => (playing ? useSimStore.getState().pause() : useSimStore.getState().play())}
         disabled={!playing && !canFire}
@@ -46,7 +46,7 @@ export function SimControls(): JSX.Element {
         </SecondaryButton>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-500 text-xs">Speed</span>
+        <span className="text-slate-500 text-sm">Speed</span>
         <select
           value={speed}
           onChange={(e) => useSimStore.getState().setSpeed(Number(e.target.value))}
