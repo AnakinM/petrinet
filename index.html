@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>PetriNet: Online Petri Net Editor & Simulator</title>
+    <title>PetriNet Editor: free online Petri net simulator</title>
     <meta
       name="description"
-      content="A free, browser-based editor and simulator for place/transition Petri nets. Build nets by drag-and-drop, then fire transitions to watch tokens flow. No install, no account."
+      content="Draw Petri nets in your browser, fire transitions step by step, and check liveness, boundedness and invariants. Free, no install, no account. Exports PNML and images."
     />
     <meta name="author" content="Mateusz Anikiej" />
     <meta name="robots" content="index,follow" />
@@ -21,32 +21,32 @@
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="PetriNet" />
+    <meta property="og:site_name" content="PetriNet Editor" />
     <meta property="og:url" content="https://petrinet.anikiej.com/" />
-    <meta property="og:title" content="PetriNet: Online Petri Net Editor & Simulator" />
+    <meta property="og:title" content="PetriNet Editor: free online Petri net simulator" />
     <meta
       property="og:description"
-      content="A free, browser-based editor and simulator for place/transition Petri nets. Build nets by drag-and-drop, then fire transitions to watch tokens flow. No install, no account."
+      content="Draw Petri nets in your browser, fire transitions step by step, and check liveness, boundedness and invariants. Free, no install, no account. Exports PNML and images."
     />
     <meta property="og:image" content="https://petrinet.anikiej.com/apple-touch-icon.png" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="PetriNet: Online Petri Net Editor & Simulator" />
+    <meta name="twitter:title" content="PetriNet Editor: free online Petri net simulator" />
     <meta
       name="twitter:description"
-      content="A free, browser-based editor and simulator for place/transition Petri nets. Build nets by drag-and-drop, then fire transitions to watch tokens flow. No install, no account."
+      content="Draw Petri nets in your browser, fire transitions step by step, and check liveness, boundedness and invariants. Free, no install, no account. Exports PNML and images."
     />
     <meta name="twitter:image" content="https://petrinet.anikiej.com/apple-touch-icon.png" />
 
     <!-- Site name for Google search results -->
-    <meta name="application-name" content="PetriNet" />
+    <meta name="application-name" content="PetriNet Editor" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
-        "name": "PetriNet",
-        "alternateName": "PetriNet Editor",
+        "name": "PetriNet Editor",
+        "alternateName": ["PetriNet", "petrinet.anikiej.com"],
         "url": "https://petrinet.anikiej.com/",
         "author": {
           "@type": "Person",
@@ -57,7 +57,13 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <h1 class="px-6 pt-6 font-semibold text-slate-900 text-xl">PetriNet Editor</h1>
+      <p class="max-w-xl px-6 pt-2 text-slate-600">
+        Draw Petri nets in your browser, fire transitions step by step, and check liveness, boundedness and invariants. Free, no install, no account. Exports PNML and images.
+      </p>
+      <a href="/guide" class="inline-block px-6 pt-3 text-blue-700 underline">What is a Petri net? Read the guide</a>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

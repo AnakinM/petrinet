@@ -82,3 +82,13 @@ describe("Toolbar snap button", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });
+
+describe("Toolbar brand", () => {
+  afterEach(cleanup);
+
+  it("names the site in the page's level-one heading", () => {
+    render(<Toolbar />);
+    // The short form "PetriNet" may be what shows, but the heading's name is always the full one.
+    expect(screen.getByRole("heading", { level: 1, name: "PetriNet Editor" })).toBeInTheDocument();
+  });
+});
