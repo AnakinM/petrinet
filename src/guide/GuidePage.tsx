@@ -513,20 +513,24 @@ function IoSection(): JSX.Element {
         <Term name="New">Clears the canvas so you can start a new net.</Term>
         <Term name="Import">
           Opens a saved net from a file. Both the tool's own .npn format and the standard .pnml
-          format are accepted, and the editor detects which one you picked.
+          format are accepted, and the editor detects which one you picked. You can also drag a file
+          from your computer and drop it anywhere on the editor. A PNML file with inhibitor or other
+          special arcs, place capacities or coloured tokens is refused with a message that says why.
         </Term>
         <Term name="Export">
-          Saves your net as a .npn file. This is the tool's own format, and it preserves your net
-          exactly, so opening the file again gives you back what you had.
+          Saves your net as a file that you can import again. Choose .npn, the tool's own format, to
+          get back exactly what you had. Choose PNML to open the net in other Petri net tools.
         </Term>
-        <Term name="Export as">
-          Offers other formats. PNML lets you exchange the net with other Petri net tools. PNG and
-          SVG save a picture of the net for a report or a slide.
+        <Term name="Image">
+          Saves a picture of the net for a report or a slide. PNG and SVG are image files. LaTeX
+          (TikZ) gives you a drawing for a LaTeX document, and the file names the lines your
+          preamble needs. Copy to clipboard puts a PNG picture on your clipboard, ready to paste.
         </Term>
       </dl>
       <p>
-        The picture you get from PNG or SVG matches what is on screen, so it includes the current
-        tokens. Export a diagram from Simulate mode to capture a net in the middle of a run.
+        A picture matches what is on screen, so it includes the current tokens. Make one from
+        Simulate mode to capture a net in the middle of a run. An exported file always keeps the
+        starting tokens. Importing, with the button or by dropping a file, works in Build mode only.
       </p>
     </Section>
   );
