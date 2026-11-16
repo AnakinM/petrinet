@@ -197,4 +197,116 @@ describe("ReachabilityGraph", () => {
       expect(g.queryReachable({ p1: 0 })).toBe("yes"); // M0 stays reachable
     });
   });
+
+  describe("place bounds and the state table", () => {
+    it("names markings M0, M1 in discovery order and lists firings", () => {
+      const table = new ReachabilityGraph(bounceNet()).stateTable();
+      expect(table.placeIds).toEqual(["p1", "p2"]);
+      expect(table.complete).toBe(true);
+      expect(table.rows).toEqual([
+        {
+          name: "M0",
+          tokens: [1, 0],
+          firings: [{ transition: "t1", to: 1 }],
+          deadlock: false,
+          explored: true,
+        },
+        {
+          name: "M1",
+          tokens: [0, 1],
+          firings: [{ transition: "t2", to: 0 }],
+          deadlock: false,
+          explored: true,
+        },
+      ]);
+    });
+
+    it("marks the dead marking as a deadlock", () => {
+      const net: PetriNet = {
+        places: [place("p1", 1), place("p2", 0)],
+        transitions: [transition("t1")],
+        arcs: [arc("p1", "t1"), arc("t1", "p2")],
+      };
+      const rows = new ReachabilityGraph(net).stateTable().rows;
+      expect(rows.map((r) => r.deadlock)).toEqual([false, true]);
+      expect(rows[1].firings).toEqual([]);
+    });
+
+    it("reports exact bounds on a complete graph", () => {
+      const net: PetriNet = {
+        places: [place("p1", 2), place("p2", 0)],
+        transitions: [transition("t1")],
+        arcs: [arc("p1", "t1"), arc("t1", "p2")],
+      };
+      expect(new ReachabilityGraph(net).placeBounds()).toEqual({
+        max: { p1: 2, p2: 2 },
+        exact: true,
+        unbounded: [],
+      });
+    });
+
+    it("reports lower limits when capped", () => {
+      const bounds = new ReachabilityGraph(bounceNet(), 1).placeBounds();
+      expect(bounds).toEqual({ max: { p1: 1, p2: 0 }, exact: false, unbounded: [] });
+    });
+
+    it("reports lower limits for an unbounded net, and does not call an unexpanded marking a deadlock", () => {
+      const net: PetriNet = {
+        places: [place("p1", 0)],
+        transitions: [transition("t1")],
+        arcs: [arc("t1", "p1")],
+      };
+      const g = new ReachabilityGraph(net);
+      expect(g.placeBounds().exact).toBe(false);
+      expect(g.stateTable().complete).toBe(false);
+      expect(g.stateTable().rows.some((r) => r.deadlock)).toBe(false);
+    });
+  });
+
+  describe("a capped run", () => {
+    // t1 turns the two tokens of p1 into p2 tokens one by one; the cap stops it early.
+    const net: PetriNet = {
+      places: [place("p1", 2), place("p2", 0)],
+      transitions: [transition("t1"), transition("t2")],
+      arcs: [arc("p1", "t1"), arc("t1", "p2"), arc("p1", "t2"), arc("t2", "p2")],
+    };
+
+    it("answers not safe as soon as an explored marking holds two tokens", () => {
+      const g = new ReachabilityGraph(net, 1);
+      expect(g.exceeded).toBe(true);
+      expect(g.isSafe()).toBe("no");
+      expect(g.isBounded()).toBe("indeterminate");
+    });
+
+    it("marks the partly expanded and the never expanded rows as not explored", () => {
+      const fork: PetriNet = {
+        places: [place("p1", 1), place("p2", 0), place("p3", 0)],
+        transitions: [transition("t1"), transition("t2")],
+        arcs: [arc("p1", "t1"), arc("t1", "p2"), arc("p1", "t2"), arc("t2", "p3")],
+      };
+      const rows = new ReachabilityGraph(fork, 2).stateTable().rows;
+      expect(rows.map((r) => r.explored)).toEqual([false, false]);
+      expect(rows[0].firings).toHaveLength(1);
+      expect(rows[1].firings).toEqual([]);
+      expect(rows.some((r) => r.deadlock)).toBe(false);
+    });
+
+    it("marks every row explored on a complete graph", () => {
+      const rows = new ReachabilityGraph(net).stateTable().rows;
+      expect(rows.every((r) => r.explored)).toBe(true);
+    });
+  });
+
+  describe("unbounded places", () => {
+    it("lists the places a covering marking pumps, and not the others", () => {
+      const net: PetriNet = {
+        places: [place("p1", 0), place("p2", 0)],
+        transitions: [transition("t1")],
+        arcs: [arc("t1", "p1")],
+      };
+      const g = new ReachabilityGraph(net);
+      expect(g.placeBounds().unbounded).toEqual(["p1"]);
+      expect(g.stateTable().rows.filter((r) => !r.explored)).toHaveLength(1);
+    });
+  });
 });

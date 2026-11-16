@@ -283,3 +283,23 @@ describe("NetAnalysis.signature", () => {
     expect(NetAnalysis.signature(a)).not.toBe(NetAnalysis.signature(b));
   });
 });
+
+describe("NetAnalysis place bounds and state table", () => {
+  const net: PetriNet = {
+    places: [place("p1", 1), place("p2", 0)],
+    transitions: [transition("t1")],
+    arcs: [arc("p1", "t1"), arc("t1", "p2")],
+  };
+
+  it("leaves both null until the full analysis has run", () => {
+    const result = NetAnalysis.analyze(net);
+    expect(result.placeBounds).toBeNull();
+    expect(result.stateTable).toBeNull();
+  });
+
+  it("fills both after the full analysis", () => {
+    const result = NetAnalysis.analyze(net, { behavioral: true });
+    expect(result.placeBounds).toEqual({ max: { p1: 1, p2: 1 }, exact: true, unbounded: [] });
+    expect(result.stateTable?.rows.map((r) => r.name)).toEqual(["M0", "M1"]);
+  });
+});
