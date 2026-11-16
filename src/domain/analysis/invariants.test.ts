@@ -58,7 +58,7 @@ describe("Invariants", () => {
       expect(weights(Invariants.placeInvariants(matrix(net)))).toEqual([{ pA: 1, pB: 2 }]);
     });
 
-    it("keeps only minimal supports — two disjoint cycles give two invariants, not their sum", () => {
+    it("keeps only minimal supports: two disjoint cycles give two invariants, not their sum", () => {
       const net: PetriNet = {
         places: [place("p1", 1), place("p2"), place("p3", 1), place("p4")],
         transitions: ["t1", "t2", "t3", "t4"].map(transition),
@@ -155,7 +155,7 @@ describe("Invariants", () => {
 
     it("truncates one family without hiding the other", () => {
       // One place, two self-loop transitions: a single P-invariant {p}, but two T-invariants
-      // {t1},{t2}. A cap of 1 holds the P-family but overruns the T-family — they report separately.
+      // {t1},{t2}. A cap of 1 holds the P-family but overruns the T-family, so they report separately.
       const net: PetriNet = {
         places: [place("p", 1)],
         transitions: [transition("t1"), transition("t2")],

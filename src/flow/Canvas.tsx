@@ -83,7 +83,7 @@ export function Canvas(): JSX.Element {
   const arcTool = editable && tool === "arc";
   const isMobile = useIsMobile();
   // Suppress node drag + marquee-select for any tool that turns a tap into its own action: token,
-  // arc, and — on touch only, where placing has no capture overlay — the placing tools (so a tap
+  // arc, and (on touch only, where placing has no capture overlay) the placing tools (so a tap
   // just drops a node and never nudges/selects an existing one).
   const lockNodes = tokenTool || arcTool || (isMobile && placing);
   const highlight = useAnalyticsStore((s) => s.highlight);
@@ -103,7 +103,7 @@ export function Canvas(): JSX.Element {
   useEffect(() => {
     const lit = new Set(useAnalyticsStore.getState().highlight);
     // Project the domain selection (netStore) onto React Flow. Carrying the *domain* selection
-    // rather than RF's previous flags is what lets a paste preselect its brand-new ids — they were
+    // rather than RF's previous flags is what lets a paste preselect its brand-new ids. They were
     // never selected in RF before, but netStore.paste set them. RF mirrors back via
     // onSelectionChange, a stable fixpoint since this effect only re-runs on a net change.
     const { nodes: selNodes, edges: selEdges } = useNetStore.getState().selection;
@@ -113,7 +113,7 @@ export function Canvas(): JSX.Element {
     setEdges(withSelection(FlowProjection.toEdges(net), edgeSel));
   }, [net, setNodes, setEdges]);
 
-  // Paint the analytics highlight onto the matching nodes and frame them — clicking a diagnostic
+  // Paint the analytics highlight onto the matching nodes and frame them: clicking a diagnostic
   // (a dead transition, a loop, a source place) spotlights it and pans it into view, wherever it is.
   // The panel overlays the canvas's right edge, so reserve its width as right padding; otherwise a
   // framed node would centre under the panel and stay hidden.
@@ -294,11 +294,11 @@ export function Canvas(): JSX.Element {
   }, []);
 
   // Unified right-click policy (A5). Mounted on the canvas wrapper so it suppresses the native
-  // menu canvas-only (the side panels are separate DOM subtrees) and catches every target —
+  // menu canvas-only (the side panels are separate DOM subtrees) and catches every target:
   // pane, node, edge, and the waypoint handles in the edge-label layer that RF's
   // onEdgeContextMenu would miss. Rules 1 (cancel an in-progress draw) and 2 (exit a placing tool)
   // are handled upstream by the ArcDrawLayer / PlacingLayer overlays, which stop the event before
-  // it reaches here; this handler covers rules 3–5.
+  // it reaches here. This handler covers rules 3 to 5.
   const onContextMenu = useCallback(
     (event: ReactMouseEvent): void => {
       event.preventDefault();

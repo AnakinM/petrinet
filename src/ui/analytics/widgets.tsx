@@ -16,9 +16,9 @@ const VERDICT_META: Record<
 };
 
 /**
- * A small "?" help affordance. The explanation shows as a native tooltip on hover — matching the
+ * A small "?" help affordance. The explanation shows as a native tooltip on hover, matching the
  * app's other title-based hints (nodes, the resize grip) and never clipping inside the scrolling
- * panel — and is exposed to assistive tech via aria-label.
+ * panel, and is exposed to assistive tech via aria-label.
  */
 export function HelpTip({ text }: { text: string }): JSX.Element {
   return (
@@ -33,7 +33,7 @@ export function HelpTip({ text }: { text: string }): JSX.Element {
   );
 }
 
-/** A labelled status pill — coloured icon + word (Yes / No / Unknown) — for a property's verdict. */
+/** A labelled status pill for a property's verdict: coloured icon + word (Yes / No / Unknown). */
 export function StatusBadge({ verdict }: { verdict: Verdict }): JSX.Element {
   const { label, tone, Icon } = VERDICT_META[verdict];
   return (
@@ -129,7 +129,7 @@ export function Section({
  * `ids` on the canvas (and toggles the spotlight off when they are already lit), amber-filled while
  * active. With no ids to spotlight it renders a non-interactive element, so an empty witness (e.g. a
  * deadlock at the all-zero marking) never looks clickable. `lit` is the live highlight joined with
- * commas — the parent reads it once and threads it down so each chip can tell if it is the lit one.
+ * commas. The parent reads it once and threads it down so each chip can tell if it is the lit one.
  */
 export function HighlightChip({
   ids,

@@ -5,8 +5,8 @@ import type { Vec2 } from "@/domain/types";
  * components render at these sizes) and the editing layer (a new arc or a dragged
  * endpoint clips to the border here).
  *
- * The dimensions are fixed by the `.npn` geometry — place ⌀40 (radius 20), transition
- * bar 15×40 — so stored magnetic arc endpoints land exactly on the rendered borders.
+ * The dimensions are fixed by the `.npn` geometry (place ⌀40 with radius 20, transition
+ * bar 15×40), so stored magnetic arc endpoints land exactly on the rendered borders.
  * Pure and framework-free; the low-level helpers are unit-tested in isolation.
  */
 export class NodeGeometry {

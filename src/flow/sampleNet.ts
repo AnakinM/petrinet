@@ -4,7 +4,7 @@ import type { PetriNet } from "@/domain/types";
  * A small built-in net rendered on first load so the canvas always has content.
  * It exercises every place glyph (empty / dots / number), a rotated transition, and
  * arcs (including one with multiplicity > 1 to show the weight label). Arc endpoints
- * are clipped to the node borders — the rendering convention for magnetic arcs.
+ * are clipped to the node borders: the rendering convention for magnetic arcs.
  * A later milestone replaces this default with autosave/import.
  */
 export const SAMPLE_NET: PetriNet = {

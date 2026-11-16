@@ -12,21 +12,21 @@ interface Edge {
 /**
  * The behavioural layer of net analysis: the reachability graph from M0, explored breadth-first
  * via {@link PetriNetEngine} up to a fixed state cap. Pure and framework-free like the engine and
- * the algebraic layer — no React/DOM/store imports — so it is unit-testable in isolation and
+ * the algebraic layer (no React/DOM/store imports), so it is unit-testable in isolation and
  * worker-ready later.
  *
  * From the (possibly partial) graph it settles the behavioural properties as three-valued
  * {@link Verdict}s, never claiming a result it could not actually prove:
- *   - **bounded / safe** — exact bound k from the explored markings; ancestor-covering proves
- *     unboundedness (the pumping-lemma shortcut, not full Karp–Miller); the cap leaves it `indeterminate`.
- *   - **live (L4)** — every terminal SCC of the graph fires every transition.
- *   - **reversible** — the whole graph is a single SCC (M0 reachable from everywhere).
- *   - **deadlock-free** — no reachable marking is dead; any found dead marking is a real witness.
- *   - **dead / quasi-live transitions** — transitions firing on no edge of the graph.
+ *   - **bounded / safe**: exact bound k from the explored markings; ancestor-covering proves
+ *     unboundedness (the pumping-lemma shortcut, not full Karp-Miller); the cap leaves it `indeterminate`.
+ *   - **live (L4)**: every terminal SCC of the graph fires every transition.
+ *   - **reversible**: the whole graph is a single SCC (M0 reachable from everywhere).
+ *   - **deadlock-free**: no reachable marking is dead; any found dead marking is a real witness.
+ *   - **dead / quasi-live transitions**: transitions firing on no edge of the graph.
  *
  * A verdict that needs the *whole* finite graph (live, reversible, dead transitions, exact bound)
  * is only conclusive when {@link complete}; otherwise it reads `indeterminate`. Deadlock witnesses
- * stand on their own — a dead marking reached before the cap is real regardless of completeness.
+ * stand on their own: a dead marking reached before the cap is real regardless of completeness.
  */
 export class ReachabilityGraph {
   static readonly STATE_CAP = 10_000;
@@ -35,7 +35,7 @@ export class ReachabilityGraph {
   readonly exceeded: boolean;
   /** A reached marking strictly covered an ancestor on its path ⇒ the net is unbounded. */
   readonly unbounded: boolean;
-  /** The full finite graph was built — neither capped nor pruned for unboundedness. */
+  /** The full finite graph was built: neither capped nor pruned for unboundedness. */
   readonly complete: boolean;
   /** Number of distinct markings discovered. */
   readonly states: number;
@@ -47,7 +47,7 @@ export class ReachabilityGraph {
   private readonly _liveByTerminalScc: boolean;
   /** The graph is one strongly-connected component (the reversibility witness; trust when complete). */
   private readonly _singleScc: boolean;
-  /** Stable place order for canonicalizing a marking key — shared by exploration and queries. */
+  /** Stable place order for canonicalizing a marking key, shared by exploration and queries. */
   private readonly _placeIds: string[];
   /** Canonical keys of every marking actually reached from M0 (drives {@link reaches}). */
   private readonly _reachedKeys: Set<string>;
@@ -196,7 +196,7 @@ export class ReachabilityGraph {
     return this._deadTransitions.length === 0 ? "yes" : "no";
   }
 
-  /** Reachable dead markings with a firing path from M0 — real witnesses even on a partial graph. */
+  /** Reachable dead markings with a firing path from M0: real witnesses even on a partial graph. */
   deadlocks(): Deadlock[] {
     return this._deadlocks;
   }
@@ -213,7 +213,7 @@ export class ReachabilityGraph {
 
   /**
    * Is `target` reachable from M0? "yes" when it is among the explored markings; "no" only when the
-   * whole finite graph was built and it is absent; otherwise "indeterminate" — it may lie beyond the
+   * whole finite graph was built and it is absent; otherwise "indeterminate", as it may lie beyond the
    * part explored before the cap or the unboundedness cut-off.
    */
   queryReachable(target: Marking): Verdict {
@@ -246,7 +246,7 @@ export class ReachabilityGraph {
   /**
    * L4-liveness witness: every terminal SCC (one with no edge leaving to another component) fires
    * every transition on its internal edges. Once a run settles into a terminal SCC it stays there
-   * forever, so a transition missing from one can never fire again — exactly the L4 failure.
+   * forever, so a transition missing from one can never fire again, exactly the L4 failure.
    */
   private static _terminalSccsFireEveryTransition(
     adjacency: Edge[][],
@@ -255,7 +255,7 @@ export class ReachabilityGraph {
     transitionCount: number,
   ): boolean {
     // A net with no transitions can never fire: its sole marking is a deadlock, so it is not live.
-    // (Without this guard the `labels.size < transitionCount` test below is `0 < 0` — vacuously
+    // (Without this guard the `labels.size < transitionCount` test below is `0 < 0`, vacuously
     // "live", which would contradict the deadlock that same marking represents.)
     if (transitionCount === 0) return false;
     const terminal = new Array<boolean>(count).fill(true);

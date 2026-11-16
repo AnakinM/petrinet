@@ -59,7 +59,8 @@ export default function App(): JSX.Element {
   }, []);
 
   // Below the breakpoint, swap in the touch shell; the desktop layout is left byte-identical. The
-  // keydown handler above still runs on mobile — harmless, and useful with an attached keyboard.
+  // keydown handler above still runs on mobile. That is harmless, and useful with an attached
+  // keyboard.
   if (isMobile) return <MobileShell />;
 
   return (

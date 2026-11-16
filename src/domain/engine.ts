@@ -3,7 +3,7 @@ import type { Arc, Marking, PetriNet } from "@/domain/types";
 /**
  * Pure, framework-free firing engine for classic weighted P/T nets.
  *
- * No React, no DOM, no store imports — `fire` is a pure marking->marking transform,
+ * No React, no DOM, no store imports. `fire` is a pure marking->marking transform,
  * so a future auto-runner, step-back history, and analysis tools reuse it unchanged.
  * Enabledness and firing read arc weights only; future arc `type`s and place
  * `capacity` plug into `isEnabled`/`fire` without touching callers.

@@ -16,14 +16,14 @@ export class NpnParseError extends Error {
  * `.npn` file is byte-identical once the {@link NpnCodec.BOM} is prepended on write.
  *
  * Import is lenient and forward-compatible: required fields are validated (malformed input
- * throws {@link NpnParseError} — never a silent partial load), optional fields default, and
+ * throws {@link NpnParseError}, never a silent partial load), optional fields default, and
  * unknown per-element fields are preserved in `_extra` so a future extended `.npn` round-trips.
  */
 export class NpnCodec {
   /** UTF-8 byte-order mark; prepended to the serialized JSON when writing a file. */
   static readonly BOM = "﻿";
 
-  // Canonical in-object key sets — anything else on an element is preserved via `_extra`.
+  // Canonical in-object key sets: anything else on an element is preserved via `_extra`.
   private static readonly PLACE_KEYS = ["id", "name", "tokens", "position", "labelPosition"];
   private static readonly TRANSITION_KEYS = ["id", "name", "position", "labelPosition", "gui"];
   private static readonly ARC_KEYS = [
@@ -174,7 +174,7 @@ export class NpnCodec {
 
   private static serializeArcs(arcs: Arc[]): Record<string, Record<string, unknown>> {
     // Group by source into a Map (insertion-ordered), then materialize to a plain
-    // object — reproducing the original outer/inner key order of the nested arc map.
+    // object, reproducing the original outer/inner key order of the nested arc map.
     const bySource = new Map<string, Record<string, unknown>>();
     for (const a of arcs) {
       let inner = bySource.get(a.source);

@@ -5,7 +5,7 @@ import { newId } from "@/lib/id";
 /** Which side of an arc an endpoint sits on. */
 export type ArcEnd = "src" | "dest";
 
-/** A node's kind — used to scope name-uniqueness checks (places and transitions namespace separately). */
+/** A node's kind, used to scope name-uniqueness checks (places and transitions namespace separately). */
 export type NodeKind = "place" | "transition";
 
 /** What {@link NetOps.paste} produced: the new net plus the ids of the inserted nodes and arcs. */
@@ -23,7 +23,7 @@ export interface PasteResult {
  * Geometry follows the magnetic model (see the node-drag rules): {@link NetOps.moveNode}
  * **translates** magnetic endpoints with the node rather than re-clipping them, preserving
  * an imported endpoint's exact border offset. Border clipping via {@link NodeGeometry}
- * happens only for a *fresh* endpoint — a new arc or a free→magnetic toggle.
+ * happens only for a *fresh* endpoint: a new arc or a free→magnetic toggle.
  */
 export class NetOps {
   // --- create ---------------------------------------------------------------
@@ -49,7 +49,7 @@ export class NetOps {
   /**
    * The sub-net induced by `nodeIds`: those places/transitions plus every arc whose **both**
    * endpoints are in the set (an arc with only one endpoint inside is dropped). Deep-cloned, so the
-   * result is self-contained — a clipboard snapshot that survives later edits to the source net.
+   * result is self-contained: a clipboard snapshot that survives later edits to the source net.
    */
   static inducedSubgraph(net: PetriNet, nodeIds: string[]): PetriNet {
     const ids = new Set(nodeIds);
@@ -158,7 +158,7 @@ export class NetOps {
   /**
    * Set a transition's rotation (degrees, normalized to [0, 360); 0 drops the `gui`).
    * Each attached **magnetic** endpoint is rotated about the node center by the same delta
-   * so it keeps its border offset on the rotated bar (the magnetic model — never re-clipped
+   * so it keeps its border offset on the rotated bar (the magnetic model, never re-clipped
    * toward the line). Free endpoints and waypoints stay put. No-op if unknown or unchanged.
    */
   static rotateTransition(net: PetriNet, id: string, deg: number): PetriNet {
@@ -207,7 +207,7 @@ export class NetOps {
   /**
    * Connect `source`→`target`, magnetic at both ends and weight 1, with the given interior
    * `bends` (flow-space, in order). Each endpoint is clipped to its node border toward its
-   * neighbour — the first bend (or the target centre when straight) for the source, the last
+   * neighbour: the first bend (or the target centre when straight) for the source, the last
    * bend (or the source centre) for the target. No-op if {@link NetOps.canConnect} is false.
    */
   static connect(net: PetriNet, source: string, target: string, bends: Vec2[] = []): PetriNet {
@@ -252,7 +252,7 @@ export class NetOps {
   /**
    * True iff a node of `kind` other than `exceptId` already carries exactly `name`
    * (case-sensitive; places and transitions namespace separately). The UI uses this to block
-   * a duplicate rename — {@link NetOps.rename} itself stays total and never rejects.
+   * a duplicate rename; {@link NetOps.rename} itself stays total and never rejects.
    */
   static isNameTaken(net: PetriNet, kind: NodeKind, name: string, exceptId?: string): boolean {
     const nodes = kind === "place" ? net.places : net.transitions;
@@ -325,7 +325,7 @@ export class NetOps {
 
   /**
    * Where an endpoint lands when dragged toward `target`: clipped to the node border when
-   * that end is **magnetic**, else `target` verbatim (a free endpoint). Pure — shared by the
+   * that end is **magnetic**, else `target` verbatim (a free endpoint). Pure, shared by the
    * live drag preview and {@link NetOps.moveEndpoint} so both agree pixel-for-pixel.
    */
   static endpointDrop(net: PetriNet, arcId: string, end: ArcEnd, target: Vec2): Vec2 {
@@ -397,7 +397,7 @@ export class NetOps {
   }
 
   /**
-   * Centers of every node (places then transitions), optionally excluding one id — the set a
+   * Centers of every node (places then transitions), optionally excluding one id: the set a
    * placing ghost or a dragged node aligns its center against.
    */
   static nodeCenters(net: PetriNet, exceptId?: string): Vec2[] {

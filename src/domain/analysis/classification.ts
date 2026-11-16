@@ -2,8 +2,8 @@ import type { Classification, ClassResult } from "@/domain/analysis/types";
 import type { PetriNet } from "@/domain/types";
 
 /**
- * The four classic structural classifications of a P/T net — ordinary, state machine, marked graph,
- * free choice — each decided from the net's shape alone (arc weights and distinct in/out neighbours),
+ * The four classic structural classifications of a P/T net (ordinary, state machine, marked graph,
+ * free choice), each decided from the net's shape alone (arc weights and distinct in/out neighbours),
  * with no state-space search. Pure and framework-free; the erroneous-element ids let the UI spotlight
  * what breaks each class.
  *
@@ -148,7 +148,7 @@ export class NetClassification {
     };
   }
 
-  /** "1 arc" / "3 arcs" — a count with a singular/plural noun. */
+  /** "1 arc" / "3 arcs": a count with a singular/plural noun. */
   private static _count(n: number, noun: string): string {
     return `${n} ${noun}${n === 1 ? "" : "s"}`;
   }

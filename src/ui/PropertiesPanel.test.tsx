@@ -10,7 +10,7 @@ import { PropertiesPanel } from "@/ui/PropertiesPanel";
 
 const ORIGIN = { x: 0, y: 0 };
 
-// Places Buffer/Queue and transitions Emit/Drain — names are unique within each kind.
+// Places Buffer/Queue and transitions Emit/Drain: names are unique within each kind.
 const NET: PetriNet = {
   places: [
     { id: "p1", name: "Buffer", tokens: 0, position: ORIGIN },

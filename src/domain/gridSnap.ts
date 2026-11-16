@@ -4,7 +4,7 @@ import type { Vec2 } from "@/domain/types";
  * Snap helper for the build canvas. A node *center* snaps to a square grid whose spacing matches
  * the 24px Background lines, so a placed or dragged node lands on a visible intersection. Pure and
  * framework-free, so the canvas placement/drag paths and the unit tests share one definition of
- * the grid. Arc bends are deliberately never snapped — they stay freeform.
+ * the grid. Arc bends are deliberately never snapped: they stay freeform.
  */
 export class GridSnap {
   /** Grid spacing in flow units; matches the canvas Background `gap`. */

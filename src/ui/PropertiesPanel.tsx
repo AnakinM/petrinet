@@ -163,7 +163,7 @@ function NameField({ id, name, kind }: { id: string; name: string; kind: NodeKin
 /**
  * Uncontrolled text/number field that commits on blur or Enter and reverts on Escape.
  * Keyed by its committed value at the call site so external changes (+/-, undo/redo) remount
- * it, while free typing stays local until commit — keeping one history entry per edit.
+ * it, while free typing stays local until commit, keeping one history entry per edit.
  */
 function CommitField({
   defaultValue,

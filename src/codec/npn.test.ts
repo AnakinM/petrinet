@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { NpnCodec, NpnParseError } from "@/codec/npn";
 
 // The reference sample is gitignored (kept local, never committed). Tests that need
-// it skip cleanly when it is absent — e.g. a fresh checkout without the local file.
+// it skip cleanly when it is absent, e.g. a fresh checkout without the local file.
 const FIXTURE = new URL("../../export-12.npn", import.meta.url);
 const hasFixture = existsSync(FIXTURE);
 const fixtureBytes = (): Uint8Array => new Uint8Array(readFileSync(FIXTURE));

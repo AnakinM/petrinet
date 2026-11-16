@@ -5,7 +5,7 @@ import { TOOLS } from "@/ui/buildTools";
 /**
  * Mutually-exclusive placing tools. Clicking a tool activates it (a ghost then follows the cursor
  * and clicks drop that kind of node); clicking the active tool again returns to Idle. Build mode
- * only — the panel above Properties. Tools come from the shared {@link TOOLS} descriptor, so the
+ * only (the panel above Properties). Tools come from the shared {@link TOOLS} descriptor, so the
  * desktop palette and the mobile dock render the same set.
  */
 export function Palette(): JSX.Element {

@@ -87,7 +87,7 @@ describe("NetAnalysis.analyze (algebraic slice)", () => {
 
   it("degrades conservative and structural boundedness to indeterminate when invariants truncate", () => {
     // Two disjoint cycles need two minimal P-semiflows; the tiny cap can't hold them, so the
-    // enumeration truncates and coverage is unknown — verdicts must not claim a false negative.
+    // enumeration truncates and coverage is unknown. Verdicts must not claim a false negative.
     const net: PetriNet = {
       places: [place("p1", 1), place("p2"), place("p3", 1), place("p4")],
       transitions: ["t1", "t2", "t3", "t4"].map(transition),
@@ -113,7 +113,7 @@ describe("NetAnalysis.analyze (algebraic slice)", () => {
 
   it("keeps conservative definite when only the transition-invariant family truncates", () => {
     // One place, two self-loop transitions: P stays covered (so conservative is decidable) while
-    // the T-family overruns the cap — a T-overflow must not drag conservative to indeterminate.
+    // the T-family overruns the cap. A T-overflow must not drag conservative to indeterminate.
     const net: PetriNet = {
       places: [place("p", 1)],
       transitions: [transition("t1"), transition("t2")],

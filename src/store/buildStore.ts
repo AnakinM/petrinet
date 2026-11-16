@@ -17,8 +17,8 @@ export interface ArcDraft {
  * A mutually-exclusive Build interaction tool. `idle` is the default (select / move / draw an arc
  * via the hover handles); `place` and `transition` are click-to-place tools that drop that kind of
  * node where the ghost sits; `arc` is an explicit tap-to-connect tool (tap the source node, then a
- * target — the touch-friendly path to the same draw the idle hover handles begin); `select` is the
- * marquee tool; `token` adds a token to a clicked place (shift-click removes one), editing the
+ * target) and the touch-friendly path to the same draw the idle hover handles begin; `select` is
+ * the marquee tool; `token` adds a token to a clicked place (shift-click removes one), editing the
  * persisted M0. Only one is ever active.
  */
 export type BuildTool = "idle" | "place" | "transition" | "arc" | "select" | "token";

@@ -10,11 +10,11 @@ const DOT =
 
 /**
  * The arc-start affordance: two circles on a node's left/right border. Pressing one begins a
- * click-to-draw arc from this node (which border is just the launch point — the real endpoint
- * is computed by border geometry). Body clicks still select the node. Build mode only.
+ * click-to-draw arc from this node (which border is just the launch point, because the real
+ * endpoint is computed by border geometry). Body clicks still select the node. Build mode only.
  *
  * Desktop only: these are hover/selection dots with no touch analogue, and on a phone a stray tap
- * near a selected node's border would start an unwanted draw — so on mobile the explicit Arc tool
+ * near a selected node's border would start an unwanted draw, so on mobile the explicit Arc tool
  * is the single path and these are hidden.
  */
 export function ArcStartHandles({

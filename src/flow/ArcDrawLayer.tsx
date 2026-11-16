@@ -23,7 +23,7 @@ const HIT_PAD = 6;
  * The click-to-draw arc layer, mounted only while an arc is in progress (see {@link ArcDraft}).
  *
  * When `interactive` (desktop, the default) it renders a screen-space capture overlay that owns the
- * draw state machine — move tracks the cursor, a click on empty canvas drops a bend, a click on a
+ * draw state machine: move tracks the cursor, a click on empty canvas drops a bend, a click on a
  * valid target node finishes the arc (an invalid target or the source itself is ignored and the
  * draw continues), and Esc or right-click cancels. When not interactive (touch) the capture overlay
  * is omitted and taps route through React Flow's node/pane handlers instead (so one-finger pan and

@@ -5,7 +5,7 @@ import type { JSX, ReactNode } from "react";
  * The toolbar glyphs render at 16px; the verdict glyphs are sized by their `className`.
  */
 
-/** Shared 16px frame for the toolbar glyphs — currentColor stroke, round caps/joins. */
+/** Shared 16px frame for the toolbar glyphs: currentColor stroke, round caps/joins. */
 function ToolbarIcon({ children }: { children: ReactNode }): JSX.Element {
   return (
     <svg
@@ -24,7 +24,7 @@ function ToolbarIcon({ children }: { children: ReactNode }): JSX.Element {
   );
 }
 
-/** A 3×3 grid (hash) — the snap-to-grid toggle. */
+/** A 3×3 grid (hash): the snap-to-grid toggle. */
 export function GridIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -33,7 +33,7 @@ export function GridIcon(): JSX.Element {
   );
 }
 
-/** A document with a plus — New (start a fresh net). */
+/** A document with a plus: New (start a fresh net). */
 export function NewIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -44,7 +44,7 @@ export function NewIcon(): JSX.Element {
   );
 }
 
-/** A tray with a down arrow — Import (load a file in). */
+/** A tray with a down arrow: Import (load a file in). */
 export function ImportIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -55,7 +55,7 @@ export function ImportIcon(): JSX.Element {
   );
 }
 
-/** A tray with an up arrow — Export (save a file out). */
+/** A tray with an up arrow: Export (save a file out). */
 export function ExportIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -66,7 +66,7 @@ export function ExportIcon(): JSX.Element {
   );
 }
 
-/** A framed picture (sun + mountain) — export the net as an image. */
+/** A framed picture (sun + mountain): export the net as an image. */
 export function ImageIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -77,7 +77,7 @@ export function ImageIcon(): JSX.Element {
   );
 }
 
-/** A curved arrow back to the left — Undo. */
+/** A curved arrow back to the left: Undo. */
 export function UndoIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -87,7 +87,7 @@ export function UndoIcon(): JSX.Element {
   );
 }
 
-/** A curved arrow forward to the right — Redo. */
+/** A curved arrow forward to the right: Redo. */
 export function RedoIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -97,7 +97,7 @@ export function RedoIcon(): JSX.Element {
   );
 }
 
-/** Three stacked lines — the mobile "more actions" (hamburger) menu. */
+/** Three stacked lines: the mobile "more actions" (hamburger) menu. */
 export function MenuIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -106,7 +106,7 @@ export function MenuIcon(): JSX.Element {
   );
 }
 
-/** Four framing corners — zoom the viewport to fit the whole net. */
+/** Four framing corners: zoom the viewport to fit the whole net. */
 export function FitViewIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -115,7 +115,7 @@ export function FitViewIcon(): JSX.Element {
   );
 }
 
-/** A filled triangle — start auto-running the simulation. */
+/** A filled triangle: start auto-running the simulation. */
 export function PlayIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -124,7 +124,7 @@ export function PlayIcon(): JSX.Element {
   );
 }
 
-/** Two filled bars — pause auto-running. */
+/** Two filled bars: pause auto-running. */
 export function PauseIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -134,7 +134,7 @@ export function PauseIcon(): JSX.Element {
   );
 }
 
-/** A triangle meeting a bar — fire one step. */
+/** A triangle meeting a bar: fire one step. */
 export function StepIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -144,7 +144,7 @@ export function StepIcon(): JSX.Element {
   );
 }
 
-/** An open book — the "Guide" link glyph (stroke-based, matches the toolbar weight). */
+/** An open book: the "Guide" link glyph (stroke-based, matches the toolbar weight). */
 export function BookIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -155,7 +155,7 @@ export function BookIcon(): JSX.Element {
 }
 
 /**
- * The GitHub "Octocat" mark — solid/fill-based (unlike the stroke toolbar glyphs), 16px.
+ * The GitHub "Octocat" mark: solid/fill-based (unlike the stroke toolbar glyphs), 16px.
  * Used in the left-sidebar footer link row.
  */
 export function GitHubIcon(): JSX.Element {
@@ -166,7 +166,7 @@ export function GitHubIcon(): JSX.Element {
   );
 }
 
-/** A bug — the "Report an issue" link glyph (stroke-based, matches the toolbar weight). */
+/** A bug: the "Report an issue" link glyph (stroke-based, matches the toolbar weight). */
 export function BugIcon(): JSX.Element {
   return (
     <ToolbarIcon>
@@ -185,7 +185,7 @@ export function BugIcon(): JSX.Element {
   );
 }
 
-/** Shared stroke options for the verdict glyphs — bold enough to read white-on-colour when small. */
+/** Shared stroke options for the verdict glyphs: bold enough to read white-on-colour when small. */
 function Glyph({
   className,
   children,
@@ -209,7 +209,7 @@ function Glyph({
   );
 }
 
-/** A check mark — the "yes" verdict badge. */
+/** A check mark: the "yes" verdict badge. */
 export function CheckIcon({ className }: { className?: string }): JSX.Element {
   return (
     <Glyph className={className}>
@@ -218,7 +218,7 @@ export function CheckIcon({ className }: { className?: string }): JSX.Element {
   );
 }
 
-/** An ✕ — the "no" verdict badge. */
+/** An ✕: the "no" verdict badge. */
 export function CrossIcon({ className }: { className?: string }): JSX.Element {
   return (
     <Glyph className={className}>
@@ -227,7 +227,7 @@ export function CrossIcon({ className }: { className?: string }): JSX.Element {
   );
 }
 
-/** A question mark — the "unknown" (indeterminate) verdict badge. */
+/** A question mark: the "unknown" (indeterminate) verdict badge. */
 export function QuestionIcon({ className }: { className?: string }): JSX.Element {
   return (
     <Glyph className={className}>

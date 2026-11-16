@@ -40,7 +40,7 @@ function imageNet(): PetriNet {
   return { ...net, places: net.places.map((p) => ({ ...p, tokens: marking[p.id] ?? p.tokens })) };
 }
 
-/** Export PNML — a structural export (M0, like `.npn`). */
+/** Export PNML: a structural export (M0, like `.npn`). */
 export function exportPnml(): void {
   PnmlFile.save(useNetStore.getState().net);
 }

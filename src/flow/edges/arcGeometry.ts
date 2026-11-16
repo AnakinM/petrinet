@@ -3,8 +3,8 @@ import type { Vec2 } from "@/domain/types";
 /**
  * Pure arc geometry: polyline path building and weight-label placement.
  *
- * The `.npn` polyline is rendered verbatim — its endpoints are stored already clipped to
- * the node border — so {@link ArcGeometry.path} just strings the points together. Border
+ * The `.npn` polyline is rendered verbatim: its endpoints are stored already clipped to
+ * the node border, so {@link ArcGeometry.path} just strings the points together. Border
  * intersection (where a new or dragged endpoint meets the node shape) lives on
  * {@link NodeGeometry}, with the node dimensions it depends on. Kept framework-free so it
  * is unit-testable in isolation.
@@ -51,7 +51,7 @@ export class ArcGeometry {
   }
 
   /**
-   * Point halfway along the polyline by arc length — where the weight label sits.
+   * Point halfway along the polyline by arc length, where the weight label sits.
    * The stored arc `labelPosition` is preserved for round-tripping but not rendered
    * here (its convention is not derivable from the reference file); the label is drawn
    * at this computed midpoint instead.
@@ -77,7 +77,7 @@ export class ArcGeometry {
 
   /**
    * Index into `points` of the interior vertex (a removable bend) within `tolerance` of
-   * `cursor`, or `null` when none qualify. The two endpoints are excluded — only bends are
+   * `cursor`, or `null` when none qualify. The two endpoints are excluded. Only bends are
    * removable. The nearest bend wins when several are in range. All arguments share one
    * coordinate space; the caller passes flow-space points with a zoom-scaled tolerance so the
    * target stays a constant size on screen. Drives rule 3 of the unified right-click policy.

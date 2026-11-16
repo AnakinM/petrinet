@@ -14,7 +14,7 @@ function rowState(index: number, cursor: number): RowState {
 /**
  * Simulate-mode firing log with scrub. "Initial (M0)" sits at the top, then one row per fired
  * transition (oldest→newest, labeled `T1: P1 → P2`). The row at the cursor is current; rows after
- * it are the rewound future — dimmed but still clickable to move forward again. Clicking a row
+ * it are the rewound future: dimmed but still clickable to move forward again. Clicking a row
  * restores the marking recorded after that step; firing from a rewound point discards the future.
  */
 export function HistoryList(): JSX.Element {

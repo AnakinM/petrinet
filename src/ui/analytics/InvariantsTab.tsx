@@ -6,9 +6,9 @@ import { useNetStore } from "@/store/netStore";
 import { DISPLAY_CAP, HighlightChip, Overflow, Section } from "@/ui/analytics/widgets";
 
 /**
- * P- and T-invariants, each shown three ways — the readable weighted sum over element names, the
+ * P- and T-invariants, each shown three ways: the readable weighted sum over element names, the
  * structural weight vector, and the system law (a P-invariant's conserved token total `Yᵀ·M₀`, a
- * T-invariant's return-to-M₀ firing multiset `σ`) — plus the coverage summary. Every invariant is a
+ * T-invariant's return-to-M₀ firing multiset `σ`), plus the coverage summary. Every invariant is a
  * chip: clicking it spotlights its support set on the canvas (and pans to it).
  */
 export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Element {
@@ -30,7 +30,7 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
     <div className="flex flex-col gap-4">
       <InvariantSection
         title="Place invariants"
-        help="A place invariant (P-invariant) is a positive place weighting whose weighted token sum is unchanged by every firing — a conservation law."
+        help="A place invariant (P-invariant) is a positive place weighting whose weighted token sum is unchanged by every firing. This is a conservation law."
         kind="place"
         invariants={invariants.place}
         truncated={invariants.placeTruncated}
@@ -90,7 +90,7 @@ function InvariantSection({
   return (
     <Section title={title} help={help}>
       {truncated ? (
-        // A truncated family yields an empty list that does NOT mean "none" — say so per-family, so
+        // A truncated family yields an empty list that does NOT mean "none". Say so per-family, so
         // an overflow on one family never hides the other family that computed fine.
         <p className="text-slate-400 text-sm">
           Too many to enumerate within the safety cap. Simplify the net to list them.
@@ -101,7 +101,7 @@ function InvariantSection({
         <>
           <ul className="flex flex-col gap-1">
             {invariants.slice(0, DISPLAY_CAP).map((inv) => {
-              // Support set in net order — both the canvas spotlight and the chip's lit-state key.
+              // Support set in net order (both the canvas spotlight and the chip's lit-state key).
               const ids = order.filter((id) => inv.weights[id] !== undefined);
               const n = invariantNotation(inv, order, nameOf, kind, m0);
               return (
@@ -148,10 +148,10 @@ function formatInvariant(inv: Invariant, order: string[], nameOf: (id: string) =
 
 /**
  * The three notations for one invariant:
- *  - `sum`    — the readable weighted sum over names (`2·P1 + P3`);
- *  - `vector` — the structural weight vector over the full basis in net order, zeros included
+ *  - `sum`:    the readable weighted sum over names (`2·P1 + P3`);
+ *  - `vector`: the structural weight vector over the full basis in net order, zeros included
  *               (`Yᵀ=(1, 0, 1)` for places, `Xᵀ=(…)` for transitions);
- *  - `system` — the system law: a P-invariant's conserved token total `Yᵀ·M₀ = k` (k read from M0),
+ *  - `system`: the system law, meaning a P-invariant's conserved token total `Yᵀ·M₀ = k` (k read from M0),
  *               a T-invariant's return-to-M₀ firing multiset `σ = {T1, T3}`.
  */
 function invariantNotation(

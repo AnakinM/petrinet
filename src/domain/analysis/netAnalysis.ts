@@ -23,9 +23,9 @@ export const STATE_CAP_EXCEEDED = `The state space exceeded the ${STATE_CAP_LABE
 interface AnalyzeOptions {
   /** Run the reachability pass for the behavioural verdicts; omit/false for the algebraic slice only. */
   behavioral?: boolean;
-  /** Reachability state cap override — a test seam; production uses {@link ReachabilityGraph.STATE_CAP}. */
+  /** Reachability state cap override: a test seam; production uses {@link ReachabilityGraph.STATE_CAP}. */
   cap?: number;
-  /** Invariant generator cap override — a test seam; production uses {@link Invariants.MAX_GENERATORS}. */
+  /** Invariant generator cap override: a test seam; production uses {@link Invariants.MAX_GENERATORS}. */
   invariantCap?: number;
 }
 
@@ -36,7 +36,7 @@ interface AnalyzeOptions {
  * Two layers, matching the spec:
  *   - **Algebraic** (always): invariants, coverage, conservativeness and structural boundedness
  *     from the {@link IncidenceMatrix}, plus the structural net-graph {@link NetStructure}
- *     diagnostics — all instant, with no state search.
+ *     diagnostics, all instant, with no state search.
  *   - **Behavioural** (`behavioral: true`): one {@link ReachabilityGraph} pass settles live /
  *     reversible / deadlock-free / quasi-live, the exact bound and safeness, and the dead-transition
  *     and deadlock witnesses. Without it those verdicts stay `indeterminate`.
@@ -51,8 +51,8 @@ export class NetAnalysis {
   }
 
   /**
-   * The instant algebraic slice — invariants, conservativeness, structural boundedness and the
-   * net-graph diagnostics — with every behavioural verdict left `indeterminate`. The store keeps
+   * The instant algebraic slice (invariants, conservativeness, structural boundedness and the
+   * net-graph diagnostics) with every behavioural verdict left `indeterminate`. The store keeps
    * this live while the panel is open, then threads it straight into {@link behavioral} so the
    * on-demand reachability pass never recomputes any of it.
    */
@@ -137,13 +137,13 @@ export class NetAnalysis {
     return {
       verdict,
       detail: rg.unbounded
-        ? "Unknown — the net is unbounded, so its reachable markings cannot be fully enumerated."
+        ? "Unknown: the net is unbounded, so the editor cannot list all its reachable markings."
         : STATE_CAP_EXCEEDED,
     };
   }
 
   /**
-   * A fingerprint of everything an analysis depends on — place ids & token counts, transition ids,
+   * A fingerprint of everything an analysis depends on: place ids & token counts, transition ids,
    * and arc topology with multiplicities. Excludes positions, labels, rotation and names (none
    * affect a verdict), so a layout nudge produces the same signature and need not invalidate results.
    *
@@ -160,7 +160,7 @@ export class NetAnalysis {
 
   /**
    * A structural P-cover proves boundedness for any marking with no state search, so it wins the
-   * `source` label; reachability still supplies the exact bound and safeness — which stay unknown
+   * `source` label; reachability still supplies the exact bound and safeness, which stay unknown
    * (`bound: null`, `safe: "indeterminate"`) if the pass hit the cap, even on a structurally
    * bounded net. Without a P-cover, boundedness itself is whatever reachability could settle.
    */
@@ -241,7 +241,7 @@ export class NetAnalysis {
 
   /**
    * Conservative ⟺ a positive P-invariant exists ⟺ every place is covered by some minimal
-   * P-semiflow (their sum is then a full-support semiflow). Fully algebraic, so a definite yes/no —
+   * P-semiflow (their sum is then a full-support semiflow). Fully algebraic, so a definite yes/no,
    * unless the P-semiflow enumeration truncated, in which case place coverage is unknown and the
    * verdict degrades to indeterminate rather than claim a false "no" (a T-overflow is irrelevant here).
    */

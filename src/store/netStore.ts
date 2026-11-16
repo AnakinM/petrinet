@@ -60,7 +60,7 @@ export interface NetState {
   removeSelected: () => void;
   /** Copy the current selection's induced subgraph to the clipboard (resets the paste cascade). */
   copy: () => void;
-  /** Paste the clipboard as a cascaded, fully-selected duplicate — recorded as one undo entry. */
+  /** Paste the clipboard as a cascaded, fully-selected duplicate, recorded as one undo entry. */
   paste: () => void;
 
   // --- transient UI state (never tracked by undo/redo) ---
@@ -69,7 +69,7 @@ export interface NetState {
   setViewport: (viewport: Viewport) => void;
 }
 
-/** Tracked slice — only `net` is undoable; selection / mode / viewport are not. */
+/** Tracked slice: only `net` is undoable; selection / mode / viewport are not. */
 type TrackedState = { net: PetriNet };
 
 const restored = Autosave.load();
