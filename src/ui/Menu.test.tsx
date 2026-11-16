@@ -82,6 +82,20 @@ describe("Menu", () => {
     expect(trigger()).toHaveFocus();
   });
 
+  it("keeps its Escape from the window, where a placing tool listens", async () => {
+    const onWindowKey = vi.fn();
+    window.addEventListener("keydown", onWindowKey);
+    renderMenu([{ entries: [{ label: "One" }] }]);
+    await userEvent.click(trigger());
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(onWindowKey).not.toHaveBeenCalledWith(expect.objectContaining({ key: "Escape" }));
+    // With the menu closed, Escape reaches the window again.
+    await userEvent.keyboard("{Escape}");
+    expect(onWindowKey).toHaveBeenCalledWith(expect.objectContaining({ key: "Escape" }));
+    window.removeEventListener("keydown", onWindowKey);
+  });
+
   it("returns the focus to the trigger after a keyboard choice", async () => {
     const onSelect = vi.fn();
     renderMenu([{ entries: [{ label: "One", onSelect }] }]);
