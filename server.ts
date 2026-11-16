@@ -5,14 +5,25 @@ const DIST = `${import.meta.dir}/dist`;
 const PORT = Number(Bun.env.PORT ?? 3000);
 const indexHtml = Bun.file(`${DIST}/index.html`);
 
+/**
+ * The file in dist for a request path, or null. A directory that holds an index.html serves that
+ * file, with or without a trailing slash: / is dist/index.html and /guide is dist/guide/index.html.
+ * `exists()` is false for a directory itself. URL parsing has already removed every `..` segment,
+ * so a path cannot leave dist.
+ */
+async function distFile(pathname: string): Promise<Bun.BunFile | null> {
+  for (const path of [pathname, `${pathname.replace(/\/+$/, "")}/index.html`]) {
+    const file = Bun.file(`${DIST}${path}`);
+    if (await file.exists()) return file;
+  }
+  return null;
+}
+
 const server = Bun.serve({
   port: PORT,
   async fetch(req): Promise<Response> {
-    const { pathname } = new URL(req.url);
-    const file = Bun.file(`${DIST}${pathname === "/" ? "/index.html" : pathname}`);
-    if (await file.exists()) {
-      return new Response(file);
-    }
+    const file = await distFile(new URL(req.url).pathname);
+    if (file) return new Response(file);
     return new Response(indexHtml, { headers: { "Content-Type": "text/html" } });
   },
 });
