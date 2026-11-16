@@ -34,11 +34,15 @@ export function DropImport(): JSX.Element | null {
       depth = Math.max(0, depth - 1);
       if (depth === 0) setOver(false);
     };
+    // A browser may skip a dragleave (Firefox does), so the end of any drag starts the count anew.
+    const reset = (): void => {
+      depth = 0;
+      setOver(false);
+    };
     const onDrop = (e: DragEvent): void => {
       if (!carriesFiles(e)) return;
       e.preventDefault();
-      depth = 0;
-      setOver(false);
+      reset();
       // Only the first file counts.
       const file = e.dataTransfer?.files[0];
       if (file) importDroppedFile(file);
@@ -48,11 +52,15 @@ export function DropImport(): JSX.Element | null {
     window.addEventListener("dragover", onDragOver);
     window.addEventListener("dragleave", onDragLeave);
     window.addEventListener("drop", onDrop);
+    window.addEventListener("dragend", reset);
+    window.addEventListener("blur", reset);
     return () => {
       window.removeEventListener("dragenter", onDragEnter);
       window.removeEventListener("dragover", onDragOver);
       window.removeEventListener("dragleave", onDragLeave);
       window.removeEventListener("drop", onDrop);
+      window.removeEventListener("dragend", reset);
+      window.removeEventListener("blur", reset);
     };
   }, []);
 

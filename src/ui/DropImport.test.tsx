@@ -59,6 +59,25 @@ describe("DropImport", () => {
     expect(screen.queryByText("Drop to import")).not.toBeInTheDocument();
   });
 
+  it.each([
+    "dragend",
+    "blur",
+  ])("starts the count anew on %s, so a missed dragleave leaves no overlay", (type) => {
+    drag("dragenter");
+    drag("dragenter");
+    drag("dragleave"); // the browser skipped the second dragleave
+    expect(screen.getByText("Drop to import")).toBeInTheDocument();
+    act(() => {
+      window.dispatchEvent(new Event(type));
+    });
+    expect(screen.queryByText("Drop to import")).not.toBeInTheDocument();
+    // The count starts at zero again: one enter and one leave show and hide the overlay.
+    drag("dragenter");
+    expect(screen.getByText("Drop to import")).toBeInTheDocument();
+    drag("dragleave");
+    expect(screen.queryByText("Drop to import")).not.toBeInTheDocument();
+  });
+
   it("replaces the net with the first dropped file", async () => {
     drag("dragenter");
     const drop = drag("drop", [npnFile(NEW), new File(["not a net"], "second.npn")]);
