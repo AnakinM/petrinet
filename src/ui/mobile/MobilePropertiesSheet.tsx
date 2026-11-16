@@ -35,7 +35,7 @@ export function MobilePropertiesSheet(): JSX.Element | null {
       >
         <span className="h-1 w-10 rounded-full bg-slate-300" />
         {!expanded && (
-          <span className="font-medium text-slate-500 text-xs">{title} · tap to open</span>
+          <span className="font-medium text-slate-500 text-sm">{title} · tap to open</span>
         )}
       </button>
       {expanded && (

@@ -216,7 +216,7 @@ function Section({
           <div
             id={headingId}
             role="presentation"
-            className="px-3 pt-1.5 pb-1 font-semibold text-slate-500 text-xs uppercase tracking-wide"
+            className="px-3 pt-1.5 pb-1 font-semibold text-slate-500 text-sm uppercase tracking-wide"
           >
             {section.label}
           </div>
@@ -261,7 +261,7 @@ function Item({
       <span className="flex flex-col">
         <span>{entry.label}</span>
         {entry.hint && (
-          <span id={hintId} className="text-slate-500 text-xs">
+          <span id={hintId} className="text-slate-500 text-sm">
             {entry.hint}
           </span>
         )}
