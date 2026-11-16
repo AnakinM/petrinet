@@ -70,7 +70,7 @@ function PanelHeader({ activeTab }: { activeTab: AnalyticsTab }): JSX.Element {
   return (
     <div className="shrink-0 border-slate-200 border-b">
       <div className="flex items-center gap-2 px-4 py-2">
-        <h2 className="font-semibold text-slate-800 text-sm">Analytics</h2>
+        <h2 className="font-semibold text-slate-800 text-sm">Analysis</h2>
         {stale && (
           <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-700 text-xs">
             Stale
@@ -87,7 +87,7 @@ function PanelHeader({ activeTab }: { activeTab: AnalyticsTab }): JSX.Element {
           <button
             type="button"
             onClick={() => useAnalyticsStore.getState().close()}
-            aria-label="Close analytics"
+            aria-label="Close analysis"
             className="rounded px-1.5 text-lg text-slate-400 leading-none hover:bg-slate-100 hover:text-slate-700"
           >
             ×

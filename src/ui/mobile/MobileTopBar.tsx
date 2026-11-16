@@ -14,7 +14,7 @@ const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
 /**
  * Condensed top bar for the mobile shell: icon-only Undo/Redo (Build only), the Build↔Simulate
  * {@link ModeToggle}, and a hamburger menu holding the secondary actions that live in the desktop
- * toolbar and sidebar footer (the Export and Image groups, the Analytics toggle, and the
+ * toolbar and sidebar footer (the Export and Image groups, the Analysis toggle, and the
  * Guide/GitHub links). All actions come from the shared {@link EXPORT_ENTRIES} et al., so they match
  * the desktop.
  */
@@ -71,7 +71,7 @@ function HamburgerMenu({ simulating }: { simulating: boolean }): JSX.Element {
     {
       entries: [
         {
-          label: analyticsOpen ? "Hide analytics" : "Show analytics",
+          label: analyticsOpen ? "Hide analysis" : "Show analysis",
           onSelect: () => useAnalyticsStore.getState().toggle(),
         },
       ],
