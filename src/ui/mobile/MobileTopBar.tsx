@@ -38,7 +38,11 @@ export function MobileTopBar(): JSX.Element {
         height={26}
         className="h-[26px] w-[26px]"
       />
-      <span className="font-semibold text-slate-800 text-sm">PetriNet</span>
+      {/* The site name is the page heading. "Editor" shows from 640 pixels up only: a phone's bar
+          has no room for it. Screen readers and crawlers always get it. */}
+      <h1 className="whitespace-nowrap font-semibold text-slate-800 text-sm">
+        PetriNet <span className="sr-only sm:not-sr-only">Editor</span>
+      </h1>
       {!simulating && (
         <>
           <IconButton onClick={netHistory.undo} disabled={!canUndo} label="Undo">
