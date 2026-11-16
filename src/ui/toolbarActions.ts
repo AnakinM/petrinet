@@ -27,7 +27,7 @@ export function importNet(): void {
     })
     .catch((error: Error) => {
       if (error instanceof NetImportError) {
-        Analytics.track("Import refused", { format: error.format, reason: "invalid" });
+        Analytics.track("Import refused", { format: error.format, reason: error.reason });
       }
       window.alert(`Import failed: ${error.message}`);
     });
