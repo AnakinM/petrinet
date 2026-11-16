@@ -79,6 +79,8 @@ export class NetAnalysis {
       stateSpaceExceeded: false,
       stateSpaceComplete: false,
       exploredStates: 0,
+      placeBounds: null,
+      stateTable: null,
     };
   }
 
@@ -109,6 +111,8 @@ export class NetAnalysis {
       stateSpaceExceeded: rg.exceeded,
       stateSpaceComplete: rg.complete,
       exploredStates: rg.states,
+      placeBounds: rg.placeBounds(),
+      stateTable: rg.stateTable(),
     };
   }
 

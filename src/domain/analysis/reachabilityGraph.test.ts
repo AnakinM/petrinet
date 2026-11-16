@@ -197,4 +197,56 @@ describe("ReachabilityGraph", () => {
       expect(g.queryReachable({ p1: 0 })).toBe("yes"); // M0 stays reachable
     });
   });
+
+  describe("place bounds and the state table", () => {
+    it("names markings M0, M1 in discovery order and lists firings", () => {
+      const table = new ReachabilityGraph(bounceNet()).stateTable();
+      expect(table.placeIds).toEqual(["p1", "p2"]);
+      expect(table.complete).toBe(true);
+      expect(table.rows).toEqual([
+        { name: "M0", tokens: [1, 0], firings: [{ transition: "t1", to: "M1" }], deadlock: false },
+        { name: "M1", tokens: [0, 1], firings: [{ transition: "t2", to: "M0" }], deadlock: false },
+      ]);
+    });
+
+    it("marks the dead marking as a deadlock", () => {
+      const net: PetriNet = {
+        places: [place("p1", 1), place("p2", 0)],
+        transitions: [transition("t1")],
+        arcs: [arc("p1", "t1"), arc("t1", "p2")],
+      };
+      const rows = new ReachabilityGraph(net).stateTable().rows;
+      expect(rows.map((r) => r.deadlock)).toEqual([false, true]);
+      expect(rows[1].firings).toEqual([]);
+    });
+
+    it("reports exact bounds on a complete graph", () => {
+      const net: PetriNet = {
+        places: [place("p1", 2), place("p2", 0)],
+        transitions: [transition("t1")],
+        arcs: [arc("p1", "t1"), arc("t1", "p2")],
+      };
+      expect(new ReachabilityGraph(net).placeBounds()).toEqual({
+        max: { p1: 2, p2: 2 },
+        exact: true,
+      });
+    });
+
+    it("reports lower limits when capped", () => {
+      const bounds = new ReachabilityGraph(bounceNet(), 1).placeBounds();
+      expect(bounds).toEqual({ max: { p1: 1, p2: 0 }, exact: false });
+    });
+
+    it("reports lower limits for an unbounded net, and does not call an unexpanded marking a deadlock", () => {
+      const net: PetriNet = {
+        places: [place("p1", 0)],
+        transitions: [transition("t1")],
+        arcs: [arc("t1", "p1")],
+      };
+      const g = new ReachabilityGraph(net);
+      expect(g.placeBounds().exact).toBe(false);
+      expect(g.stateTable().complete).toBe(false);
+      expect(g.stateTable().rows.some((r) => r.deadlock)).toBe(false);
+    });
+  });
 });

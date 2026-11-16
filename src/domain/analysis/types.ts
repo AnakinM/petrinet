@@ -76,6 +76,45 @@ export interface Classification {
   freeChoice: ClassResult;
 }
 
+/**
+ * The largest token count each place reaches over all explored markings, keyed by place id.
+ * `exact` is true only when the whole state space was explored; otherwise every number is just a
+ * lower limit (the state space was capped or unbounded).
+ */
+export interface PlaceBounds {
+  max: Record<string, number>;
+  exact: boolean;
+}
+
+/** One firing out of a marking: transition id and the name ("M3") of the marking it leads to. */
+export interface StateFiring {
+  transition: string;
+  to: string;
+}
+
+/**
+ * One explored marking. `name` is "M0" (the initial marking), "M1", ... in order of discovery.
+ * `tokens[i]` is the token count of `StateTable.placeIds[i]`. `deadlock` is true for a marking in
+ * which no transition is enabled (a marking that was merely not expanded is not a deadlock).
+ */
+export interface StateRow {
+  name: string;
+  tokens: number[];
+  firings: StateFiring[];
+  deadlock: boolean;
+}
+
+/**
+ * The explored part of the reachability graph, rows in order of discovery (`rows[i].name` is
+ * `M${i}`). `complete` is true when this is the whole state space; otherwise it is only the
+ * explored part. Rows are compact (arrays, no per-marking maps) because up to 10,000 can exist.
+ */
+export interface StateTable {
+  placeIds: string[];
+  rows: StateRow[];
+  complete: boolean;
+}
+
 /** Structural & behavioural diagnostics for the Structure tab. */
 export interface Diagnostics {
   deadTransitions: string[];
@@ -117,4 +156,8 @@ export interface AnalysisResult {
    */
   stateSpaceComplete: boolean;
   exploredStates: number;
+  /** Per-place maximum tokens over the explored markings; `null` until the full analysis has run. */
+  placeBounds: PlaceBounds | null;
+  /** The explored markings and firings; `null` until the full analysis has run. */
+  stateTable: StateTable | null;
 }
