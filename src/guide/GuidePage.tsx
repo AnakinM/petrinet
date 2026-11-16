@@ -106,7 +106,11 @@ function TopBar(): JSX.Element {
       <div className="mx-auto flex max-w-5xl items-center gap-2 px-5 py-3">
         <a href="/" className="flex items-center gap-2">
           <img src="/apple-touch-icon.png" alt="" width={24} height={24} className="h-6 w-6" />
-          <span className="font-semibold text-slate-800">PetriNet</span>
+          {/* The site name, as in the editor's top bar. "Editor" shows from 640 pixels up only: a
+              small phone has no room for it. Screen readers and crawlers always get it. */}
+          <span className="whitespace-nowrap font-semibold text-slate-800">
+            PetriNet <span className="sr-only sm:not-sr-only">Editor</span>
+          </span>
         </a>
         <span className="text-slate-400 text-sm">Guide</span>
         <a
