@@ -14,7 +14,7 @@ import { CheckIcon, CrossIcon, QuestionIcon } from "@/ui/icons";
 export const DISPLAY_CAP = 50;
 
 /** The kind of net element a chip names, shown as a small mark in front of its name. */
-export type ElementKind = "place" | "transition" | "arc";
+export type ElementKind = "place" | "transition";
 
 /** The mark of a card whose answer needs the full analysis, shown until that has run. */
 export const PENDING_LABEL = "Needs the full analysis";
@@ -176,22 +176,8 @@ export function ElementMark({ kind }: { kind: ElementKind }): JSX.Element {
       />
     );
   }
-  if (kind === "transition") {
-    return (
-      <span aria-hidden="true" className="inline-block h-3 w-1.5 shrink-0 bg-current opacity-70" />
-    );
-  }
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 14 10"
-      className="h-2.5 w-3.5 shrink-0 opacity-70"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    >
-      <path d="M1 5h10M8 1.5 11.5 5 8 8.5" />
-    </svg>
+    <span aria-hidden="true" className="inline-block h-3 w-1.5 shrink-0 bg-current opacity-70" />
   );
 }
 
