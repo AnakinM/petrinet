@@ -1,13 +1,13 @@
 import { NetClassification } from "@/domain/analysis/classification";
 import { MatrixFormat } from "@/domain/analysis/matrixFormat";
-import { ReachabilityGraph } from "@/domain/analysis/reachabilityGraph";
+import { NetAnalysis, NOT_COMPUTED, STATE_CAP_EXCEEDED } from "@/domain/analysis/netAnalysis";
 import type { AnalysisResult, Invariant, PropertyResult, Verdict } from "@/domain/analysis/types";
 import { NetNames } from "@/domain/netNames";
 import type { PetriNet } from "@/domain/types";
 
 /** Options for {@link AnalysisReport.build}. */
 interface ReportOptions {
-  /** The net changed after these results were computed. */
+  /** The net changed after the last full analysis (the panel's "net changed" bar state). */
   stale: boolean;
 }
 
@@ -22,10 +22,7 @@ export class AnalysisReport {
     const placeName = NetNames.resolver(net.places);
     const transitionName = NetNames.resolver(net.transitions);
     const nodeName = NetNames.resolver([...net.places, ...net.transitions]);
-    const lines: string[] = ["Analysis", "", AnalysisReport._status(result)];
-    if (opts.stale) {
-      lines.push("Out of date: the net changed after these results were computed.");
-    }
+    const lines: string[] = ["Analysis", "", AnalysisReport._status(result, opts.stale)];
 
     lines.push("", "Properties");
     for (const [title, r] of AnalysisReport._properties(result)) {
@@ -81,12 +78,16 @@ export class AnalysisReport {
 
     lines.push("", "Place bounds");
     if (result.placeBounds === null) {
-      lines.push("Not computed, because the full analysis has not run.");
+      lines.push(NOT_COMPUTED);
     } else {
-      const { max, exact } = result.placeBounds;
+      const { max, exact, unbounded } = result.placeBounds;
       if (!exact) lines.push("Lower limits only: the state space was not explored completely.");
       for (const p of net.places) {
-        lines.push(`${p.name}: ${exact ? "" : "at least "}${max[p.id] ?? 0}`);
+        const known = max[p.id];
+        let value = "unknown";
+        if (unbounded.includes(p.id)) value = "no bound (unbounded)";
+        else if (known !== undefined) value = exact ? String(known) : `at least ${known}`;
+        lines.push(`${p.name}: ${value}`);
       }
       if (net.places.length === 0) lines.push("none");
     }
@@ -95,48 +96,22 @@ export class AnalysisReport {
     return lines.join("\n");
   }
 
-  private static _status(result: AnalysisResult): string {
-    if (result.placeBounds === null) {
-      return "Full analysis: not run. Properties that need the state space are unknown.";
-    }
-    const cap = ReachabilityGraph.STATE_CAP.toLocaleString("en-US");
-    const n = result.exploredStates.toLocaleString("en-US");
-    if (result.stateSpaceComplete) {
-      return `Full analysis: run. All ${n} reachable markings were explored.`;
-    }
-    if (result.stateSpaceExceeded) {
-      return `Full analysis: run, but stopped at the ${cap}-marking cap after ${n} markings. Results that need the whole state space are unknown.`;
-    }
-    return `Full analysis: run, but the net is unbounded, so only part of the state space (${n} markings) was explored. Results that need the whole state space are unknown.`;
+  /** One line for the panel's bar state: not run, net changed since the last run, or up to date. */
+  private static _status(result: AnalysisResult, stale: boolean): string {
+    if (stale)
+      return "The net changed after the last full analysis. The results may be out of date.";
+    if (result.placeBounds === null) return "Some results need the full analysis.";
+    const base = `Analysis is up to date. Explored ${result.exploredStates.toLocaleString("en-US")} markings.`;
+    if (result.stateSpaceComplete) return base;
+    if (result.stateSpaceExceeded) return `${base} ${STATE_CAP_EXCEEDED}`;
+    return `${base} The net is unbounded, so its reachability graph is infinite.`;
   }
 
   private static _properties(result: AnalysisResult): [string, PropertyResult][] {
     const b = result.boundedness;
-    const unsettled = "Not settled: the state space was not explored completely.";
-    const bounded: PropertyResult = {
-      verdict: b.bounded,
-      detail:
-        b.source === "structural"
-          ? "A place invariant covers every place."
-          : b.bounded === "no"
-            ? "A firing sequence pumps a place without limit."
-            : b.bounded === "yes"
-              ? "The state space is finite."
-              : unsettled,
-      items: b.bound !== null ? [`Bound k = ${b.bound}.`] : undefined,
-    };
-    const safe: PropertyResult = {
-      verdict: b.safe,
-      detail:
-        b.safe === "yes"
-          ? "Every place holds at most one token."
-          : b.safe === "no"
-            ? "A place can hold more than one token."
-            : unsettled,
-    };
     return [
-      ["Bounded", bounded],
-      ["Safe", safe],
+      ["Bounded", { verdict: b.bounded, ...NetAnalysis.boundedDetail(result) }],
+      ["Safe", { verdict: b.safe, ...NetAnalysis.safeDetail(result) }],
       ["Conservative", result.conservative],
       ["Live", result.live],
       ["Quasi-live", result.quasiLive],

@@ -49,8 +49,8 @@ describe("MatrixFormat", () => {
   });
 
   it("escapes every LaTeX special character", () => {
-    expect(MatrixFormat.escapeLatex("\\&%$#_{}~^")).toBe(
-      "\\textbackslash{}\\&\\%\\$\\#\\_\\{\\}\\textasciitilde{}\\textasciicircum{}",
+    expect(MatrixFormat.escapeLatex("\\&%$#_{}~^<>|-")).toBe(
+      "\\textbackslash{}\\&\\%\\$\\#\\_\\{\\}\\textasciitilde{}\\textasciicircum{}\\textless{}\\textgreater{}\\textbar{}{-}",
     );
   });
 

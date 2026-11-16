@@ -33,35 +33,58 @@ describe("AnalysisReport", () => {
     });
     expect(text.startsWith("Analysis\n")).toBe(true);
     expect(text).not.toMatch(/analytics/i);
-    expect(text).toContain("Full analysis: run. All 2 reachable markings were explored.");
+    expect(text).toContain("Analysis is up to date. Explored 2 markings.");
     expect(text).toContain("Live: Yes.");
     expect(text).toContain("State machine: Yes.");
     expect(text).toContain("Place invariants: 1");
     expect(text).toContain("  - P1 + P2");
     expect(text).toContain("P1: 1\nP2: 1");
     expect(text).toContain("Incidence matrix\n\tT1\tT2\nP1\t-1\t1\nP2\t1\t-1");
-    expect(text).not.toContain("Out of date");
+    expect(text).not.toContain("out of date");
+    expect(text).not.toMatch(/Re-analyze/);
   });
 
   it("says when the full analysis has not run", () => {
     const text = AnalysisReport.build(net, NetAnalysis.analyze(net), { stale: false });
-    expect(text).toContain("Full analysis: not run.");
-    expect(text).toContain("Live: Unknown.");
-    expect(text).toContain("Place bounds\nNot computed");
+    expect(text).toContain("Some results need the full analysis.");
+    expect(text).toContain("Live: Unknown. Needs the full analysis.");
+    expect(text).toContain("Place bounds\nNeeds the full analysis.");
+    expect(text).not.toMatch(/Re-analyze|out of date/);
   });
 
   it("says when the results are out of date", () => {
     const text = AnalysisReport.build(net, NetAnalysis.analyze(net), { stale: true });
-    expect(text).toContain("Out of date: the net changed after these results were computed.");
+    expect(text).toContain(
+      "The net changed after the last full analysis. The results may be out of date.",
+    );
+    expect(text).not.toContain("Some results need the full analysis.");
   });
 
   it("says when the state space was capped and marks bounds as lower limits", () => {
     const text = AnalysisReport.build(net, NetAnalysis.analyze(net, { behavioral: true, cap: 1 }), {
       stale: false,
     });
-    expect(text).toContain("stopped at the 10,000-marking cap after 1 markings");
+    expect(text).toContain(
+      "Analysis is up to date. Explored 1 markings. The state space exceeded the 10,000-marking cap.",
+    );
     expect(text).toContain("Lower limits only");
     expect(text).toContain("P1: at least 1");
+  });
+
+  it("prints no bound for an unbounded place and unknown for a missing one", () => {
+    const pump: PetriNet = {
+      places: [place("P1")],
+      transitions: [transition("T1")],
+      arcs: [arc("T1", "P1")],
+    };
+    const text = AnalysisReport.build(pump, NetAnalysis.analyze(pump, { behavioral: true }), {
+      stale: false,
+    });
+    expect(text).toContain("P1: no bound (unbounded)");
+    expect(text).toContain("The net is unbounded, so its reachability graph is infinite.");
+    const full = NetAnalysis.analyze(net, { behavioral: true });
+    const missing = { ...full, placeBounds: { max: {}, exact: true, unbounded: [] } };
+    expect(AnalysisReport.build(net, missing, { stale: false })).toContain("P1: unknown");
   });
 
   it("explains a heavy arc in the class reasons", () => {

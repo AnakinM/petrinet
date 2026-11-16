@@ -1,5 +1,5 @@
 import { type JSX, type ReactNode, useMemo } from "react";
-import { NOT_COMPUTED, STATE_CAP_EXCEEDED } from "@/domain/analysis/netAnalysis";
+import { NetAnalysis } from "@/domain/analysis/netAnalysis";
 import type { AnalysisResult, PropertyResult, Verdict } from "@/domain/analysis/types";
 import { NetNames } from "@/domain/netNames";
 import { useAnalyticsStore } from "@/store/analyticsStore";
@@ -23,13 +23,13 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
         title="Bounded"
         verdict={boundedness.bounded}
         help="Bounded if some finite k caps the tokens in every place across all reachable markings, so no place can grow without limit."
-        {...boundedDetail(result)}
+        {...NetAnalysis.boundedDetail(result)}
       />
       <StatusCard
         title="Safe"
         verdict={boundedness.safe}
         help="Safe (1-bounded) if no reachable marking ever puts more than one token in any place."
-        {...safeDetail(result)}
+        {...NetAnalysis.safeDetail(result)}
       />
       <StatusCard
         title="Conservative"
@@ -93,47 +93,6 @@ function liveSub(
       {dead.length > DISPLAY_CAP && <span>and {dead.length - DISPLAY_CAP} more.</span>}
     </span>
   );
-}
-
-/** "Stopped at the cap" vs "not yet run" both surface as an amber `indeterminate` chip; the detail says which. */
-function unsettledDetail(result: AnalysisResult): string {
-  return result.stateSpaceExceeded ? STATE_CAP_EXCEEDED : NOT_COMPUTED;
-}
-
-/** A detail without its verdict: the lead plus optional bullet items, spread into a {@link StatusCard}. */
-type Detail = Omit<PropertyResult, "verdict">;
-
-function boundedDetail(result: AnalysisResult): Detail {
-  const { boundedness } = result;
-  if (boundedness.source === "structural") {
-    return boundedness.bound !== null
-      ? {
-          detail: "Structurally bounded:",
-          items: ["A P-invariant covers every place.", `Bound k = ${boundedness.bound}.`],
-        }
-      : { detail: "A P-invariant covers every place." };
-  }
-  if (boundedness.bounded === "no") {
-    return { detail: "A firing sequence pumps a place without limit, so the net is unbounded." };
-  }
-  if (boundedness.bounded === "yes") {
-    return { detail: boundedness.bound !== null ? `Bound k = ${boundedness.bound}.` : "Bounded." };
-  }
-  return { detail: unsettledDetail(result) };
-}
-
-function safeDetail(result: AnalysisResult): Detail {
-  const { boundedness } = result;
-  if (boundedness.safe === "yes") return { detail: "Every place holds at most one token." };
-  if (boundedness.safe === "no") {
-    return {
-      detail:
-        boundedness.bound !== null
-          ? `A place reaches ${boundedness.bound} tokens, so the net is not safe.`
-          : "A place holds more than one token, so the net is not safe.",
-    };
-  }
-  return { detail: unsettledDetail(result) };
 }
 
 const PILL_LABELS: Record<Verdict, string> = { yes: "Yes", no: "No", indeterminate: "Unknown" };

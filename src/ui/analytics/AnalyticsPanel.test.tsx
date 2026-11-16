@@ -116,7 +116,7 @@ describe("AnalyticsPanel", () => {
     openWith(CYCLE, "properties");
     render(<AnalyticsPanel />);
     // The behavioural pass is on-demand, so the behavioural rows start unsettled.
-    expect(screen.getAllByText(/Run Re-analyze/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Needs the full analysis/).length).toBeGreaterThan(0);
 
     await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
     expect(

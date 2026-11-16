@@ -164,4 +164,35 @@ describe("NetClassification", () => {
     expect(c.markedGraph.verdict).toBe("yes");
     expect(c.freeChoice.verdict).toBe("yes");
   });
+
+  describe("verbs agree with the count", () => {
+    it("uses singular verbs for one transition, one place and one arc", () => {
+      const join: PetriNet = {
+        places: [place("P1"), place("P2"), place("P3")],
+        transitions: [transition("t1")],
+        arcs: [arc("P1", "t1"), arc("P2", "t1"), arc("t1", "P3")],
+      };
+      const c = NetClassification.classify(join);
+      expect(c.stateMachine.reasons[0]).toBe(
+        "1 transition lacks exactly one input and one output place.",
+      );
+      expect(c.markedGraph.reasons[0]).toContain("3 places lack exactly");
+      const choice: PetriNet = {
+        places: [place("P1"), place("P2")],
+        transitions: [transition("t1"), transition("t2")],
+        arcs: [arc("P1", "t1"), arc("P1", "t2"), arc("P2", "t1")],
+      };
+      expect(NetClassification.classify(choice).freeChoice.reasons[0]).toMatch(
+        /^1 arc breaks free choice/,
+      );
+      const single: PetriNet = {
+        places: [place("P1"), place("P2")],
+        transitions: [],
+        arcs: [],
+      };
+      expect(NetClassification.classify(single).markedGraph.reasons[0]).toMatch(/^2 places lack/);
+      const one: PetriNet = { places: [place("P1")], transitions: [], arcs: [] };
+      expect(NetClassification.classify(one).markedGraph.reasons[0]).toMatch(/^1 place lacks/);
+    });
+  });
 });
