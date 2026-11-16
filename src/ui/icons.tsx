@@ -24,11 +24,13 @@ function ToolbarIcon({ children }: { children: ReactNode }): JSX.Element {
   );
 }
 
-/** A 3×3 grid (hash): the snap-to-grid toggle. */
-export function GridIcon(): JSX.Element {
+/** A horseshoe magnet: the snap-to-grid toggle. `off` strikes it through with a diagonal line. */
+export function MagnetIcon({ off = false }: { off?: boolean }): JSX.Element {
   return (
     <ToolbarIcon>
-      <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+      <path d="M5 21V11a7 7 0 0 1 14 0v10h-4V11a3 3 0 0 0-6 0v10z" />
+      <path d="M5 17h4M15 17h4" />
+      {off && <path d="M3 3l18 18" />}
     </ToolbarIcon>
   );
 }

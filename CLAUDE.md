@@ -8,8 +8,6 @@ and watch tokens move. Import/export the `.npn` JSON format with **byte-level fi
 
 Client-only. No backend, no database, no accounts. State lives in memory + `localStorage`.
 
-See `PLAN.md` for the full implementation plan and the deferred "Future Updates" list.
-
 ## Commands
 
 Use **bun** for everything. No Makefile, no docker-compose. A Dockerfile is required.
@@ -108,7 +106,7 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
 
 - Main branch: `main`. Commit only when asked; branch first if asked to commit on `main`.
 - Conventional, present-tense commit subjects. Keep diffs focused.
-- CI and pre-commit hooks are a deferred item (see `PLAN.md` → Future Updates), not set up in v1.
+- CI checks on pull requests and pre-commit hooks are deferred items, not set up yet.
 
 ## Boundaries
 

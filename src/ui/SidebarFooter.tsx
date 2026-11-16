@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from "react";
+import { Analytics } from "@/lib/analytics";
 import { BookIcon, BugIcon, GitHubIcon } from "@/ui/icons";
 
 const GUIDE_URL = "/guide";
@@ -16,10 +17,18 @@ export function SidebarFooter(): JSX.Element {
       <FooterLink href={GUIDE_URL} label="Guide">
         <BookIcon />
       </FooterLink>
-      <FooterLink href={REPO_URL} label="GitHub">
+      <FooterLink
+        href={REPO_URL}
+        label="GitHub"
+        onClick={() => Analytics.track("Outbound link", { target: "github" })}
+      >
         <GitHubIcon />
       </FooterLink>
-      <FooterLink href={NEW_ISSUE_URL} label="Report an issue">
+      <FooterLink
+        href={NEW_ISSUE_URL}
+        label="Report an issue"
+        onClick={() => Analytics.track("Outbound link", { target: "issue" })}
+      >
         <BugIcon />
       </FooterLink>
     </footer>
@@ -29,15 +38,18 @@ export function SidebarFooter(): JSX.Element {
 function FooterLink({
   href,
   label,
+  onClick,
   children,
 }: {
   href: string;
   label: string;
+  onClick?: () => void;
   children: ReactNode;
 }): JSX.Element {
   return (
     <a
       href={href}
+      onClick={onClick}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-2 rounded px-1 py-1 text-slate-500 text-sm hover:bg-slate-100 hover:text-slate-700"

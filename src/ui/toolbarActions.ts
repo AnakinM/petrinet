@@ -1,5 +1,6 @@
 import type { PetriNet } from "@/domain/types";
-import { ImageFile, NetFile, NpnFile, PnmlFile } from "@/lib/download";
+import { Analytics } from "@/lib/analytics";
+import { ImageFile, NetFile, NetImportError, NpnFile, PnmlFile } from "@/lib/download";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 import { useSimStore } from "@/store/simStore";
@@ -20,13 +21,22 @@ export function newNet(): void {
 
 export function importNet(): void {
   NetFile.open()
-    .then(({ net }) => useNetStore.getState().setNet(net))
-    .catch((error: Error) => window.alert(`Import failed: ${error.message}`));
+    .then(({ net, format }) => {
+      useNetStore.getState().setNet(net);
+      Analytics.track("Import", { format, method: "button" });
+    })
+    .catch((error: Error) => {
+      if (error instanceof NetImportError) {
+        Analytics.track("Import refused", { format: error.format, reason: "invalid" });
+      }
+      window.alert(`Import failed: ${error.message}`);
+    });
 }
 
 /** Export the native `.npn` (always the initial marking M0). */
 export function exportNet(): void {
   NpnFile.save(useNetStore.getState().net);
+  Analytics.track("Export", { format: "npn" });
 }
 
 /**
@@ -43,16 +53,20 @@ function imageNet(): PetriNet {
 /** Export PNML: a structural export (M0, like `.npn`). */
 export function exportPnml(): void {
   PnmlFile.save(useNetStore.getState().net);
+  Analytics.track("Export", { format: "pnml" });
 }
 
 /** Export a raster PNG of what's on screen. */
 export function exportPng(): void {
   ImageFile.savePng(imageNet());
+  // Counted when the export starts: the PNG itself is drawn asynchronously afterwards.
+  Analytics.track("Export", { format: "png" });
 }
 
 /** Export a vector SVG of what's on screen. */
 export function exportSvg(): void {
   ImageFile.saveSvg(imageNet());
+  Analytics.track("Export", { format: "svg" });
 }
 
 /** Enter Simulate: drop any active Build tool, clear the selection, lock the net, snapshot M0. */
@@ -63,6 +77,7 @@ export function enterSimulate(): void {
   store.select({ nodes: [], edges: [] });
   store.setMode("simulate");
   useSimStore.getState().start(store.net);
+  Analytics.track("Enter simulation");
 }
 
 /** Return to Build and drop the simulation working copy. */

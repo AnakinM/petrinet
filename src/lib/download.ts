@@ -23,14 +23,29 @@ export class NpnFile {
   }
 }
 
+/** A net file format that the editor reads: the native `.npn` or PNML. */
+export type NetFormat = "npn" | "pnml";
+
+/** A net file that its codec refused. `format` names the codec that was chosen for it. */
+export class NetImportError extends Error {
+  readonly format: NetFormat;
+
+  constructor(format: NetFormat, cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.name = "NetImportError";
+    this.format = format;
+  }
+}
+
 /**
  * Opens any supported net file through one picker, auto-detecting the format: native `.npn` (JSON) or
  * `.pnml` / `.xml` (PNML). The codec selection (by extension, falling back to a leading `<` for
- * XML) stays here so the UI just asks for "a net"; parse errors reject so the caller surfaces them.
+ * XML) stays here so the UI just asks for "a net". A parse error rejects with a
+ * {@link NetImportError}, so the caller can surface it and knows which format was refused.
  */
 export class NetFile {
-  /** Open the file picker for `.npn`/`.pnml` and resolve with the parsed net and chosen filename. */
-  static open(): Promise<{ name: string; net: PetriNet }> {
+  /** Open the file picker for `.npn`/`.pnml` and resolve with the parsed net, its format and filename. */
+  static open(): Promise<{ name: string; format: NetFormat; net: PetriNet }> {
     return new Promise((resolve, reject) => {
       const input = document.createElement("input");
       input.type = "file";
@@ -40,19 +55,30 @@ export class NetFile {
         if (!file) return;
         file
           .text()
-          .then((text) => resolve({ name: file.name, net: NetFile._parse(file.name, text) }))
+          .then((text) => {
+            const format = NetFile._format(file.name, text);
+            resolve({ name: file.name, format, net: NetFile._parse(format, text) });
+          })
           .catch(reject);
       });
       input.click();
     });
   }
 
-  /** Choose the codec by extension, falling back to a leading `<` (XML) for an unknown extension. */
-  private static _parse(name: string, text: string): PetriNet {
+  /** Choose the format by extension, falling back to a leading `<` (XML) for an unknown extension. */
+  private static _format(name: string, text: string): NetFormat {
     const lower = name.toLowerCase();
     const isPnml =
       lower.endsWith(".pnml") || lower.endsWith(".xml") || text.trimStart().startsWith("<");
-    return isPnml ? PnmlCodec.parse(text) : NpnCodec.parse(text);
+    return isPnml ? "pnml" : "npn";
+  }
+
+  private static _parse(format: NetFormat, text: string): PetriNet {
+    try {
+      return format === "pnml" ? PnmlCodec.parse(text) : NpnCodec.parse(text);
+    } catch (error) {
+      throw new NetImportError(format, error);
+    }
   }
 }
 
