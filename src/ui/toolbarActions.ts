@@ -3,6 +3,7 @@ import { Analytics } from "@/lib/analytics";
 import { ImageFile, NetFile, NetImportError, NpnFile, PnmlFile } from "@/lib/download";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
+import { useNoticeStore } from "@/store/noticeStore";
 import { useSimStore } from "@/store/simStore";
 
 /**
@@ -67,6 +68,30 @@ export function exportPng(): void {
 export function exportSvg(): void {
   ImageFile.saveSvg(imageNet());
   Analytics.track("Export", { format: "svg" });
+}
+
+/** Export a LaTeX TikZ picture of what's on screen. */
+export function exportTikz(): void {
+  ImageFile.saveTikz(imageNet());
+  Analytics.track("Export", { format: "tikz" });
+}
+
+/**
+ * Copy the PNG picture of what's on screen to the clipboard, and confirm it in the notice. Call it
+ * directly in the click handler (see {@link ImageFile.copyPng}).
+ */
+export function copyImage(): void {
+  const notice = useNoticeStore.getState();
+  if (!ImageFile.canCopy()) {
+    notice.show("Your browser cannot copy pictures. Use PNG image instead.");
+    return;
+  }
+  ImageFile.copyPng(imageNet()).then(
+    () => notice.show("Picture copied to the clipboard."),
+    () => notice.show("The picture could not be copied. Use PNG image instead."),
+  );
+  // Counted when the copy starts, like the PNG export.
+  Analytics.track("Export", { format: "clipboard" });
 }
 
 /** Enter Simulate: drop any active Build tool, clear the selection, lock the net, snapshot M0. */

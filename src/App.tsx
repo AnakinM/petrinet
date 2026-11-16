@@ -5,6 +5,7 @@ import { useBuildStore } from "@/store/buildStore";
 import { netHistory, useNetStore } from "@/store/netStore";
 import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
 import { MobileShell } from "@/ui/mobile/MobileShell";
+import { Notice } from "@/ui/Notice";
 import { Palette } from "@/ui/Palette";
 import { PropertiesPanel } from "@/ui/PropertiesPanel";
 import { SidebarFooter } from "@/ui/SidebarFooter";
@@ -22,7 +23,6 @@ function isTextEntry(target: EventTarget | null): boolean {
 
 export default function App(): JSX.Element {
   const isMobile = useIsMobile();
-  const buildMode = useNetStore((s) => s.mode === "build");
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (isTextEntry(e.target)) return;
@@ -60,9 +60,18 @@ export default function App(): JSX.Element {
 
   // Below the breakpoint, swap in the touch shell; the desktop layout is left byte-identical. The
   // keydown handler above still runs on mobile. That is harmless, and useful with an attached
-  // keyboard.
-  if (isMobile) return <MobileShell />;
+  // keyboard. The notice serves both layouts.
+  return (
+    <>
+      {isMobile ? <MobileShell /> : <DesktopShell />}
+      <Notice />
+    </>
+  );
+}
 
+/** The desktop layout: the top bar over the sidebar, the canvas and the Analysis panel. */
+function DesktopShell(): JSX.Element {
+  const buildMode = useNetStore((s) => s.mode === "build");
   return (
     <div className="flex h-screen w-screen flex-col">
       <Toolbar />
