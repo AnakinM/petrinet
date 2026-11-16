@@ -56,7 +56,9 @@ export class GuideDocument {
       "the JSON-LD block",
       (_match, siteJson) => {
         const article = GuideDocument._article(GuideDocument._readWebSite(siteJson));
-        return `<script type="application/ld+json">${JSON.stringify(article)}</script>`;
+        // An escaped `<` keeps a value such as "</script>" from closing the block early.
+        const json = JSON.stringify(article).replaceAll("<", "\\u003c");
+        return `<script type="application/ld+json">${json}</script>`;
       },
     );
     // The home page's fallback inside the root holds no nested div, so the first `</div>` closes it.
