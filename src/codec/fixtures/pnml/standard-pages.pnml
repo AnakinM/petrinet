@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hand-written for this editor's tests. It imitates plain ISO/IEC 15909-2 PNML (2009 grammar) as
+  the PNML Framework and ePNK write a net that spans several pages: two pages, a page inside a
+  page, and reference places and a reference transition that stand for nodes on another page.
+  One reference points at another reference.
+-->
+<pnml xmlns="http://www.pnml.org/version-2009/grammar/pnml">
+  <net id="producer-consumer" type="http://www.pnml.org/version-2009/grammar/ptnet">
+    <name><text>producer-consumer</text></name>
+    <page id="producer">
+      <place id="ready">
+        <name><text>ready</text></name>
+        <graphics><position x="0" y="0"/></graphics>
+        <initialMarking><text>1</text></initialMarking>
+      </place>
+      <transition id="produce">
+        <name><text>produce</text></name>
+        <graphics><position x="100" y="0"/></graphics>
+      </transition>
+      <place id="buffer">
+        <name><text>buffer</text></name>
+        <graphics><position x="200" y="0"/></graphics>
+      </place>
+      <arc id="a1" source="ready" target="produce"/>
+      <arc id="a2" source="produce" target="buffer"/>
+    </page>
+    <page id="consumer">
+      <referencePlace id="buffer-ref" ref="buffer">
+        <graphics><position x="0" y="200"/></graphics>
+      </referencePlace>
+      <referencePlace id="ready-ref" ref="ready">
+        <graphics><position x="0" y="300"/></graphics>
+      </referencePlace>
+      <referenceTransition id="produce-ref" ref="produce">
+        <graphics><position x="300" y="300"/></graphics>
+      </referenceTransition>
+      <page id="consumer-inner">
+        <referencePlace id="ready-ref-ref" ref="ready-ref">
+          <graphics><position x="200" y="300"/></graphics>
+        </referencePlace>
+        <transition id="consume">
+          <name><text>consume</text></name>
+          <graphics><position x="100" y="200"/></graphics>
+        </transition>
+        <place id="done">
+          <name><text>done</text></name>
+          <graphics><position x="200" y="200"/></graphics>
+        </place>
+        <arc id="a3" source="buffer-ref" target="consume"/>
+        <arc id="a4" source="consume" target="done"/>
+        <arc id="a5" source="consume" target="ready-ref-ref"/>
+        <arc id="a6" source="done" target="produce-ref"/>
+      </page>
+    </page>
+  </net>
+</pnml>
