@@ -58,11 +58,14 @@ export interface Deadlock {
 /**
  * One structural net-class verdict (e.g. "ordinary"): whether it holds, a short explanation, and the
  * node ids of the elements that break it (empty when it holds) so the UI can spotlight them.
+ * `erroneousArcs` holds the ids of the arcs that break it: for every class that requires an ordinary
+ * net, the arcs with a weight above 1 (empty when none, and always empty for free choice's shape rule).
  */
 export interface ClassResult {
   verdict: Verdict;
   reasons: string[];
   erroneous: string[];
+  erroneousArcs: string[];
 }
 
 /** The four classic structural classifications of a P/T net, each decided from the net's shape alone. */

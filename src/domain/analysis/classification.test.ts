@@ -33,6 +33,69 @@ describe("NetClassification", () => {
       const result = NetClassification.classify(net).ordinary;
       expect(result.verdict).toBe("no");
       expect(result.erroneous).toEqual(expect.arrayContaining(["P1", "t1"]));
+      expect(result.erroneousArcs).toEqual(["P1->t1"]);
+      expect(result.reasons).toEqual(["1 arc has a weight above 1."]);
+    });
+
+    it("uses the plural for several heavy arcs", () => {
+      const net = cycle();
+      net.arcs[0] = arc("P1", "t1", 2);
+      net.arcs[1] = arc("t1", "P2", 3);
+      expect(NetClassification.classify(net).ordinary.reasons).toEqual([
+        "2 arcs have a weight above 1.",
+      ]);
+    });
+  });
+
+  describe("textbook rule: classes require an ordinary net", () => {
+    it("names both the shape and the heavy arc for a state machine", () => {
+      const net = cycle();
+      net.arcs[0] = arc("P1", "t1", 2);
+      const c = NetClassification.classify(net);
+      expect(c.stateMachine.verdict).toBe("no");
+      expect(c.stateMachine.reasons).toEqual([
+        "The shape fits a state machine, but 1 arc has a weight above 1.",
+      ]);
+      expect(c.stateMachine.erroneousArcs).toEqual(["P1->t1"]);
+      expect(c.stateMachine.erroneous).toEqual([]);
+      expect(c.markedGraph.reasons).toEqual([
+        "The shape fits a marked graph, but 1 arc has a weight above 1.",
+      ]);
+      expect(c.freeChoice.reasons).toEqual([
+        "The shape fits a free-choice net, but 1 arc has a weight above 1.",
+      ]);
+    });
+
+    it("uses the plural and lists every heavy arc", () => {
+      const net = cycle();
+      net.arcs[0] = arc("P1", "t1", 2);
+      net.arcs[2] = arc("P2", "t2", 5);
+      const c = NetClassification.classify(net);
+      expect(c.stateMachine.reasons[0]).toBe(
+        "The shape fits a state machine, but 2 arcs have a weight above 1.",
+      );
+      expect(c.stateMachine.erroneousArcs).toEqual(["P1->t1", "P2->t2"]);
+    });
+
+    it("keeps the shape reason and adds the weight reason when both fail", () => {
+      const net: PetriNet = {
+        places: [place("P1"), place("P2"), place("P3")],
+        transitions: [transition("t1")],
+        arcs: [arc("P1", "t1", 2), arc("P2", "t1"), arc("t1", "P3")],
+      };
+      const result = NetClassification.classify(net).stateMachine;
+      expect(result.verdict).toBe("no");
+      expect(result.reasons).toHaveLength(2);
+      expect(result.reasons[1]).toBe("1 arc has a weight above 1.");
+      expect(result.erroneous).toEqual(["t1"]);
+      expect(result.erroneousArcs).toEqual(["P1->t1"]);
+    });
+
+    it("leaves erroneousArcs empty on an ordinary net", () => {
+      const c = NetClassification.classify(cycle());
+      expect([c.ordinary, c.stateMachine, c.markedGraph, c.freeChoice]).toSatisfy(
+        (rs: { erroneousArcs: string[] }[]) => rs.every((r) => r.erroneousArcs.length === 0),
+      );
     });
   });
 
