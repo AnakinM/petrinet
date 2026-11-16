@@ -8,6 +8,18 @@ import { ImageFile, NpnFile, PnmlFile } from "@/lib/download";
 import { useBuildStore } from "@/store/buildStore";
 import { Toolbar } from "@/ui/Toolbar";
 
+/**
+ * Focus `el` the way a Tab does. jsdom cannot tell a Tab from a focus that a script moves, so the
+ * test states it: the element matches `:focus-visible`.
+ */
+function keyboardFocus(el: HTMLElement): void {
+  const matches = Element.prototype.matches;
+  vi.spyOn(el, "matches").mockImplementation(
+    (selector: string) => selector === ":focus-visible" || matches.call(el, selector),
+  );
+  fireEvent.focus(el);
+}
+
 describe("Toolbar Export and Image menus", () => {
   let track: MockInstance<typeof Analytics.track>;
 
@@ -89,11 +101,11 @@ describe("Toolbar Export and Image menus", () => {
     render(<Toolbar />);
     const button = screen.getByRole("button", { name });
     expect(button).not.toHaveAttribute("title");
-    fireEvent.focus(button);
+    keyboardFocus(button);
     expect(screen.getByRole("tooltip")).toHaveTextContent(tip);
 
     fireEvent.click(button);
-    fireEvent.focus(button);
+    keyboardFocus(button);
     expect(screen.getByRole("menu")).toBeInTheDocument();
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
@@ -109,12 +121,12 @@ describe("Toolbar snap button", () => {
     expect(button).toHaveAttribute("aria-pressed", "true");
     expect(button).not.toHaveAttribute("title");
 
-    fireEvent.focus(button);
+    keyboardFocus(button);
     expect(screen.getByRole("tooltip")).toHaveTextContent("Snap to grid: on. Click to turn off.");
 
     fireEvent.click(button);
     expect(button).toHaveAttribute("aria-pressed", "false");
-    fireEvent.focus(button);
+    keyboardFocus(button);
     expect(screen.getByRole("tooltip")).toHaveTextContent("Snap to grid: off. Click to turn on.");
   });
 });

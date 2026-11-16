@@ -17,6 +17,18 @@ function renderTooltip(): HTMLElement {
   return screen.getByRole("button", { name: "Snap" });
 }
 
+/**
+ * Focus `el` the way a Tab does. jsdom cannot tell a Tab from a focus that a script moves, so the
+ * test states it: the element matches `:focus-visible`.
+ */
+function keyboardFocus(el: HTMLElement, visible = true): void {
+  const matches = Element.prototype.matches;
+  vi.spyOn(el, "matches").mockImplementation((selector: string) =>
+    selector === ":focus-visible" ? visible : matches.call(el, selector),
+  );
+  fireEvent.focus(el);
+}
+
 describe("Tooltip", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -53,15 +65,23 @@ describe("Tooltip", () => {
 
   it("shows at once on keyboard focus and hides on blur", () => {
     const button = renderTooltip();
-    fireEvent.focus(button);
+    keyboardFocus(button);
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
     fireEvent.blur(button);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
+  it("does not show for a focus that the browser does not mark as keyboard focus", () => {
+    // For example a menu handing the focus back to its trigger after a mouse click.
+    const button = renderTooltip();
+    keyboardFocus(button, false);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
   it("hides on Escape", () => {
     const button = renderTooltip();
-    fireEvent.focus(button);
+    keyboardFocus(button);
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
@@ -71,7 +91,7 @@ describe("Tooltip", () => {
     fireEvent.pointerEnter(button);
     act(() => vi.advanceTimersByTime(TOOLTIP_DELAY_MS));
     fireEvent.pointerDown(button);
-    fireEvent.focus(button);
+    keyboardFocus(button);
     fireEvent.pointerUp(button);
     fireEvent.click(button);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
@@ -79,7 +99,8 @@ describe("Tooltip", () => {
 
   it("hides on a keyboard click", () => {
     const button = renderTooltip();
-    fireEvent.focus(button);
+    keyboardFocus(button);
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
     fireEvent.click(button);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });

@@ -1,7 +1,6 @@
 import {
   type JSX,
   type KeyboardEvent,
-  type MouseEvent,
   type ReactNode,
   type RefObject,
   useEffect,
@@ -60,8 +59,9 @@ const ITEM_SELECTOR = '[role^="menuitem"]:not([disabled])';
  * onto a `<button>` and whether the menu is open: `<Menu sections={...}>{(t) => <button {...t} />}</Menu>`.
  *
  * Keyboard: Enter, Space or Arrow Down on the trigger opens the menu on its first entry, Arrow Up on
- * its last. Arrow keys, Home and End move between entries. Escape closes the menu and returns the
- * focus to the trigger. Tab closes it and moves on. A click outside closes it too.
+ * its last. Arrow keys, Home and End move between entries, and Enter or Space chooses one. Choosing
+ * an entry or pressing Escape closes the menu and returns the focus to the trigger. Tab closes it
+ * and moves on from the trigger. A click outside closes it too.
  */
 export function Menu({
   sections,
@@ -128,7 +128,16 @@ export function Menu({
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
     if (e.key === "Tab") {
+      // Hand the focus to the trigger first, so the browser's own Tab moves on from there and
+      // not from an entry that is about to disappear.
+      triggerRef.current?.focus();
       setOpenAt(null);
+      return;
+    }
+    // A link has no Space action of its own; give it the one a button has.
+    if (e.key === " " && document.activeElement instanceof HTMLAnchorElement) {
+      e.preventDefault();
+      document.activeElement.click();
       return;
     }
     const items = menuItems(menuRef.current);
@@ -145,11 +154,11 @@ export function Menu({
     items[next]?.focus();
   };
 
-  const onActivate = (entry: MenuEntry, e: MouseEvent<HTMLElement>): void => {
+  const onActivate = (entry: MenuEntry): void => {
     entry.onSelect?.();
     setOpenAt(null);
-    // A keyboard press (a click with no pointer detail) returns the focus to the trigger.
-    if (e.detail === 0) triggerRef.current?.focus();
+    // The chosen entry disappears, so the focus goes back to the trigger.
+    triggerRef.current?.focus();
   };
 
   return (
@@ -192,7 +201,7 @@ function Section({
 }: {
   section: MenuSection;
   separated: boolean;
-  onActivate: (entry: MenuEntry, e: MouseEvent<HTMLElement>) => void;
+  onActivate: (entry: MenuEntry) => void;
 }): JSX.Element {
   const headingId = useId();
   const items = section.entries.map((entry) => (
@@ -228,7 +237,7 @@ function Item({
   onActivate,
 }: {
   entry: MenuEntry;
-  onActivate: (entry: MenuEntry, e: MouseEvent<HTMLElement>) => void;
+  onActivate: (entry: MenuEntry) => void;
 }): JSX.Element {
   const hintId = useId();
   const choice = entry.selected !== undefined;
@@ -240,7 +249,7 @@ function Item({
     "aria-describedby": entry.hint ? hintId : undefined,
     tabIndex: -1,
     className: ITEM_CLASS,
-    onClick: (e: MouseEvent<HTMLElement>) => onActivate(entry, e),
+    onClick: () => onActivate(entry),
   };
   const content = (
     <>
