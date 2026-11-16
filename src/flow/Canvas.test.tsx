@@ -193,3 +193,26 @@ describe("Canvas arc tool", () => {
     expect(useBuildStore.getState().draft?.source).toBe("p1");
   });
 });
+
+describe("Canvas stacking", () => {
+  afterEach(() => useBuildStore.getState().setTool("idle"));
+
+  it.each([
+    "place",
+    "transition",
+    "arc",
+  ] as const)("keeps the %s overlay inside the canvas's stacking context", (tool) => {
+    // The overlay sits at z-index 1100. Only an isolated canvas keeps it under the top bar's
+    // menus and tooltips. jsdom cannot paint, so this checks the containment that guarantees it.
+    useBuildStore.getState().setTool(tool);
+    if (tool === "arc") useBuildStore.getState().startArc("p-ready", { x: 0, y: 0 });
+    const { container } = render(
+      <ReactFlowProvider>
+        <Canvas />
+      </ReactFlowProvider>,
+    );
+    const overlay = container.querySelector<HTMLElement>('[style*="z-index: 1100"]');
+    expect(overlay).not.toBeNull();
+    expect(overlay?.parentElement).toHaveClass("isolate");
+  });
+});

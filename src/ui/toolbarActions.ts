@@ -1,14 +1,24 @@
 import type { PetriNet } from "@/domain/types";
 import { Analytics } from "@/lib/analytics";
-import { ImageFile, NetFile, NetImportError, NpnFile, PnmlFile } from "@/lib/download";
+import {
+  ImageFile,
+  NetFile,
+  NetImportError,
+  NpnFile,
+  type OpenedNet,
+  PnmlFile,
+} from "@/lib/download";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
+import { useNoticeStore } from "@/store/noticeStore";
 import { useSimStore } from "@/store/simStore";
+import type { MenuEntry } from "@/ui/Menu";
 
 /**
  * The net-level menu actions (New / Import / the several Exports) and the Build↔Simulate mode
  * transitions, factored out of the toolbar so the desktop {@link Toolbar} and the mobile top bar
- * invoke the exact same logic. Each reads the live store on call, so there is no state to thread.
+ * invoke the exact same logic. The entries of the Export and Image menus live here for the same
+ * reason. Each action reads the live store on call, so there is no state to thread.
  */
 
 const EMPTY_NET: PetriNet = { places: [], transitions: [], arcs: [] };
@@ -19,15 +29,30 @@ export function newNet(): void {
   }
 }
 
+/** Import a net file chosen in the file picker. */
 export function importNet(): void {
-  NetFile.open()
+  load(NetFile.open(), "button");
+}
+
+/**
+ * Import a net file dropped on the editor, exactly as {@link importNet} would open it. Simulate
+ * locks the net, as the disabled Import button shows, so a drop there does nothing.
+ */
+export function importDroppedFile(file: File): void {
+  if (useNetStore.getState().mode === "simulate") return;
+  load(NetFile.read(file), "drop");
+}
+
+/** Replace the net with an opened file, or report why the file was refused. */
+function load(opening: Promise<OpenedNet>, method: "button" | "drop"): void {
+  opening
     .then(({ net, format }) => {
       useNetStore.getState().setNet(net);
-      Analytics.track("Import", { format, method: "button" });
+      Analytics.track("Import", { format, method });
     })
     .catch((error: Error) => {
       if (error instanceof NetImportError) {
-        Analytics.track("Import refused", { format: error.format, reason: "invalid" });
+        Analytics.track("Import refused", { format: error.format, reason: error.reason });
       }
       window.alert(`Import failed: ${error.message}`);
     });
@@ -68,6 +93,44 @@ export function exportSvg(): void {
   ImageFile.saveSvg(imageNet());
   Analytics.track("Export", { format: "svg" });
 }
+
+/** Export a LaTeX TikZ picture of what's on screen. */
+export function exportTikz(): void {
+  ImageFile.saveTikz(imageNet());
+  Analytics.track("Export", { format: "tikz" });
+}
+
+/**
+ * Copy the PNG picture of what's on screen to the clipboard, and confirm it in the notice. Call it
+ * directly in the click handler (see {@link ImageFile.copyPng}).
+ */
+export function copyImage(): void {
+  const notice = useNoticeStore.getState();
+  if (!ImageFile.canCopy()) {
+    notice.show("Your browser cannot copy pictures. Use PNG image instead.");
+    return;
+  }
+  ImageFile.copyPng(imageNet()).then(
+    () => notice.show("Picture copied to the clipboard."),
+    () => notice.show("The picture could not be copied. Use PNG image instead."),
+  );
+  // Counted when the copy starts, like the PNG export.
+  Analytics.track("Export", { format: "clipboard" });
+}
+
+/** The Export menu: files that an editor can open again. */
+export const EXPORT_ENTRIES: MenuEntry[] = [
+  { label: ".npn file", hint: "Opens again in this editor", onSelect: exportNet },
+  { label: "PNML", hint: "For other Petri net tools", onSelect: exportPnml },
+];
+
+/** The Image menu: pictures of what is on screen. */
+export const IMAGE_ENTRIES: MenuEntry[] = [
+  { label: "PNG image", onSelect: exportPng },
+  { label: "SVG image", onSelect: exportSvg },
+  { label: "LaTeX (TikZ)", onSelect: exportTikz },
+  { label: "Copy to clipboard", onSelect: copyImage },
+];
 
 /** Enter Simulate: drop any active Build tool, clear the selection, lock the net, snapshot M0. */
 export function enterSimulate(): void {

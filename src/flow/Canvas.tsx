@@ -332,9 +332,12 @@ export function Canvas(): JSX.Element {
   );
 
   return (
+    // `isolate` gives the canvas its own stacking context. The capture overlays below sit at
+    // z-index 1100 to cover React Flow's own layers. Without it they would compete with the page
+    // itself and cover the top bar's menus and tooltips while a tool is active.
     // biome-ignore lint/a11y/noStaticElementInteractions: canvas-only right-click policy; all other pointer interaction is React Flow's pane below.
     <div
-      className={`relative h-full w-full bg-white${isMobile ? " canvas-surface" : ""}`}
+      className={`relative isolate h-full w-full bg-white${isMobile ? " canvas-surface" : ""}`}
       onContextMenu={onContextMenu}
     >
       <ReactFlow

@@ -1,4 +1,4 @@
-import { type JSX, type ReactNode, useEffect, useRef, useState } from "react";
+import type { JSX, ReactNode } from "react";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
@@ -11,21 +11,17 @@ import {
   RedoIcon,
   UndoIcon,
 } from "@/ui/icons";
+import { Menu, type MenuEntry, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
 import { Tooltip, type TooltipTriggerProps } from "@/ui/Tooltip";
-import {
-  exportNet,
-  exportPng,
-  exportPnml,
-  exportSvg,
-  importNet,
-  newNet,
-} from "@/ui/toolbarActions";
+import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
 
 const SNAP_ON_TIP = "Snap to grid: on. Click to turn off.";
 const SNAP_OFF_TIP = "Snap to grid: off. Click to turn on.";
+const EXPORT_TIP = "Save the net as a file that can be imported again";
+const IMAGE_TIP = "Save or copy a picture of the net";
 
-/** Top bar: New / Import / Export, undo / redo, and the Build ↔ Simulate toggle. */
+/** Top bar: New / Import, the Export and Image menus, undo / redo, and the Build ↔ Simulate toggle. */
 export function Toolbar(): JSX.Element {
   const mode = useNetStore((s) => s.mode);
   const simulating = mode === "simulate";
@@ -52,11 +48,14 @@ export function Toolbar(): JSX.Element {
         <ImportIcon />
         Import
       </ToolbarButton>
-      <ToolbarButton onClick={exportNet}>
+      <ToolbarMenu entries={EXPORT_ENTRIES} tooltip={EXPORT_TIP}>
         <ExportIcon />
         Export
-      </ToolbarButton>
-      <ExportAsMenu />
+      </ToolbarMenu>
+      <ToolbarMenu entries={IMAGE_ENTRIES} tooltip={IMAGE_TIP}>
+        <ImageIcon />
+        Image
+      </ToolbarMenu>
       <span className="mx-1 h-5 w-px bg-slate-200" />
       <ToolbarButton onClick={netHistory.undo} disabled={simulating || !canUndo}>
         <UndoIcon />
@@ -95,82 +94,35 @@ export function Toolbar(): JSX.Element {
   );
 }
 
-/** Export the net in a non-native format: a dropdown offering PNML, PNG (raster), or SVG (vector). */
-function ExportAsMenu(): JSX.Element {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // While open, close on an outside click or Escape (the menu has no backdrop of its own).
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  const exportAs = (kind: "pnml" | "png" | "svg"): void => {
-    // PNML is a structural export (M0, like .npn); the image formats capture what's on screen.
-    if (kind === "pnml") exportPnml();
-    else if (kind === "png") exportPng();
-    else exportSvg();
-    setOpen(false);
-  };
-
-  return (
-    <div ref={ref} className="relative">
-      <ToolbarButton
-        onClick={() => setOpen((o) => !o)}
-        active={open}
-        tooltip="Export the net as PNML, PNG, or SVG"
-        tooltipSuppressed={open}
-      >
-        <ImageIcon />
-        Export as
-      </ToolbarButton>
-      {open && (
-        <div className="absolute top-full left-0 z-30 mt-1 flex min-w-[8rem] flex-col rounded border border-slate-300 bg-white py-1 shadow-lg">
-          <MenuItem onClick={() => exportAs("pnml")}>PNML</MenuItem>
-          <MenuItem onClick={() => exportAs("png")}>PNG image</MenuItem>
-          <MenuItem onClick={() => exportAs("svg")}>SVG vector</MenuItem>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MenuItem({
-  onClick,
+/** A top bar button that opens a {@link Menu} of `entries` under it. */
+function ToolbarMenu({
+  entries,
+  tooltip,
   children,
 }: {
-  onClick: () => void;
+  entries: MenuEntry[];
+  tooltip: string;
   children: ReactNode;
 }): JSX.Element {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="px-3 py-1 text-left text-slate-700 text-sm hover:bg-slate-100"
-    >
-      {children}
-    </button>
+    <Menu sections={[{ entries }]}>
+      {(trigger, open) => (
+        <ToolbarButton menu={trigger} active={open} tooltip={tooltip} tooltipSuppressed={open}>
+          {children}
+        </ToolbarButton>
+      )}
+    </Menu>
   );
 }
 
 /**
  * A top bar button. A `tooltip` shows as a quick {@link Tooltip} under it; `tooltipSuppressed`
- * keeps it hidden while the button's own menu is open there.
+ * keeps it hidden while the button's own menu is open there. `menu` makes it the trigger of a
+ * {@link Menu}: the menu then handles the click, and `active` only styles the open state.
  */
 function ToolbarButton({
   onClick,
+  menu,
   disabled,
   active,
   tooltip,
@@ -178,7 +130,8 @@ function ToolbarButton({
   ariaLabel,
   children,
 }: {
-  onClick: () => void;
+  onClick?: () => void;
+  menu?: MenuTriggerProps;
   disabled?: boolean;
   active?: boolean;
   tooltip?: string;
@@ -191,8 +144,9 @@ function ToolbarButton({
       type="button"
       {...trigger}
       onClick={onClick}
+      {...menu}
       disabled={disabled}
-      aria-pressed={active}
+      aria-pressed={menu ? undefined : active}
       aria-label={ariaLabel}
       className={
         active

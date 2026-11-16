@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Hand-written for this editor's tests. It imitates the PNML that TAPAAL exports: the 2009
+  namespace and ptnet type, a net <name>, one page "page0", a name whose <graphics><offset> comes
+  before its <text>, an initial marking of 0 written out, the arc type as a type="normal"
+  attribute, and an <inscription> only for a weight above 1.
+-->
+<pnml xmlns="http://www.pnml.org/version-2009/grammar/pnml">
+  <net id="ComposedModel" type="http://www.pnml.org/version-2009/grammar/ptnet">
+    <name>
+      <text>ComposedModel</text>
+    </name>
+    <page id="page0">
+      <place id="P0">
+        <name>
+          <graphics>
+            <offset x="0" y="-30"/>
+          </graphics>
+          <text>P0</text>
+        </name>
+        <graphics>
+          <position x="150" y="150"/>
+        </graphics>
+        <initialMarking>
+          <text>4</text>
+        </initialMarking>
+      </place>
+      <place id="P1">
+        <name>
+          <graphics>
+            <offset x="0" y="30"/>
+          </graphics>
+          <text>P1</text>
+        </name>
+        <graphics>
+          <position x="450" y="150"/>
+        </graphics>
+        <initialMarking>
+          <text>0</text>
+        </initialMarking>
+      </place>
+      <transition id="T0">
+        <name>
+          <graphics>
+            <offset x="0" y="30"/>
+          </graphics>
+          <text>T0</text>
+        </name>
+        <graphics>
+          <position x="300" y="150"/>
+        </graphics>
+      </transition>
+      <arc id="A0" source="P0" target="T0" type="normal">
+        <inscription>
+          <text>2</text>
+        </inscription>
+      </arc>
+      <arc id="A1" source="T0" target="P1" type="normal">
+        <graphics>
+          <position x="375" y="210"/>
+        </graphics>
+      </arc>
+    </page>
+  </net>
+</pnml>
