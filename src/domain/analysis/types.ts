@@ -58,11 +58,14 @@ export interface Deadlock {
 /**
  * One structural net-class verdict (e.g. "ordinary"): whether it holds, a short explanation, and the
  * node ids of the elements that break it (empty when it holds) so the UI can spotlight them.
+ * `erroneousArcs` holds the ids of the arcs that break it: for every class that requires an ordinary
+ * net, the arcs with a weight above 1 (empty when none, and always empty for free choice's shape rule).
  */
 export interface ClassResult {
   verdict: Verdict;
   reasons: string[];
   erroneous: string[];
+  erroneousArcs: string[];
 }
 
 /** The four classic structural classifications of a P/T net, each decided from the net's shape alone. */
@@ -71,6 +74,51 @@ export interface Classification {
   stateMachine: ClassResult;
   markedGraph: ClassResult;
   freeChoice: ClassResult;
+}
+
+/**
+ * The largest token count each place reaches over all explored markings, keyed by place id.
+ * `exact` is true only when the whole state space was explored; otherwise every number is just a
+ * lower limit (the state space was capped or unbounded). `unbounded` lists the ids of places proven
+ * to grow without limit (a reached marking covers an earlier one on them); they have no bound.
+ */
+export interface PlaceBounds {
+  max: Record<string, number>;
+  exact: boolean;
+  unbounded: string[];
+}
+
+/** One firing out of a marking: the transition id and the index of the target row in `StateTable.rows`. */
+export interface StateFiring {
+  transition: string;
+  to: number;
+}
+
+/**
+ * One explored marking. `name` is "M0" (the initial marking), "M1", ... in order of discovery.
+ * `tokens[i]` is the token count of `StateTable.placeIds[i]`. `deadlock` is true for a marking in
+ * which no transition is enabled (a marking that was merely not expanded is not a deadlock).
+ * `explored` is false when the search stopped before listing all of this marking's firings (the
+ * state cap cut it off, or it was never expanded, or it was cut off as covering an earlier marking);
+ * `firings` is then partial or empty and must not be read as "nothing can fire".
+ */
+export interface StateRow {
+  name: string;
+  tokens: number[];
+  firings: StateFiring[];
+  deadlock: boolean;
+  explored: boolean;
+}
+
+/**
+ * The explored part of the reachability graph, rows in order of discovery (`rows[i].name` is
+ * `M${i}`). `complete` is true when this is the whole state space; otherwise it is only the
+ * explored part. Rows are compact (arrays, no per-marking maps) because up to 10,000 can exist.
+ */
+export interface StateTable {
+  placeIds: readonly string[];
+  rows: StateRow[];
+  complete: boolean;
 }
 
 /** Structural & behavioural diagnostics for the Structure tab. */
@@ -114,4 +162,8 @@ export interface AnalysisResult {
    */
   stateSpaceComplete: boolean;
   exploredStates: number;
+  /** Per-place maximum tokens over the explored markings; `null` until the full analysis has run. */
+  placeBounds: PlaceBounds | null;
+  /** The explored markings and firings; `null` until the full analysis has run. */
+  stateTable: StateTable | null;
 }

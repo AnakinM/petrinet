@@ -1,5 +1,5 @@
 import { Tarjan } from "@/domain/analysis/tarjan";
-import type { Deadlock, Verdict } from "@/domain/analysis/types";
+import type { Deadlock, PlaceBounds, StateTable, Verdict } from "@/domain/analysis/types";
 import { PetriNetEngine } from "@/domain/engine";
 import type { Marking, PetriNet } from "@/domain/types";
 
@@ -41,6 +41,15 @@ export class ReachabilityGraph {
   readonly states: number;
 
   private readonly _bound: number;
+  /** Explored markings in order of discovery (index = marking name `M${index}`). */
+  private readonly _markings: Marking[];
+  private readonly _adjacency: Edge[][];
+  /** Indices of the markings in which no transition is enabled. */
+  private readonly _deadlockNodes: Set<number>;
+  /** Indices of the markings whose firings were all listed (the others are partial or empty). */
+  private readonly _expandedNodes: Set<number>;
+  /** Ids of places that a covering marking proves unbounded. */
+  private readonly _unboundedPlaces: Set<string>;
   private readonly _deadlocks: Deadlock[];
   private readonly _deadTransitions: string[];
   /** Every terminal SCC fires every transition (the L4 witness; trust only when complete). */
@@ -64,6 +73,8 @@ export class ReachabilityGraph {
     const indexByKey = new Map<string, number>();
     const fired = new Set<string>();
     const deadlockNodes: number[] = [];
+    const expanded = new Set<number>();
+    const unboundedPlaces = new Set<string>();
 
     const key = (m: Marking): string => ReachabilityGraph._key(placeIds, m);
     const addNode = (m: Marking, from: number, t: string): number => {
@@ -91,7 +102,11 @@ export class ReachabilityGraph {
           }
           if (diff > 0) strict = true;
         }
-        if (dominates && strict) return true;
+        if (dominates && strict) {
+          for (const id of placeIds)
+            if ((next[id] ?? 0) > (ancestor[id] ?? 0)) unboundedPlaces.add(id);
+          return true;
+        }
       }
       return false;
     };
@@ -108,6 +123,7 @@ export class ReachabilityGraph {
       const enabled = engine.enabledTransitions(marking);
       if (enabled.length === 0) {
         deadlockNodes.push(node);
+        expanded.add(node);
         continue;
       }
       for (const t of enabled) {
@@ -132,6 +148,7 @@ export class ReachabilityGraph {
         adjacency[node].push({ to: created, t });
         queue.push(created);
       }
+      expanded.add(node);
     }
 
     this.exceeded = exceeded;
@@ -141,6 +158,11 @@ export class ReachabilityGraph {
     this._placeIds = placeIds;
     this._reachedKeys = new Set(indexByKey.keys());
 
+    this._markings = markings;
+    this._adjacency = adjacency;
+    this._deadlockNodes = new Set(deadlockNodes);
+    this._expandedNodes = expanded;
+    this._unboundedPlaces = unboundedPlaces;
     this._bound = ReachabilityGraph._maxTokens(markings, placeIds);
     this._deadlocks = deadlockNodes.map((node) => ({
       marking: markings[node],
@@ -159,6 +181,32 @@ export class ReachabilityGraph {
     );
   }
 
+  /** Largest token count of each place over the explored markings; `exact` only when {@link complete}. */
+  placeBounds(): PlaceBounds {
+    const max: Record<string, number> = {};
+    for (const id of this._placeIds) max[id] = 0;
+    for (const m of this._markings) {
+      for (const id of this._placeIds) max[id] = Math.max(max[id], m[id] ?? 0);
+    }
+    const unbounded = this._placeIds.filter((id) => this._unboundedPlaces.has(id));
+    return { max, exact: this.complete, unbounded };
+  }
+
+  /** The explored markings (M0, M1, ... in discovery order) with their firings and deadlock flags. */
+  stateTable(): StateTable {
+    return {
+      placeIds: [...this._placeIds],
+      complete: this.complete,
+      rows: this._markings.map((m, i) => ({
+        name: `M${i}`,
+        tokens: this._placeIds.map((id) => m[id] ?? 0),
+        firings: this._adjacency[i].map((e) => ({ transition: e.t, to: e.to })),
+        deadlock: this._deadlockNodes.has(i),
+        explored: this._expandedNodes.has(i),
+      })),
+    };
+  }
+
   /** Exact bound k (max tokens in any place) once the graph is complete; otherwise unknown. */
   bound(): number | null {
     return this.complete ? this._bound : null;
@@ -171,9 +219,11 @@ export class ReachabilityGraph {
   }
 
   isSafe(): Verdict {
+    // Every explored marking is reachable, so a place holding 2 tokens already settles "not safe".
+    if (this._bound > 1) return "no";
     const bounded = this.isBounded();
     if (bounded !== "yes") return bounded;
-    return this._bound <= 1 ? "yes" : "no";
+    return "yes";
   }
 
   isLive(): Verdict {
