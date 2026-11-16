@@ -31,9 +31,10 @@ export class PnmlParseError extends Error {
  * standards-based format alongside the native `.npn`. Unlike `.npn` it is **not** byte-faithful: it
  * is a pretty-printed structural mapping for interop with other Petri net tools.
  *
- * Export writes one `<net>`/`<page>` of places, transitions and arcs: names, the initial marking
- * M0, weights and interior arc bends. Transition rotation and the exact arc end points (PNML derives
- * them from the nodes) are not represented in PNML and are dropped.
+ * Export writes one `<net>`/`<page>` of places, transitions and arcs: names with their label
+ * offsets, the initial marking M0, weights and interior arc bends. Standard PNML has no place for
+ * three things, so they are lost: transition rotation, the exact arc end points (PNML derives them
+ * from the nodes, so a free end becomes a magnetic one) and the position of an arc's weight label.
  * Import re-derives arc end points by clipping to the node borders, exactly as drawing an arc does.
  *
  * Import reads the PNML of PIPE, WoPeD, TAPAAL, TINA and the class tool (see `fixtures/pnml/`):
@@ -104,7 +105,7 @@ export class PnmlCodec {
   private static _placeXml(p: Place): string {
     const parts = [
       `      <place id="${PnmlCodec._esc(p.id)}">`,
-      `        <name><text>${PnmlCodec._esc(p.name)}</text></name>`,
+      PnmlCodec._nameXml(p.name, p.labelPosition),
       `        <graphics>${PnmlCodec._pointXml("position", p.position)}</graphics>`,
     ];
     // Omit a zero initial marking: import defaults it to 0 anyway.
@@ -117,7 +118,7 @@ export class PnmlCodec {
   private static _transitionXml(t: Transition): string {
     return [
       `      <transition id="${PnmlCodec._esc(t.id)}">`,
-      `        <name><text>${PnmlCodec._esc(t.name)}</text></name>`,
+      PnmlCodec._nameXml(t.name, t.labelPosition),
       `        <graphics>${PnmlCodec._pointXml("position", t.position)}</graphics>`,
       "      </transition>",
     ].join("\n");
@@ -138,6 +139,14 @@ export class PnmlCodec {
       inner.push("        </graphics>");
     }
     return [open, ...inner, "      </arc>"].join("\n");
+  }
+
+  /** A node's name label; a moved label also gets its offset from the node centre. */
+  private static _nameXml(name: string, labelPosition: Vec2 | undefined): string {
+    const offset = labelPosition
+      ? `<graphics>${PnmlCodec._pointXml("offset", labelPosition)}</graphics>`
+      : "";
+    return `        <name><text>${PnmlCodec._esc(name)}</text>${offset}</name>`;
   }
 
   private static _pointXml(tag: string, v: Vec2): string {

@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { PnmlCodec, PnmlParseError, type PnmlRefusalReason } from "@/codec/pnml";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
+import { SAMPLE_NET } from "@/flow/sampleNet";
 
 const place = (id: string, position: Vec, tokens = 0, name = id): Place => ({
   id,
@@ -85,6 +86,47 @@ describe("PnmlCodec.serialize", () => {
     expect(xml).not.toContain('<position x="20" y="0"/>');
   });
 
+  it("writes a moved label as the offset of the name", () => {
+    const net: PetriNet = {
+      places: [{ ...place("P1", { x: 0, y: 0 }, 0, "Start"), labelPosition: { x: 0, y: -30 } }],
+      transitions: [transition("t1", { x: 100, y: 0 })],
+      arcs: [],
+    };
+    const xml = PnmlCodec.serialize(net);
+    expect(xml).toContain(
+      '<name><text>Start</text><graphics><offset x="0" y="-30"/></graphics></name>',
+    );
+    // A label in its default spot has no offset.
+    expect(xml).toContain("<name><text>t1</text></name>");
+  });
+
+  it("writes what the class tool's PNMLImporter reads", () => {
+    const moved = { ...SAMPLE_NET.places[0], labelPosition: { x: 25, y: -30 } };
+    const net: PetriNet = { ...SAMPLE_NET, places: [moved, ...SAMPLE_NET.places.slice(1)] };
+    // The class tool parses "text/xml" and finds elements by tag name, ignoring namespaces.
+    const doc = new DOMParser().parseFromString(PnmlCodec.serialize(net), "text/xml");
+    expect(doc.getElementsByTagName("pnml")).toHaveLength(1);
+    expect(doc.getElementsByTagName("net")).toHaveLength(1);
+    const nodes = [...doc.getElementsByTagName("place"), ...doc.getElementsByTagName("transition")];
+    expect(nodes).toHaveLength(net.places.length + net.transitions.length);
+    for (const node of nodes) {
+      // It reads the centre from a direct <graphics> child and the name from the first <text>.
+      const graphics = [...node.children].find((c) => c.tagName === "graphics");
+      expect(graphics?.getElementsByTagName("position")).toHaveLength(1);
+      expect(node.getElementsByTagName("name")[0].getElementsByTagName("text")).toHaveLength(1);
+    }
+    // It reads a label offset from <name><graphics><offset>.
+    const offset = doc.getElementsByTagName("name")[0].getElementsByTagName("offset")[0];
+    expect([offset.getAttribute("x"), offset.getAttribute("y")]).toEqual(["25", "-30"]);
+    // It reads the marking and the weight from <text>, and arcs by source and target id.
+    const marking = doc.getElementsByTagName("initialMarking")[0];
+    expect(marking.getElementsByTagName("text")[0].textContent).toBe("1");
+    for (const arcEl of doc.getElementsByTagName("arc")) {
+      const ids = [arcEl.getAttribute("source"), arcEl.getAttribute("target")];
+      expect(ids.every((id) => nodes.some((n) => n.getAttribute("id") === id))).toBe(true);
+    }
+  });
+
   it("escapes XML-special characters in names", () => {
     const net: PetriNet = {
       places: [place("P1", { x: 0, y: 0 }, 0, "A & B")],
@@ -150,8 +192,11 @@ describe("PnmlCodec.parse", () => {
 
   it("round-trips a net's structure through serialize → parse", () => {
     const original: PetriNet = {
-      places: [place("P1", { x: 40, y: 40 }, 3, "Buf"), place("P2", { x: 240, y: 40 }, 0)],
-      transitions: [transition("t1", { x: 140, y: 40 })],
+      places: [
+        { ...place("P1", { x: 40, y: 40 }, 3, "Buf"), labelPosition: { x: -12.5, y: 30 } },
+        place("P2", { x: 240, y: 40 }, 0),
+      ],
+      transitions: [{ ...transition("t1", { x: 140, y: 40 }), labelPosition: { x: 0, y: -30 } }],
       arcs: [
         arc("a1", "P1", "t1", 2, [
           { x: 60, y: 40 },
