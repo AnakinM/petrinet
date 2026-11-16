@@ -1,11 +1,20 @@
 import { NetOps } from "@/domain/netOps";
 import type { Arc, PetriNet, Place, Transition, Vec2 } from "@/domain/types";
 
-/** Thrown when PNML input is structurally invalid. Carries a specific, element-tagged message. */
+/**
+ * Why a PNML file was refused. "invalid" is a broken file. The other three name a feature that this
+ * editor lacks: a special arc, a net type other than place/transition, a place capacity.
+ */
+export type PnmlRefusalReason = "invalid" | "unsupported-arc" | "net-type" | "capacity";
+
+/** Thrown when PNML input is refused. Carries a specific, element-tagged message and its reason. */
 export class PnmlParseError extends Error {
-  constructor(message: string) {
+  readonly reason: PnmlRefusalReason;
+
+  constructor(message: string, reason: PnmlRefusalReason = "invalid") {
     super(message);
     this.name = "PnmlParseError";
+    this.reason = reason;
   }
 }
 

@@ -1,5 +1,5 @@
 import { NpnCodec } from "@/codec/npn";
-import { PnmlCodec } from "@/codec/pnml";
+import { PnmlCodec, PnmlParseError, type PnmlRefusalReason } from "@/codec/pnml";
 import type { PetriNet } from "@/domain/types";
 import { NetSvg } from "@/flow/svgExport";
 
@@ -26,14 +26,19 @@ export class NpnFile {
 /** A net file format that the editor reads: the native `.npn` or PNML. */
 export type NetFormat = "npn" | "pnml";
 
-/** A net file that its codec refused. `format` names the codec that was chosen for it. */
+/**
+ * A net file that its codec refused. `format` names the codec that was chosen for it. `reason` is
+ * the PNML refusal reason; an `.npn` failure is always "invalid".
+ */
 export class NetImportError extends Error {
   readonly format: NetFormat;
+  readonly reason: PnmlRefusalReason;
 
   constructor(format: NetFormat, cause: unknown) {
     super(cause instanceof Error ? cause.message : String(cause), { cause });
     this.name = "NetImportError";
     this.format = format;
+    this.reason = cause instanceof PnmlParseError ? cause.reason : "invalid";
   }
 }
 

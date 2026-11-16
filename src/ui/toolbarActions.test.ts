@@ -68,12 +68,24 @@ describe("toolbarActions usage events", () => {
     });
   });
 
+  it("sends Import refused with the PNML refusal reason", async () => {
+    const cause = new PnmlParseError('arc "a1" has the type "inhibitor".', "unsupported-arc");
+    vi.spyOn(NetFile, "open").mockRejectedValue(new NetImportError("pnml", cause));
+    importNet();
+    await vi.waitFor(() => expect(window.alert).toHaveBeenCalled());
+    expect(track).toHaveBeenCalledExactlyOnceWith("Import refused", {
+      format: "pnml",
+      reason: "unsupported-arc",
+    });
+  });
+
   it("keeps the codec message and cause in a refused import", () => {
     const cause = new PnmlParseError("missing the <pnml> root element.");
     const error = new NetImportError("pnml", cause);
     expect(error.message).toBe(cause.message);
     expect(error.cause).toBe(cause);
     expect(error.format).toBe("pnml");
+    expect(error.reason).toBe("invalid");
   });
 
   it("sends Enter simulation once per switch from Build to Simulate", () => {
