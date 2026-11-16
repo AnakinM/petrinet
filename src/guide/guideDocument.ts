@@ -18,6 +18,7 @@ const PRERENDER_MARK = "guide";
 /** The head tags the guide rewrites: how the tag starts, which attribute, and its new value. */
 const HEAD_ATTRIBUTES: readonly (readonly [string, string, string])[] = [
   ['<link rel="canonical"', "href", GUIDE_URL],
+  ['<meta property="og:type"', "content", "article"],
   ['<meta property="og:url"', "content", GUIDE_URL],
   ['<meta name="description"', "content", GUIDE_DESCRIPTION],
   ['<meta property="og:title"', "content", GUIDE_TITLE],

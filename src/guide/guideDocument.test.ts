@@ -41,6 +41,11 @@ describe("GuideDocument.build", () => {
     expect(attribute(guide, 'meta[property="og:url"]', "content")).toBe(GUIDE_URL);
   });
 
+  it("marks the guide as an article for Open Graph", () => {
+    expect(attribute(home, 'meta[property="og:type"]', "content")).toBe("website");
+    expect(attribute(guide, 'meta[property="og:type"]', "content")).toBe("article");
+  });
+
   it("swaps the Open Graph and Twitter titles and descriptions", () => {
     expect(attribute(guide, 'meta[property="og:title"]', "content")).toBe(GUIDE_TITLE);
     expect(attribute(guide, 'meta[name="twitter:title"]', "content")).toBe(GUIDE_TITLE);
