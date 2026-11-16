@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hand-written for this editor's tests. It imitates the PNML that TINA (nd and ndrio) writes in
+  its own "tpn" profile: the 2009 namespace, the net type "http://www.laas.fr/tina/tpn", generated
+  ids, name offsets of a few pixels, <graphics> after the <initialMarking>, and a firing interval
+  in a <delay> element written in MathML.
+-->
+<pnml xmlns="http://www.pnml.org/version-2009/grammar/pnml">
+ <net id="n-1A2B-3C4D-0" type ="http://www.laas.fr/tina/tpn">
+  <name>
+   <text>buffer</text>
+  </name>
+ <page id="g-1A2B-3C4E-1">
+  <place id="p-1A2B-3C50-2">
+  <name>
+   <text>p0</text>
+    <graphics>
+     <offset x="0" y="-10" />
+    </graphics>
+  </name>
+   <initialMarking>
+    <text>3</text>
+   </initialMarking>
+   <graphics>
+    <position x="100" y="100"/>
+   </graphics>
+  </place>
+  <place id="p-1A2B-3C52-3">
+  <name>
+   <text>p1</text>
+    <graphics>
+     <offset x="0" y="40" />
+    </graphics>
+  </name>
+   <graphics>
+    <position x="300" y="100"/>
+   </graphics>
+  </place>
+  <transition id="t-1A2B-3C54-4">
+  <name>
+   <text>t0</text>
+    <graphics>
+     <offset x="0" y="-35" />
+    </graphics>
+  </name>
+   <graphics>
+    <position x="200" y="100"/>
+   </graphics>
+   <delay>
+    <interval xmlns="http://www.w3.org/1998/Math/MathML" closure="closed">
+     <cn>2</cn>
+     <cn>5</cn>
+    </interval>
+   </delay>
+  </transition>
+  <arc id="e-1A2B-3C56-5" source="p-1A2B-3C50-2" target="t-1A2B-3C54-4">
+   <inscription>
+    <text>2</text>
+   </inscription>
+  </arc>
+  <arc id="e-1A2B-3C58-6" source="t-1A2B-3C54-4" target="p-1A2B-3C52-3">
+  </arc>
+ </page>
+ </net>
+</pnml>

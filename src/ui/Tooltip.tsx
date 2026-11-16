@@ -107,7 +107,10 @@ export function Tooltip({
       pressed.current = false;
     },
     onFocus: (e) => {
-      if (!pressed.current) show(e.currentTarget.getBoundingClientRect());
+      // Keyboard focus only: the browser does not mark a focus as visible when a script moves it
+      // after a mouse click, as a menu does when it hands the focus back to its trigger.
+      if (pressed.current || !e.currentTarget.matches(":focus-visible")) return;
+      show(e.currentTarget.getBoundingClientRect());
     },
     onBlur: hide,
     onClickCapture: hide,
