@@ -1,5 +1,5 @@
 import { Tarjan } from "@/domain/analysis/tarjan";
-import type { Deadlock, Verdict } from "@/domain/analysis/types";
+import type { Deadlock, PlaceBounds, StateTable, Verdict } from "@/domain/analysis/types";
 import { PetriNetEngine } from "@/domain/engine";
 import type { Marking, PetriNet } from "@/domain/types";
 
@@ -41,6 +41,11 @@ export class ReachabilityGraph {
   readonly states: number;
 
   private readonly _bound: number;
+  /** Explored markings in order of discovery (index = marking name `M${index}`). */
+  private readonly _markings: Marking[];
+  private readonly _adjacency: Edge[][];
+  /** Indices of the markings in which no transition is enabled. */
+  private readonly _deadlockNodes: Set<number>;
   private readonly _deadlocks: Deadlock[];
   private readonly _deadTransitions: string[];
   /** Every terminal SCC fires every transition (the L4 witness; trust only when complete). */
@@ -141,6 +146,9 @@ export class ReachabilityGraph {
     this._placeIds = placeIds;
     this._reachedKeys = new Set(indexByKey.keys());
 
+    this._markings = markings;
+    this._adjacency = adjacency;
+    this._deadlockNodes = new Set(deadlockNodes);
     this._bound = ReachabilityGraph._maxTokens(markings, placeIds);
     this._deadlocks = deadlockNodes.map((node) => ({
       marking: markings[node],
@@ -157,6 +165,31 @@ export class ReachabilityGraph {
       scc.count,
       transitionCount,
     );
+  }
+
+  /** Largest token count of each place over the explored markings; `exact` only when {@link complete}. */
+  placeBounds(): PlaceBounds {
+    const max: Record<string, number> = {};
+    for (const id of this._placeIds) max[id] = 0;
+    for (const m of this._markings) {
+      for (const id of this._placeIds) max[id] = Math.max(max[id], m[id] ?? 0);
+    }
+    return { max, exact: this.complete };
+  }
+
+  /** The explored markings (M0, M1, ... in discovery order) with their firings and deadlock flags. */
+  stateTable(): StateTable {
+    const name = (index: number): string => `M${index}`;
+    return {
+      placeIds: this._placeIds,
+      complete: this.complete,
+      rows: this._markings.map((m, i) => ({
+        name: name(i),
+        tokens: this._placeIds.map((id) => m[id] ?? 0),
+        firings: this._adjacency[i].map((e) => ({ transition: e.t, to: name(e.to) })),
+        deadlock: this._deadlockNodes.has(i),
+      })),
+    };
   }
 
   /** Exact bound k (max tokens in any place) once the graph is complete; otherwise unknown. */
