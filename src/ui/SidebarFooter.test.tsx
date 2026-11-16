@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { Analytics } from "@/lib/analytics";
 import { SidebarFooter } from "@/ui/SidebarFooter";
 
 describe("SidebarFooter links", () => {
@@ -26,5 +27,29 @@ describe("SidebarFooter links", () => {
     expect(link).toHaveAttribute("href", "https://github.com/AnakinM/petrinet/issues/new");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+});
+
+describe("SidebarFooter usage events", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["GitHub", "github"],
+    ["Report an issue", "issue"],
+  ])("sends Outbound link when %s is clicked", (name, target) => {
+    const track = vi.spyOn(Analytics, "track").mockImplementation(() => {});
+    render(<SidebarFooter />);
+    fireEvent.click(screen.getByRole("link", { name }));
+    expect(track).toHaveBeenCalledExactlyOnceWith("Outbound link", { target });
+  });
+
+  it("sends nothing for the guide link", () => {
+    const track = vi.spyOn(Analytics, "track").mockImplementation(() => {});
+    render(<SidebarFooter />);
+    fireEvent.click(screen.getByRole("link", { name: "Guide" }));
+    expect(track).not.toHaveBeenCalled();
   });
 });

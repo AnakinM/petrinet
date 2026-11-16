@@ -8,7 +8,21 @@ and watch tokens move. Import/export the `.npn` JSON format with **byte-level fi
 
 Client-only. No backend, no database, no accounts. State lives in memory + `localStorage`.
 
-See `PLAN.md` for the full implementation plan and the deferred "Future Updates" list.
+See `local/SPRINT_1_PLAN.md` for the original implementation plan and `local/BACKLOG.md` for
+future work.
+
+### Project docs in `local/`
+
+`local/` holds the owner's planning documents. It is **not tracked by git**, so a fresh clone or a
+git worktree does not contain it.
+
+- `SPRINT_n_BRIEF.md`: the owner's notes that start a sprint. Sprint 1 has no brief.
+- `SPRINT_n_PLAN.md`: the implementation plan of one sprint. `SPRINT_1_PLAN.md` is the first build.
+- `BACKLOG.md`: every future improvement that is not in a sprint yet.
+- `REJECTED_IDEAS.md`: ideas the owner turned down, with the reasons.
+- `ROADMAP_DECISIONS.md`: the strategy record from 2026-06-30.
+- `research/`: material that decisions lean on, such as the visitor statistics.
+- `assets/`: source files for pictures, such as the logo and the guide screenshots.
 
 ## Commands
 
@@ -108,7 +122,7 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
 
 - Main branch: `main`. Commit only when asked; branch first if asked to commit on `main`.
 - Conventional, present-tense commit subjects. Keep diffs focused.
-- CI and pre-commit hooks are a deferred item (see `PLAN.md` → Future Updates), not set up in v1.
+- CI checks on pull requests and pre-commit hooks are deferred items (see `local/BACKLOG.md`).
 
 ## Boundaries
 

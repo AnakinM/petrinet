@@ -312,8 +312,8 @@ function EditorSection(): JSX.Element {
         Click a shape or an arc to select it. Drag a shape to move it, and any connected arcs follow
         along. To move several shapes at once, choose the Select tool and drag a box around them on
         empty canvas. Node positions snap to a grid so your net stays tidy, and light guides appear
-        when a shape lines up with its neighbours. You can turn snapping off with the grid button in
-        the toolbar.
+        when a shape lines up with its neighbours. You can turn snapping off with the magnet button
+        in the toolbar. When snapping is off, the magnet is grey and crossed out.
       </p>
       <h3 className="mt-8 mb-3 font-semibold text-lg text-slate-900">Adding tokens</h3>
       <p>

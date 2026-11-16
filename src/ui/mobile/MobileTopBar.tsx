@@ -1,4 +1,5 @@
 import { type JSX, type ReactNode, useEffect, useRef, useState } from "react";
+import { Analytics } from "@/lib/analytics";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { MenuIcon, RedoIcon, UndoIcon } from "@/ui/icons";
@@ -108,8 +109,18 @@ function Menu({ simulating }: { simulating: boolean }): JSX.Element {
           </MenuItem>
           <Divider />
           <MenuLink href={GUIDE_URL}>Guide</MenuLink>
-          <MenuLink href={REPO_URL}>GitHub</MenuLink>
-          <MenuLink href={NEW_ISSUE_URL}>Report an issue</MenuLink>
+          <MenuLink
+            href={REPO_URL}
+            onClick={() => Analytics.track("Outbound link", { target: "github" })}
+          >
+            GitHub
+          </MenuLink>
+          <MenuLink
+            href={NEW_ISSUE_URL}
+            onClick={() => Analytics.track("Outbound link", { target: "issue" })}
+          >
+            Report an issue
+          </MenuLink>
         </div>
       )}
     </div>
@@ -170,10 +181,19 @@ function MenuItem({
   );
 }
 
-function MenuLink({ href, children }: { href: string; children: ReactNode }): JSX.Element {
+function MenuLink({
+  href,
+  onClick,
+  children,
+}: {
+  href: string;
+  onClick?: () => void;
+  children: ReactNode;
+}): JSX.Element {
   return (
     <a
       href={href}
+      onClick={onClick}
       target="_blank"
       rel="noopener noreferrer"
       className="px-3 py-2 text-left text-slate-700 text-sm hover:bg-slate-100"
