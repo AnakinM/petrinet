@@ -76,19 +76,20 @@ type TrackedState = { net: PetriNet };
 const restored = Autosave.load();
 
 /**
- * Pass through the net that a visitor's add produced: a place, a transition, an arc or a paste.
- * The first add that changes the net in a page load sends the "Edit net" usage event, which tells
- * a visitor who built something apart from one who only looked at the sample. Import, New, the
- * autosave restore, undo and redo replace the net without an add, so they never send it.
+ * The "Edit net" usage event. It tells a visitor who built something apart from one who only looked
+ * at the sample. Only a visitor's add calls it (a place, a transition, an arc or a paste). Import,
+ * New, the autosave restore, undo and redo replace the net without an add, so they never send it.
  */
-function reportAdd(before: PetriNet, after: PetriNet): PetriNet {
-  if (after !== before) Analytics.trackOnce("Edit net");
-  return after;
+class EditTracking {
+  /** Call after an add with the net before and after it; the first real change in a page load counts. */
+  static afterAdd(before: PetriNet, after: PetriNet): void {
+    if (after !== before) Analytics.trackOnce("Edit net");
+  }
 }
 
 export const useNetStore = create<NetState>()(
   temporal(
-    (set) => ({
+    (set, get) => ({
       net: restored?.net ?? SAMPLE_NET,
       selection: EMPTY_SELECTION,
       mode: "build",
@@ -97,13 +98,22 @@ export const useNetStore = create<NetState>()(
       _pasteCount: 0,
 
       setNet: (net) => set({ net, selection: EMPTY_SELECTION }),
-      addPlace: (position) =>
-        set((s) => ({ net: reportAdd(s.net, NetOps.addPlace(s.net, position)) })),
-      addTransition: (position) =>
-        set((s) => ({ net: reportAdd(s.net, NetOps.addTransition(s.net, position)) })),
+      addPlace: (position) => {
+        const before = get().net;
+        set((s) => ({ net: NetOps.addPlace(s.net, position) }));
+        EditTracking.afterAdd(before, get().net);
+      },
+      addTransition: (position) => {
+        const before = get().net;
+        set((s) => ({ net: NetOps.addTransition(s.net, position) }));
+        EditTracking.afterAdd(before, get().net);
+      },
       moveNodes: (moves) => set((s) => ({ net: NetOps.moveNodes(s.net, moves) })),
-      connect: (source, target, bends) =>
-        set((s) => ({ net: reportAdd(s.net, NetOps.connect(s.net, source, target, bends)) })),
+      connect: (source, target, bends) => {
+        const before = get().net;
+        set((s) => ({ net: NetOps.connect(s.net, source, target, bends) }));
+        EditTracking.afterAdd(before, get().net);
+      },
       rename: (id, name) => set((s) => ({ net: NetOps.rename(s.net, id, name) })),
       setTokens: (placeId, tokens) =>
         set((s) => ({ net: NetOps.setTokens(s.net, placeId, tokens) })),
@@ -138,17 +148,20 @@ export const useNetStore = create<NetState>()(
           if (clip.places.length === 0 && clip.transitions.length === 0) return {};
           return { clipboard: clip, _pasteCount: 0 };
         }),
-      paste: () =>
+      paste: () => {
+        const before = get().net;
         set((s) => {
           if (!s.clipboard) return {};
           const step = (s._pasteCount + 1) * GridSnap.SIZE;
           const result = NetOps.paste(s.net, s.clipboard, { x: step, y: step });
           return {
-            net: reportAdd(s.net, result.net),
+            net: result.net,
             selection: { nodes: result.nodeIds, edges: result.arcIds },
             _pasteCount: s._pasteCount + 1,
           };
-        }),
+        });
+        EditTracking.afterAdd(before, get().net);
+      },
 
       select: (selection) => set({ selection }),
       setMode: (mode) => set({ mode }),
