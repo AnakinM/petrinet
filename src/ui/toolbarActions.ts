@@ -5,11 +5,13 @@ import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 import { useNoticeStore } from "@/store/noticeStore";
 import { useSimStore } from "@/store/simStore";
+import type { MenuEntry } from "@/ui/Menu";
 
 /**
  * The net-level menu actions (New / Import / the several Exports) and the Build↔Simulate mode
  * transitions, factored out of the toolbar so the desktop {@link Toolbar} and the mobile top bar
- * invoke the exact same logic. Each reads the live store on call, so there is no state to thread.
+ * invoke the exact same logic. The entries of the Export and Image menus live here for the same
+ * reason. Each action reads the live store on call, so there is no state to thread.
  */
 
 const EMPTY_NET: PetriNet = { places: [], transitions: [], arcs: [] };
@@ -93,6 +95,20 @@ export function copyImage(): void {
   // Counted when the copy starts, like the PNG export.
   Analytics.track("Export", { format: "clipboard" });
 }
+
+/** The Export menu: files that an editor can open again. */
+export const EXPORT_ENTRIES: MenuEntry[] = [
+  { label: ".npn file", hint: "Opens again in this editor", onSelect: exportNet },
+  { label: "PNML", hint: "For other Petri net tools", onSelect: exportPnml },
+];
+
+/** The Image menu: pictures of what is on screen. */
+export const IMAGE_ENTRIES: MenuEntry[] = [
+  { label: "PNG image", onSelect: exportPng },
+  { label: "SVG image", onSelect: exportSvg },
+  { label: "LaTeX (TikZ)", onSelect: exportTikz },
+  { label: "Copy to clipboard", onSelect: copyImage },
+];
 
 /** Enter Simulate: drop any active Build tool, clear the selection, lock the net, snapshot M0. */
 export function enterSimulate(): void {

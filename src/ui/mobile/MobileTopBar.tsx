@@ -1,17 +1,11 @@
-import { type JSX, type ReactNode, useEffect, useRef, useState } from "react";
+import type { JSX, ReactNode } from "react";
 import { Analytics } from "@/lib/analytics";
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { MenuIcon, RedoIcon, UndoIcon } from "@/ui/icons";
+import { Menu, type MenuSection, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
-import {
-  exportNet,
-  exportPng,
-  exportPnml,
-  exportSvg,
-  importNet,
-  newNet,
-} from "@/ui/toolbarActions";
+import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
 
 const GUIDE_URL = "/guide";
 const REPO_URL = "https://github.com/AnakinM/petrinet";
@@ -20,8 +14,9 @@ const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
 /**
  * Condensed top bar for the mobile shell: icon-only Undo/Redo (Build only), the Build↔Simulate
  * {@link ModeToggle}, and a hamburger menu holding the secondary actions that live in the desktop
- * toolbar and sidebar footer (the net-file exports, the Analytics toggle, and the Guide/GitHub
- * links). All actions come from the shared {@link exportNet} et al., so they match the desktop.
+ * toolbar and sidebar footer (the Export and Image groups, the Analytics toggle, and the
+ * Guide/GitHub links). All actions come from the shared {@link EXPORT_ENTRIES} et al., so they match
+ * the desktop.
  */
 export function MobileTopBar(): JSX.Element {
   const mode = useNetStore((s) => s.mode);
@@ -55,91 +50,74 @@ export function MobileTopBar(): JSX.Element {
       )}
       <div className="ml-auto flex items-center gap-1.5">
         <ModeToggle mode={mode} />
-        <Menu simulating={simulating} />
+        <HamburgerMenu simulating={simulating} />
       </div>
     </header>
   );
 }
 
-/** The hamburger dropdown; closes on an outside tap or Escape (it has no backdrop of its own). */
-function Menu({ simulating }: { simulating: boolean }): JSX.Element {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+/** The hamburger {@link Menu}: the desktop top bar's actions in groups, then the links. */
+function HamburgerMenu({ simulating }: { simulating: boolean }): JSX.Element {
   const analyticsOpen = useAnalyticsStore((s) => s.open);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  const run =
-    (fn: () => void): (() => void) =>
-    () => {
-      fn();
-      setOpen(false);
-    };
+  const sections: MenuSection[] = [
+    {
+      entries: [
+        { label: "New", onSelect: newNet, disabled: simulating },
+        { label: "Import…", onSelect: importNet, disabled: simulating },
+      ],
+    },
+    { label: "Export", entries: EXPORT_ENTRIES },
+    { label: "Image", entries: IMAGE_ENTRIES },
+    {
+      entries: [
+        {
+          label: analyticsOpen ? "Hide analytics" : "Show analytics",
+          onSelect: () => useAnalyticsStore.getState().toggle(),
+        },
+      ],
+    },
+    {
+      entries: [
+        { label: "Guide", href: GUIDE_URL },
+        {
+          label: "GitHub",
+          href: REPO_URL,
+          onSelect: () => Analytics.track("Outbound link", { target: "github" }),
+        },
+        {
+          label: "Report an issue",
+          href: NEW_ISSUE_URL,
+          onSelect: () => Analytics.track("Outbound link", { target: "issue" }),
+        },
+      ],
+    },
+  ];
 
   return (
-    <div ref={ref} className="relative">
-      <IconButton onClick={() => setOpen((o) => !o)} active={open} label="Menu">
-        <MenuIcon />
-      </IconButton>
-      {open && (
-        <div className="absolute top-full right-0 z-40 mt-1 flex max-h-[70vh] min-w-[12rem] flex-col overflow-auto overscroll-contain rounded border border-slate-300 bg-white py-1 shadow-lg">
-          <MenuItem onClick={run(newNet)} disabled={simulating}>
-            New
-          </MenuItem>
-          <MenuItem onClick={run(importNet)} disabled={simulating}>
-            Import…
-          </MenuItem>
-          <MenuItem onClick={run(exportNet)}>Export .npn</MenuItem>
-          <MenuItem onClick={run(exportPnml)}>Export PNML</MenuItem>
-          <MenuItem onClick={run(exportPng)}>Export PNG</MenuItem>
-          <MenuItem onClick={run(exportSvg)}>Export SVG</MenuItem>
-          <Divider />
-          <MenuItem onClick={run(() => useAnalyticsStore.getState().toggle())}>
-            {analyticsOpen ? "Hide analytics" : "Show analytics"}
-          </MenuItem>
-          <Divider />
-          <MenuLink href={GUIDE_URL}>Guide</MenuLink>
-          <MenuLink
-            href={REPO_URL}
-            onClick={() => Analytics.track("Outbound link", { target: "github" })}
-          >
-            GitHub
-          </MenuLink>
-          <MenuLink
-            href={NEW_ISSUE_URL}
-            onClick={() => Analytics.track("Outbound link", { target: "issue" })}
-          >
-            Report an issue
-          </MenuLink>
-        </div>
+    <Menu sections={sections} align="end">
+      {(trigger, open) => (
+        <IconButton menu={trigger} active={open} label="Menu">
+          <MenuIcon />
+        </IconButton>
       )}
-    </div>
+    </Menu>
   );
 }
 
-/** A square icon-only top-bar button, sized for a comfortable touch target. */
+/**
+ * A square icon-only top-bar button, sized for a comfortable touch target. `menu` makes it the
+ * trigger of a {@link Menu}: the menu then handles the click, and `active` only styles the open state.
+ */
 function IconButton({
   onClick,
+  menu,
   disabled,
   active,
   label,
   children,
 }: {
-  onClick: () => void;
+  onClick?: () => void;
+  menu?: MenuTriggerProps;
   disabled?: boolean;
   active?: boolean;
   label: string;
@@ -149,8 +127,9 @@ function IconButton({
     <button
       type="button"
       onClick={onClick}
+      {...menu}
       disabled={disabled}
-      aria-pressed={active}
+      aria-pressed={menu ? undefined : active}
       aria-label={label}
       title={label}
       className={`inline-flex h-9 w-9 touch-manipulation items-center justify-center rounded border shadow-sm disabled:cursor-not-allowed disabled:opacity-40 ${
@@ -162,51 +141,4 @@ function IconButton({
       {children}
     </button>
   );
-}
-
-function MenuItem({
-  onClick,
-  disabled,
-  children,
-}: {
-  onClick: () => void;
-  disabled?: boolean;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="px-3 py-2 text-left text-slate-700 text-sm hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      {children}
-    </button>
-  );
-}
-
-function MenuLink({
-  href,
-  onClick,
-  children,
-}: {
-  href: string;
-  onClick?: () => void;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <a
-      href={href}
-      onClick={onClick}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="px-3 py-2 text-left text-slate-700 text-sm hover:bg-slate-100"
-    >
-      {children}
-    </a>
-  );
-}
-
-function Divider(): JSX.Element {
-  return <span className="my-1 h-px bg-slate-200" />;
 }
