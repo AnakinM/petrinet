@@ -4,13 +4,13 @@ import type { Verdict } from "@/domain/analysis/types";
 import type { Marking, PetriNet } from "@/domain/types";
 import { Section, StatusCard } from "@/ui/analytics/widgets";
 
-/** The M0 marking (place id → initial tokens) — the query form's starting point. */
+/** The M0 marking (place id → initial tokens): the query form's starting point. */
 function markingOf(net: PetriNet): Marking {
   return Object.fromEntries(net.places.map((p) => [p.id, p.tokens]));
 }
 
 /**
- * "Is this marking reachable from M0?" — a per-place token form plus a verdict card. It seeds from M0
+ * "Is this marking reachable from M0?": a per-place token form plus a verdict card. It seeds from M0
  * and resets whenever the net changes (so the inputs always track the current places). The check
  * builds the reachability graph on demand, so the answer is reachable / not reachable / unknown (when
  * the state cap or unboundedness cut the search short).

@@ -204,7 +204,7 @@ describe("AnalyticsPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
 
     expect(screen.getByText("p=0")).toBeInTheDocument();
-    // No tokens remain, so there is nothing to highlight — the row must not be a clickable button.
+    // No tokens remain, so there is nothing to highlight. The row must not be a clickable button.
     expect(screen.queryByRole("button", { name: /p=0/ })).not.toBeInTheDocument();
   });
 

@@ -5,7 +5,7 @@ import type { BuildTool } from "@/store/buildStore";
  * A Palette / mobile-dock tool entry: the {@link BuildTool} it activates, its label, and the
  * swatch shown inside the button. Swatches inherit `currentColor`, so they invert when their tool
  * is active. Shared so the desktop {@link Palette} (vertical) and the mobile tool dock (horizontal)
- * render the same set — adding a tool here surfaces it in both.
+ * render the same set: adding a tool here surfaces it in both.
  */
 export interface ToolDescriptor {
   id: Exclude<BuildTool, "idle">;
@@ -33,7 +33,7 @@ export const TOOLS: ToolDescriptor[] = [
   { id: "token", label: "Token", swatch: <TokenSwatch /> },
 ];
 
-/** A short arrow — draw an arc between two nodes. */
+/** A short arrow: draw an arc between two nodes. */
 function ArcSwatch(): JSX.Element {
   return (
     <svg
@@ -53,7 +53,7 @@ function ArcSwatch(): JSX.Element {
   );
 }
 
-/** A ringed dot — add a token to a place. */
+/** A ringed dot: add a token to a place. */
 function TokenSwatch(): JSX.Element {
   return (
     <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-current">

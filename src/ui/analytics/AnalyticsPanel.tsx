@@ -22,7 +22,7 @@ export function AnalyticsPanel(): JSX.Element | null {
   const net = useNetStore((s) => s.net);
 
   // Shrinking the viewport can leave the persisted width wider than the canvas now allows; re-clamp
-  // it (transiently — the load-time clamp persists the correction) so the panel never occludes the
+  // it (transiently: the load-time clamp persists the correction) so the panel never occludes the
   // sidebar. setWidth re-runs the same clamp against the new innerWidth.
   useEffect(() => {
     const onResize = (): void => {

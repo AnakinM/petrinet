@@ -9,19 +9,19 @@ interface SemiflowSet {
 
 /**
  * Minimal semipositive P- and T-semiflows (place/transition invariants) of a net, computed
- * straight from its {@link IncidenceMatrix} with no external linear-algebra library — pure and
+ * straight from its {@link IncidenceMatrix} with no external linear-algebra library. Pure and
  * framework-free like {@link PetriNetEngine}.
  *
  * Both are minimal-support non-negative integer null-vectors of the incidence matrix `C`:
- *   - **P-invariants** `y ≥ 0` with `y·C = 0` — token weightings conserved by every firing.
- *   - **T-invariants** `x ≥ 0` with `C·x = 0` — firing multisets that return to the start marking.
+ *   - **P-invariants** `y ≥ 0` with `y·C = 0`: token weightings conserved by every firing.
+ *   - **T-invariants** `x ≥ 0` with `C·x = 0`: firing multisets that return to the start marking.
  *
- * The core is one routine — minimal semipositive solutions of `A·v = 0` — run on `Cᵀ` for the
- * P-invariants and on `C` for the T-invariants. It is Fourier–Motzkin / Farkas elimination with
- * per-step minimal-support pruning (Colom–Silva): driving one constraint row to zero at a time by
+ * The core is one routine (minimal semipositive solutions of `A·v = 0`), run on `Cᵀ` for the
+ * P-invariants and on `C` for the T-invariants. It is Fourier-Motzkin / Farkas elimination with
+ * per-step minimal-support pruning (Colom-Silva): driving one constraint row to zero at a time by
  * adding each positive/negative generator pair, then dropping any vector whose support strictly
- * contains another's. The survivors are exactly the extreme rays of the solution cone — the
- * minimal-support semiflows — each reduced by the gcd of its entries.
+ * contains another's. The survivors are exactly the extreme rays of the solution cone (the
+ * minimal-support semiflows), each reduced by the gcd of its entries.
  */
 export class Invariants {
   /**
@@ -108,7 +108,7 @@ export class Invariants {
         else if (d > 0) positive.push({ v: g, d });
         else negative.push({ v: g, d });
       }
-      // Bail before materialising a combination set that would blow past the cap — this product is
+      // Bail before materialising a combination set that would blow past the cap: this product is
       // where the elimination explodes on pathological nets. A partial run yields no valid semiflow,
       // so we drop the lot and let the caller treat coverage as unknown.
       if (zero.length + positive.length * negative.length > cap) {

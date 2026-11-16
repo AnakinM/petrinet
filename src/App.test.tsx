@@ -44,7 +44,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 // The Canvas mirrors React Flow's selection into the store on mount (clobbering any pre-seeded
-// value), so selection is driven in *after* mount — the store stays the source the keydown reads.
+// value), so selection is driven in *after* mount. The store stays the source the keydown reads.
 function pressEnter(): void {
   fireEvent.keyDown(document.body, { key: "Enter" });
 }

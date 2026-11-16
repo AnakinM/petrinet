@@ -26,8 +26,8 @@ export interface Alignment {
  * - **snap off:** the position is pulled to the nearest sibling axis within {@link TOLERANCE} on
  *   each axis independently.
  *
- * A guide is emitted per axis the final center shares with at least one other node — at most one
- * vertical and one horizontal — each spanning the aligned centers plus {@link EXTENT} beyond the
+ * A guide is emitted per axis the final center shares with at least one other node (at most one
+ * vertical and one horizontal), each spanning the aligned centers plus {@link EXTENT} beyond the
  * outermost. Pure and framework-free; the canvas layers render the returned guides.
  */
 export class AlignmentGuides {

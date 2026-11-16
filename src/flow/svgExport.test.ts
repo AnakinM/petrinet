@@ -50,7 +50,7 @@ describe("NetSvg", () => {
     expect(svg).toContain(">Start</text>");
   });
 
-  it("renders 1–4 tokens as dots and 5+ as a numeral", () => {
+  it("renders 1 to 4 tokens as dots and 5+ as a numeral", () => {
     const dots = NetSvg.serialize({
       places: [place("P", { x: 0, y: 0 }, 3)],
       transitions: [],

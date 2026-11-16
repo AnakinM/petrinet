@@ -22,7 +22,7 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
       <StatusCard
         title="Bounded"
         verdict={boundedness.bounded}
-        help="Bounded if some finite k caps the tokens in every place across all reachable markings — no place can grow without limit."
+        help="Bounded if some finite k caps the tokens in every place across all reachable markings, so no place can grow without limit."
         {...boundedDetail(result)}
       />
       <StatusCard
@@ -43,7 +43,7 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
         verdict={live.verdict}
         detail={live.detail}
         items={live.items}
-        help="Live if, from every reachable marking, each transition can eventually be made to fire again — none becomes permanently dead."
+        help="Live if, from every reachable marking, each transition can eventually be made to fire again, so none becomes permanently dead."
       >
         {liveSub(live, quasiLive, result.diagnostics.deadTransitions, transitionName, lit)}
       </StatusCard>
@@ -59,7 +59,7 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
         verdict={deadlockFree.verdict}
         detail={deadlockFree.detail}
         items={deadlockFree.items}
-        help="Deadlock-free if every reachable marking enables at least one transition — the net never fully stalls."
+        help="Deadlock-free if every reachable marking enables at least one transition, so the net never fully stalls."
       />
     </div>
   );
@@ -100,7 +100,7 @@ function unsettledDetail(result: AnalysisResult): string {
   return result.stateSpaceExceeded ? STATE_CAP_EXCEEDED : NOT_COMPUTED;
 }
 
-/** A detail without its verdict — the lead plus optional bullet items, spread into a {@link StatusCard}. */
+/** A detail without its verdict: the lead plus optional bullet items, spread into a {@link StatusCard}. */
 type Detail = Omit<PropertyResult, "verdict">;
 
 function boundedDetail(result: AnalysisResult): Detail {

@@ -20,7 +20,7 @@ const BAR_HEIGHT = NodeGeometry.TRANSITION_BAR_HEIGHT;
 
 /**
  * The placing layer, mounted only while a Place/Transition Palette tool is active. Like
- * {@link ArcDrawLayer} it lays a screen-space capture overlay over the canvas — which also makes the
+ * {@link ArcDrawLayer} it lays a screen-space capture overlay over the canvas, which also makes the
  * nodes' arc-start handles inert, so placing and arc-draw stay exclusive. A semi-transparent ghost
  * follows the cursor through a {@link ViewportPortal} (flow-space, so it pans/zooms), snapped to the
  * grid and pulled to align with the other nodes' centers (rose guides show the alignment). A click

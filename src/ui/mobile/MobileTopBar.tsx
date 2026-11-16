@@ -19,8 +19,8 @@ const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
 /**
  * Condensed top bar for the mobile shell: icon-only Undo/Redo (Build only), the Build↔Simulate
  * {@link ModeToggle}, and a hamburger menu holding the secondary actions that live in the desktop
- * toolbar and sidebar footer — the net-file exports, the Analytics toggle, and the Guide/GitHub
- * links. All actions come from the shared {@link exportNet} et al., so they match the desktop.
+ * toolbar and sidebar footer (the net-file exports, the Analytics toggle, and the Guide/GitHub
+ * links). All actions come from the shared {@link exportNet} et al., so they match the desktop.
  */
 export function MobileTopBar(): JSX.Element {
   const mode = useNetStore((s) => s.mode);

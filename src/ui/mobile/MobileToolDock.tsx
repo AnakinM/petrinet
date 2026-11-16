@@ -12,7 +12,7 @@ import { useAutoRunTimer } from "@/ui/useAutoRunTimer";
 const DOCK_TOOLS = TOOLS.filter((t) => t.id !== "select");
 
 /**
- * Bottom tool dock — the thumb-zone replacement for the desktop left sidebar's Palette / SimControls
+ * Bottom tool dock: the thumb-zone replacement for the desktop left sidebar's Palette / SimControls
  * and the canvas zoom controls. In Build it holds Select-Move plus the place/transition/arc/token
  * tools (from the shared {@link TOOLS}); in Simulate it holds the transport; both end with Fit-view.
  * Sits in the mobile shell inside the React Flow provider so Fit can drive the viewport.
@@ -96,7 +96,7 @@ function SimDock(): JSX.Element {
   );
 }
 
-/** Fit the whole net into view — the mobile stand-in for the hidden zoom controls. */
+/** Fit the whole net into view: the mobile stand-in for the hidden zoom controls. */
 function FitButton(): JSX.Element {
   const { fitView } = useReactFlow();
   return (
@@ -137,7 +137,7 @@ function DockButton({
   );
 }
 
-/** A pointer arrow — the Select / move (idle) tool. */
+/** A pointer arrow: the Select / move (idle) tool. */
 function CursorSwatch(): JSX.Element {
   return (
     <svg
@@ -156,7 +156,7 @@ function CursorSwatch(): JSX.Element {
   );
 }
 
-/** A circular arrow — return the simulation to M0. */
+/** A circular arrow: return the simulation to M0. */
 function ResetSwatch(): JSX.Element {
   return (
     <svg

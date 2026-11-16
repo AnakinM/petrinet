@@ -1,4 +1,4 @@
-// Normalized Petri-net domain model — the single source of truth.
+// Normalized Petri-net domain model: the single source of truth.
 // React Flow nodes/edges and the live simulation marking are derived from this.
 
 /** A 2D point. Used for positions, label offsets, and arc waypoints. */

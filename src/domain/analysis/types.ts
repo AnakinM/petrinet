@@ -1,4 +1,4 @@
-// Plain-data result shapes for the analytics module — no methods, no framework imports.
+// Plain-data result shapes for the analytics module: no methods, no framework imports.
 // The full contract is defined up front (spec §6); the algebraic milestone fills the
 // invariants/conservative/boundedness slices, the behavioural pass fills the rest.
 
@@ -88,13 +88,13 @@ export interface Diagnostics {
 }
 
 /**
- * The structural (net-graph) slice of {@link Diagnostics} — everything decidable from the net's
+ * The structural (net-graph) slice of {@link Diagnostics}: everything decidable from the net's
  * shape alone, with no state-space search. {@link NetStructure} produces it; the facade folds in
  * the behavioural `deadTransitions` / `deadlocks` only when the reachability pass runs.
  */
 export type StructuralDiagnostics = Omit<Diagnostics, "deadTransitions" | "deadlocks">;
 
-/** The complete analysis of a net at its initial marking M0 — the only thing the UI consumes. */
+/** The complete analysis of a net at its initial marking M0, the only thing the UI consumes. */
 export interface AnalysisResult {
   boundedness: Boundedness;
   conservative: PropertyResult;
@@ -109,7 +109,7 @@ export interface AnalysisResult {
   stateSpaceExceeded: boolean;
   /**
    * The reachability graph was fully built (neither capped nor pruned for unboundedness), so its
-   * *empty* results are definitive — an empty `deadTransitions` then truly means "none", not
+   * *empty* results are definitive: an empty `deadTransitions` then truly means "none", not
    * "none found in the part we explored". `false` whenever the behavioural pass did not run.
    */
   stateSpaceComplete: boolean;

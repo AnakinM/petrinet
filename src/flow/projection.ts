@@ -1,7 +1,7 @@
 import { type Edge, MarkerType, type Node } from "@xyflow/react";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
 
-/** React Flow node data payloads — each carries its source domain object verbatim. */
+/** React Flow node data payloads: each carries its source domain object verbatim. */
 export type PlaceNodeData = { place: Place };
 export type TransitionNodeData = { transition: Transition };
 
@@ -9,7 +9,7 @@ export type PlaceFlowNode = Node<PlaceNodeData, "place">;
 export type TransitionFlowNode = Node<TransitionNodeData, "transition">;
 export type PetriFlowNode = PlaceFlowNode | TransitionFlowNode;
 
-/** React Flow edge payload — carries its source {@link Arc} verbatim. */
+/** React Flow edge payload: carries its source {@link Arc} verbatim. */
 export type ArcEdgeData = { arc: Arc };
 export type ArcFlowEdge = Edge<ArcEdgeData, "arc">;
 

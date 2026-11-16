@@ -77,10 +77,10 @@ describe("NetOps.moveNode", () => {
     // Add an interior waypoint and make the target endpoint free.
     start.arcs[0].points = [
       { x: 20, y: 0 },
-      { x: 50, y: 30 }, // waypoint — must not move
+      { x: 50, y: 30 }, // waypoint: must not move
       { x: 92.5, y: 0 },
     ];
-    start.arcs[0].destMagnetic = false; // target endpoint is free — must not move
+    start.arcs[0].destMagnetic = false; // target endpoint is free: must not move
     const after = NetOps.moveNode(start, "p", { x: 10, y: 5 });
 
     expect(after.places[0].position).toEqual({ x: 10, y: 5 });
@@ -209,7 +209,7 @@ describe("NetOps.rename / setTokens / setMultiplicity", () => {
 });
 
 describe("NetOps.isNameTaken", () => {
-  // Two places (Buffer, Queue) and one transition named Emit — separate name namespaces.
+  // Two places (Buffer, Queue) and one transition named Emit, with separate name namespaces.
   const named: PetriNet = {
     places: [
       { id: "p1", name: "Buffer", tokens: 0, position: { x: 0, y: 0 } },
@@ -227,7 +227,7 @@ describe("NetOps.isNameTaken", () => {
     expect(NetOps.isNameTaken(named, "place", "Buffer", "p1")).toBe(false);
   });
 
-  it("scopes by kind — names do not clash across places and transitions", () => {
+  it("scopes by kind: names do not clash across places and transitions", () => {
     expect(NetOps.isNameTaken(named, "place", "Emit")).toBe(false); // Emit is a transition
     expect(NetOps.isNameTaken(named, "transition", "Buffer")).toBe(false); // Buffer is a place
   });

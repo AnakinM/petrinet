@@ -82,7 +82,7 @@ describe("NetStructure.analyze", () => {
       expect(r.sinkPlaces).not.toContain("p9");
     });
 
-    it("is not connected — the isolated node is its own weak component", () => {
+    it("is not connected: the isolated node is its own weak component", () => {
       expect(r.connected).toBe(false);
     });
   });

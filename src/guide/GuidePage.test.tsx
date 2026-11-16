@@ -27,6 +27,6 @@ describe("GuidePage", () => {
 
   it("keeps the visible copy free of em dashes", () => {
     const { container } = render(<GuidePage />);
-    expect(container.textContent).not.toMatch(/[—–]/);
+    expect(container.textContent).not.toMatch(/[\u2014\u2013]/);
   });
 });

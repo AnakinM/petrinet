@@ -10,7 +10,7 @@ export class PnmlParseError extends Error {
 }
 
 /**
- * Codec for the ISO/IEC 15909-2 PNML interchange format (Place/Transition nets) — a second,
+ * Codec for the ISO/IEC 15909-2 PNML interchange format (Place/Transition nets), a second,
  * standards-based format alongside the native `.npn`. Unlike `.npn` it is **not** byte-faithful: it
  * is a pretty-printed, lossy-but-faithful structural mapping for interop with other Petri-net tools.
  *
@@ -20,7 +20,7 @@ export class PnmlParseError extends Error {
  * node borders, exactly as drawing an arc does.
  *
  * Import is lenient: missing optional fields default (initial marking 0, weight 1), but malformed
- * input — bad XML, a missing root, an element without an id, an arc to an unknown node — fails with a
+ * input (bad XML, a missing root, an element without an id, an arc to an unknown node) fails with a
  * specific {@link PnmlParseError} rather than loading partially.
  */
 export class PnmlCodec {
@@ -114,7 +114,7 @@ export class PnmlCodec {
       `        <name><text>${PnmlCodec._esc(p.name)}</text></name>`,
       `        <graphics>${PnmlCodec._positionTag(p.position)}</graphics>`,
     ];
-    // Omit a zero initial marking — import defaults it to 0 anyway.
+    // Omit a zero initial marking: import defaults it to 0 anyway.
     if (p.tokens > 0)
       parts.push(`        <initialMarking><text>${p.tokens}</text></initialMarking>`);
     parts.push("      </place>");

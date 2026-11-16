@@ -17,7 +17,7 @@ const CIRCLE =
   "flex h-full w-full items-center justify-center rounded-full border-2 border-slate-700 bg-white shadow-sm";
 
 /** A place: a circle whose tokens render as dots (few) or a numeral (many). In Simulate it
- *  is a token source — click adds a token, shift-click removes one. */
+ *  is a token source: click adds a token, shift-click removes one. */
 export function PlaceNode({ data, selected }: NodeProps<PlaceFlowNode>): JSX.Element {
   const { place } = data;
   const simulating = useNetStore((s) => s.mode === "simulate");

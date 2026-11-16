@@ -4,11 +4,11 @@ import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { PlaceTokens } from "@/flow/nodes/tokens";
 
 // Colours mirror the on-screen canvas (FlowProjection.ARC_COLOR, the node components, token dots).
-const ARC_COLOR = "#334155"; // slate-700 — arc stroke + arrowhead
-const NODE_STROKE = "#334155"; // slate-700 — place border + transition fill
-const TOKEN_FILL = "#0f172a"; // slate-900 — token dots / count numeral
-const LABEL_FILL = "#334155"; // slate-700 — element name labels
-const WEIGHT_BORDER = "#cbd5e1"; // slate-300 — arc weight chip border
+const ARC_COLOR = "#334155"; // slate-700: arc stroke + arrowhead
+const NODE_STROKE = "#334155"; // slate-700: place border + transition fill
+const TOKEN_FILL = "#0f172a"; // slate-900: token dots / count numeral
+const LABEL_FILL = "#334155"; // slate-700: element name labels
+const WEIGHT_BORDER = "#cbd5e1"; // slate-300: arc weight chip border
 const FONT = "ui-sans-serif, system-ui, -apple-system, sans-serif";
 const PADDING = 24; // margin around the net's bounding box
 // Rough per-character width and line height at 12px, used only to keep name labels inside the bbox.
@@ -58,7 +58,7 @@ class BBox {
 /**
  * Renders a {@link PetriNet} to a standalone SVG document, matching the canvas look (place circles
  * with token dots/numerals, transition bars, weighted arrows with rounded bends, name labels). Pure
- * and framework-free — no DOM — so it is unit-testable; the browser download glue lives in
+ * and framework-free (no DOM), so it is unit-testable; the browser download glue lives in
  * `ImageFile` (lib/download). Geometry is shared with the live view (NodeGeometry, ArcGeometry,
  * PlaceTokens) so an export is faithful to what the user sees.
  */
@@ -169,7 +169,7 @@ export class NetSvg {
     return rect + NetSvg._label(t.name, c, t.labelPosition, TRANSITION_LABEL_DY);
   }
 
-  /** Token presentation: nothing, a small dot cluster (1–4), or a numeral (5+) — like the place node. */
+  /** Token presentation: nothing, a small dot cluster (1 to 4), or a numeral (5+), like the place node. */
   private static _tokens(center: Vec2, tokens: number): string {
     const display = PlaceTokens.display(tokens);
     if (display.kind === "empty") return "";

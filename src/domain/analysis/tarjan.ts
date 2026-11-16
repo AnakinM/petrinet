@@ -1,7 +1,7 @@
 /**
  * Iterative Tarjan strongly-connected-components over a directed graph given as a numeric
- * adjacency list (`adjacency[v]` holds the indices `v` has an edge to). Iterative — an explicit
- * work stack rather than recursion — so it stays safe on graphs as large as the reachability
+ * adjacency list (`adjacency[v]` holds the indices `v` has an edge to). Iterative (an explicit
+ * work stack rather than recursion), so it stays safe on graphs as large as the reachability
  * graph's state cap, where deep recursion would overflow. Pure and framework-free, shared by the
  * behavioural layer ({@link ReachabilityGraph}, over the marking space) and the structural layer
  * ({@link NetStructure}, over the bipartite net graph).

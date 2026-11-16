@@ -14,7 +14,7 @@ const arc = (source: string, target: string, multiplicity = 1): Arc => ({
   points: [],
 });
 
-// P1 ⇄ P2 via t1, t2: a simple cycle — both a state machine and a marked graph, and free choice.
+// P1 ⇄ P2 via t1, t2: a simple cycle, both a state machine and a marked graph, and free choice.
 const cycle = (): PetriNet => ({
   places: [place("P1"), place("P2")],
   transitions: [transition("t1"), transition("t2")],
@@ -81,7 +81,8 @@ describe("NetClassification", () => {
     });
 
     it("fails when a shared place forces a conflict, flagging the place and transition", () => {
-      // P1 feeds t1 and t2 (two outputs); t1 also needs P2 (a second input) — a non-free choice.
+      // P1 feeds t1 and t2 (two outputs); t1 also needs P2 (a second input),
+      // so it is a non-free choice.
       const net: PetriNet = {
         places: [place("P1"), place("P2")],
         transitions: [transition("t1"), transition("t2")],

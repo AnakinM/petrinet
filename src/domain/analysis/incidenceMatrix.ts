@@ -1,13 +1,13 @@
 import type { PetriNet } from "@/domain/types";
 
 /**
- * Flow matrices of a P/T net with a stable, net-order index — pure data, no React/DOM/store
+ * Flow matrices of a P/T net with a stable, net-order index. Pure data, no React/DOM/store
  * imports, mirroring {@link PetriNetEngine}. Rows are places (in `net.places` order), columns
  * are transitions (in `net.transitions` order):
  *
- *   - `pre[p][t]`  — weight of the place→transition arc (tokens transition `t` consumes from `p`)
- *   - `post[p][t]` — weight of the transition→place arc (tokens `t` produces into `p`)
- *   - `c[p][t]`    — the incidence matrix `C = Post − Pre`
+ *   - `pre[p][t]`: weight of the place→transition arc (tokens transition `t` consumes from `p`)
+ *   - `post[p][t]`: weight of the transition→place arc (tokens `t` produces into `p`)
+ *   - `c[p][t]`: the incidence matrix `C = Post − Pre`
  *
  * Parallel arcs on the same (place, transition) pair are summed; arcs whose endpoint is unknown
  * (dangling) are ignored. The `places`/`transitions` id arrays are the canonical index that the

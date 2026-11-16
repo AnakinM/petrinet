@@ -20,21 +20,21 @@ export function ClassificationTab(): JSX.Element {
     <div className="flex flex-col gap-2">
       <ClassCard
         title="Ordinary"
-        help="An ordinary net has every arc weight equal to 1 — no multiplicities."
+        help="An ordinary net has every arc weight equal to 1, so there are no multiplicities."
         result={classification.ordinary}
         nameOf={nameOf}
         lit={lit}
       />
       <ClassCard
         title="State machine"
-        help="A state machine has every transition with exactly one input place and one output place — no synchronisation or splitting."
+        help="A state machine has every transition with exactly one input place and one output place, so there is no synchronisation or splitting."
         result={classification.stateMachine}
         nameOf={nameOf}
         lit={lit}
       />
       <ClassCard
         title="Marked graph"
-        help="A marked graph (T-net) has every place with exactly one input transition and one output transition — no choice."
+        help="A marked graph (T-net) has every place with exactly one input transition and one output transition, so there is no choice."
         result={classification.markedGraph}
         nameOf={nameOf}
         lit={lit}

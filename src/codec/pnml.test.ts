@@ -127,7 +127,7 @@ describe("PnmlCodec.parse", () => {
     const net = PnmlCodec.parse(PNML);
     const a2 = net.arcs.find((a) => a.id === "a2");
     if (a2 === undefined) throw new Error("a2 missing");
-    // [borderPoint(t1), bend (250,140), borderPoint(P2)] — three points, the middle one the bend.
+    // [borderPoint(t1), bend (250,140), borderPoint(P2)]: three points, the middle one the bend.
     expect(a2.points).toHaveLength(3);
     expect(a2.points[1]).toEqual({ x: 250, y: 140 });
   });

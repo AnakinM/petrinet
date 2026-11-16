@@ -36,7 +36,7 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
           <Note>The net is acyclic.</Note>
         ) : (
           <>
-            {/* A cyclic SCC is an unordered node set — commas, not arrows (which would imply a path). */}
+            {/* A cyclic SCC is an unordered node set: commas, not arrows (which would imply a path). */}
             <ChipList>
               {d.cyclicComponents.map((c) => (
                 <HighlightChip key={c.join(",")} ids={c} lit={lit}>
@@ -75,7 +75,7 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
 
       <Section
         title="Deadlock markings"
-        help="Reachable markings in which no transition is enabled — the net is stuck."
+        help="Reachable markings in which no transition is enabled. The net is stuck there."
       >
         {!behaviouralRan ? (
           <Hint />
@@ -198,7 +198,7 @@ function FactChips({
     <div className="flex items-start justify-between gap-2">
       <dt className="shrink-0 text-slate-500">{label}</dt>
       {ids.length === 0 ? (
-        <dd className="text-slate-700">—</dd>
+        <dd className="text-slate-700">none</dd>
       ) : (
         <dd className="flex flex-wrap justify-end gap-1">
           {ids.map((id) => (

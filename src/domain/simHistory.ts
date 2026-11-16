@@ -9,7 +9,7 @@ export interface HistoryStep {
 /**
  * A linear simulation history with a scrub cursor. `m0` is the "Initial (M0)" base
  * (`cursor === -1`); `steps[i]` is the marking after the (i+1)-th recorded firing
- * (`cursor === i`). In-memory only — the firing {@link PetriNetEngine} stays pure and
+ * (`cursor === i`). In-memory only: the firing {@link PetriNetEngine} stays pure and
  * unaware of it; the live working marking is kept in sync by the sim store.
  */
 export interface History {
@@ -23,7 +23,7 @@ export interface History {
  * future is discarded before the new step is appended (classic time-travel, not a tree).
  */
 export class SimHistory {
-  /** Fresh history at M0 — no steps, cursor before the first step. */
+  /** Fresh history at M0: no steps, cursor before the first step. */
   static init(m0: Marking): History {
     return { m0, steps: [], cursor: -1 };
   }

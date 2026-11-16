@@ -4,7 +4,7 @@ import { type History, SimHistory } from "@/domain/simHistory";
 import type { Marking, PetriNet } from "@/domain/types";
 
 /**
- * Live simulation state — a working copy that never persists.
+ * Live simulation state: a working copy that never persists.
  *
  * Deliberately separate from the net store (and its zundo history): firing, token
  * spawning, and reset advance a private {@link Marking} via the pure
@@ -13,7 +13,7 @@ import type { Marking, PetriNet } from "@/domain/types";
  * so export still serializes M0 only.
  *
  * The engine is bound to the net captured at `start`. Structural editing is locked
- * in Simulate, so that net stays frozen for the session — no re-binding needed.
+ * in Simulate, so that net stays frozen for the session and needs no re-binding.
  */
 const EMPTY_HISTORY: History = { m0: {}, steps: [], cursor: -1 };
 
@@ -54,7 +54,7 @@ export interface SimState {
   setSpeed: (speed: number) => void;
   /**
    * Adjust a place's tokens by `delta` (clamped at 0) and recompute enabledness. A manual marking
-   * edit, not a firing — it is not recorded in `history` (which logs only fired transitions).
+   * edit, not a firing. It is not recorded in `history` (which logs only fired transitions).
    */
   spawnToken: (placeId: string, delta: number) => void;
   /** Scrub the history to `cursor` (−1 = M0), restoring the marking recorded after that step. */

@@ -206,7 +206,7 @@ function Dot({
 }): JSX.Element {
   const hit = touch ? 24 : variant === "insert" ? 9 : 10;
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: pointer-driven canvas edit handle, like a React Flow node — not a semantic control.
+    // biome-ignore lint/a11y/noStaticElementInteractions: pointer-driven canvas edit handle (like a React Flow node), not a semantic control.
     // biome-ignore lint/a11y/useKeyWithClickEvents: dragging/clicking a waypoint on the canvas has no keyboard analogue.
     <div
       className={`group nodrag nopan pointer-events-auto absolute flex items-center justify-center ${DOT_CURSOR[variant]}`}

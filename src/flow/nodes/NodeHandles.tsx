@@ -5,7 +5,7 @@ import type { CSSProperties, JSX } from "react";
 // node carries both a source and a target handle (a place or transition can be either end of
 // an arc). The arc path is drawn from the domain polyline, not these handles, so their exact
 // position is cosmetic and they stay collapsed to hidden points. Connecting is no longer done
-// by dragging these handles — the click-to-draw layer (ArcStartHandles + ArcDrawLayer) owns it.
+// by dragging these handles. The click-to-draw layer (ArcStartHandles + ArcDrawLayer) owns it.
 const HIDDEN: CSSProperties = {
   width: 1,
   height: 1,

@@ -59,11 +59,11 @@ export class NetFile {
 /**
  * Browser-side image export of a {@link PetriNet}. {@link NetSvg} owns the (pure, tested) SVG bytes;
  * this owns the Blob/anchor/canvas mechanics. SVG is a direct download; PNG is rasterized from that
- * same SVG via an offscreen canvas — no extra dependency, and the self-contained SVG (vector shapes
+ * same SVG via an offscreen canvas, with no extra dependency. The self-contained SVG (vector shapes
  * and text, no external refs) keeps the canvas untainted so `toBlob` succeeds.
  */
 export class ImageFile {
-  /** PNG raster scale — 2× keeps lines and labels crisp on hi-dpi screens and in print. */
+  /** PNG raster scale: 2× keeps lines and labels crisp on hi-dpi screens and in print. */
   static readonly PNG_SCALE = 2;
 
   /** Download `net` as an `.svg` vector image. */

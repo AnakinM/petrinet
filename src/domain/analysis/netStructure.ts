@@ -3,18 +3,18 @@ import type { StructuralDiagnostics } from "@/domain/analysis/types";
 import type { PetriNet } from "@/domain/types";
 
 /**
- * Structural diagnostics of the **net graph** itself — the directed bipartite graph whose nodes
+ * Structural diagnostics of the **net graph** itself: the directed bipartite graph whose nodes
  * are the places and transitions and whose edges are the arcs. Decided from the net's shape alone
  * with no state-space search (unlike {@link ReachabilityGraph}), so it is cheap and always runs.
  * Pure and framework-free, mirroring {@link PetriNetEngine} and the rest of the analysis layer.
  *
- * It reports: strongly-connected **loops** (cyclic SCCs of the net graph — not an enumeration of
+ * It reports: strongly-connected **loops** (cyclic SCCs of the net graph, not an enumeration of
  * simple cycles, which is exponential), **source/sink** places and transitions, **isolated**
  * nodes, and **weak connectedness**.
  *
  * Two boundary decisions, both tested:
  *   - **Dangling arcs** (an endpoint that is not a node of this net) are ignored, matching
- *     {@link IncidenceMatrix} — every algebraic and structural layer sees the same graph.
+ *     {@link IncidenceMatrix}, so every algebraic and structural layer sees the same graph.
  *   - An **isolated** node (no incident arc) is reported only as isolated, never also as a source
  *     or sink, so the three categories stay disjoint and the UI never triple-lists one node.
  *   - The **empty net** is vacuously connected (no two nodes are separated): `connected = true`.
@@ -35,7 +35,7 @@ export class NetStructure {
     for (const arc of net.arcs) {
       const from = indexOf.get(arc.source);
       const to = indexOf.get(arc.target);
-      if (from === undefined || to === undefined) continue; // dangling arc — ignore
+      if (from === undefined || to === undefined) continue; // dangling arc: ignore
       directed[from].push(to);
       undirected[from].push(to);
       undirected[to].push(from);
@@ -76,7 +76,7 @@ export class NetStructure {
   }
 
   /**
-   * The cyclic SCCs (more than one node — a bipartite net has no self-loops, so size 1 is always
+   * The cyclic SCCs (more than one node; a bipartite net has no self-loops, so size 1 is always
    * acyclic), node ids in net order within each, components ordered by their smallest node index.
    */
   private static _cyclicComponents(
@@ -94,7 +94,7 @@ export class NetStructure {
 
   /** One DFS over the undirected net graph reaches every node iff there is a single weak component. */
   private static _weaklyConnected(n: number, undirected: number[][]): boolean {
-    if (n === 0) return true; // vacuously connected — no two nodes to separate
+    if (n === 0) return true; // vacuously connected: no two nodes to separate
     const seen = new Array<boolean>(n).fill(false);
     const stack = [0];
     seen[0] = true;

@@ -162,7 +162,7 @@ describe("ReachabilityGraph", () => {
   });
 
   describe("a net with places but no transitions", () => {
-    it("is dead, not live — never both at once", () => {
+    it("is dead, not live: never both at once", () => {
       const g = new ReachabilityGraph({ places: [place("p1", 1)], transitions: [], arcs: [] });
       // Nothing can ever fire, so its sole marking is a deadlock; liveness must not read "yes".
       expect(g.isDeadlockFree()).toBe("no");
