@@ -81,7 +81,7 @@ function StateRows({ table }: { table: StateTable }): JSX.Element {
       <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
-            <HeaderCell>Marking</HeaderCell>
+            <HeaderCell sticky>Marking</HeaderCell>
             {table.placeIds.map((id) => (
               <HeaderCell key={id} numeric>
                 {placeName(id)}
@@ -100,17 +100,20 @@ function StateRows({ table }: { table: StateTable }): JSX.Element {
   );
 }
 
+/** A column heading. It stays at the top while the table scrolls; `sticky` keeps it at the left too. */
 function HeaderCell({
   numeric = false,
+  sticky = false,
   children,
 }: {
   numeric?: boolean;
+  sticky?: boolean;
   children: string;
 }): JSX.Element {
   return (
     <th
       scope="col"
-      className={`sticky top-0 z-10 whitespace-nowrap border-slate-200 border-b bg-slate-50 px-2 py-1 font-medium text-slate-800 ${numeric ? "text-right" : "text-left"}`}
+      className={`sticky top-0 whitespace-nowrap border-slate-200 border-b bg-slate-50 px-2 py-1 font-medium text-slate-800 ${numeric ? "text-right" : "text-left"} ${sticky ? "left-0 z-20 border-r" : "z-10"}`}
     >
       {children}
     </th>
@@ -147,9 +150,12 @@ function StateRowView({
       onPointerLeave={() => {
         if (clickable) store().setPreview(NO_SPOTLIGHT);
       }}
-      className={`${clickable ? "cursor-pointer hover:bg-amber-50" : ""} ${active ? "bg-amber-50" : ""}`}
+      className={`group ${clickable ? "cursor-pointer hover:bg-amber-50" : ""} ${active ? "bg-amber-50" : ""}`}
     >
-      <td className={`${cell} whitespace-nowrap font-mono`}>
+      {/* The name stays in view while the table scrolls sideways to the firings. */}
+      <td
+        className={`${cell} sticky left-0 z-[5] whitespace-nowrap border-r border-r-slate-200 font-mono ${active ? "bg-amber-50" : "bg-white"} ${clickable ? "group-hover:bg-amber-50" : ""}`}
+      >
         {clickable ? (
           <button
             type="button"

@@ -169,7 +169,8 @@ function AnalyseBar({ result }: { result: AnalysisResult }): JSX.Element {
         stale ? "border-amber-300 bg-amber-50" : "border-blue-200 bg-blue-50"
       }`}
     >
-      <p className="min-w-0 flex-1 text-base text-slate-900">
+      {/* The text keeps at least 12rem, so in a narrow panel the button wraps under it. */}
+      <p className="min-w-0 shrink grow basis-48 text-base text-slate-900">
         {stale
           ? "The net changed. The results may be out of date."
           : "Some results need the full analysis."}

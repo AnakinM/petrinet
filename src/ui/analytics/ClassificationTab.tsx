@@ -64,7 +64,7 @@ function ClassCard({
           <span className="text-slate-500">Arcs with a weight above 1:</span>
           <ChipList>
             {arcs.map((arc) => (
-              <HighlightChip key={arc.id} target={{ nodes: [], arcs: [arc.id] }} kind="arc">
+              <HighlightChip key={arc.id} target={{ nodes: [], arcs: [arc.id] }}>
                 {`${nodeName(arc.source)} → ${nodeName(arc.target)}, weight ${arc.multiplicity}`}
               </HighlightChip>
             ))}
