@@ -81,6 +81,20 @@ describe("GuideDocument.build", () => {
     });
   });
 
+  it("escapes < in the JSON-LD so a value cannot close the script block early", () => {
+    // In the source JSON the site name holds an escaped "</script>", which parses to the real text.
+    const withScriptTag = INDEX_HTML.replace(
+      '"name": "PetriNet Editor"',
+      '"name": "A \\u003c/script> B"',
+    );
+    const html = GuideDocument.build(withScriptTag, GUIDE_BODY);
+    expect(html).not.toContain("</script> B");
+
+    const blocks = jsonLd(parse(html));
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].isPartOf).toMatchObject({ name: "A </script> B" });
+  });
+
   it("puts the guide inside the root in place of the home page's fallback", () => {
     const root = guide.getElementById("root");
     expect(root?.innerHTML).toBe(GUIDE_BODY);
