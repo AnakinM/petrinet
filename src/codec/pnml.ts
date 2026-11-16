@@ -77,19 +77,14 @@ export class PnmlCodec {
     const all = (kind: string): Element[] => found.get(kind) ?? [];
     PnmlCodec._checkUniqueIds(found);
 
-    const nodeEls = [...all("place"), ...all("transition")];
-    const positioned = nodeEls.some((el) => PnmlCodec._position(el) !== null);
-    const positionAt = (el: Element, index: number): Vec2 =>
-      positioned
-        ? (PnmlCodec._position(el) ?? { x: 0, y: 0 })
-        : PnmlCodec._gridPoint(index, nodeEls.length);
+    const positions = PnmlCodec._positions([...all("place"), ...all("transition")]);
     const absoluteLabels = PnmlCodec._writtenByWoped(netEl);
 
     const places = all("place").map((el, i) =>
-      PnmlCodec._readPlace(el, positionAt(el, i), absoluteLabels),
+      PnmlCodec._readPlace(el, positions[i], absoluteLabels),
     );
     const transitions = all("transition").map((el, i) =>
-      PnmlCodec._readTransition(el, positionAt(el, places.length + i), absoluteLabels),
+      PnmlCodec._readTransition(el, positions[places.length + i], absoluteLabels),
     );
 
     // A node-only net so endpoint clipping can read the node geometry (NetOps reads it from `net`).
@@ -178,6 +173,11 @@ export class PnmlCodec {
     // Every <net> counts, also one nested in a page, as WoPeD writes a subprocess.
     const nets = [...doc.getElementsByTagNameNS("*", "net")];
     if (nets.length === 0) throw new PnmlParseError("the file has no <net> element.");
+    if (nets.some((n) => n.parentElement?.localName === "page")) {
+      throw new PnmlParseError(
+        "the file holds a subprocess, a second net inside a page. This editor opens one net per file.",
+      );
+    }
     if (nets.length > 1) {
       throw new PnmlParseError(
         `the file holds ${nets.length} nets. This editor opens one net per file.`,
@@ -283,6 +283,25 @@ export class PnmlCodec {
   }
 
   /**
+   * The written position of each node. Nodes without one go on a grid: at the origin when no
+   * node has a position, otherwise below the lowest placed node.
+   */
+  private static _positions(nodeEls: Element[]): Vec2[] {
+    const written = nodeEls.map((el) => PnmlCodec._position(el));
+    const placed = written.filter((p): p is Vec2 => p !== null);
+    const origin =
+      placed.length === 0
+        ? { x: 0, y: 0 }
+        : {
+            x: placed.reduce((min, p) => Math.min(min, p.x), Infinity),
+            y: placed.reduce((max, p) => Math.max(max, p.y), -Infinity) + PnmlCodec.LAYOUT_STEP,
+          };
+    const unplaced = written.length - placed.length;
+    let slot = 0;
+    return written.map((p) => p ?? PnmlCodec._gridPoint(slot++, unplaced, origin));
+  }
+
+  /**
    * The engine checks each input arc alone and then subtracts them all, so two arcs from one place
    * to one transition could take more tokens than the place holds. Refuse such a repeat.
    */
@@ -383,7 +402,8 @@ export class PnmlCodec {
     nodes: Map<string, NodeRef>,
     refs: Map<string, string>,
   ): NodeRef & { id: string } {
-    const written = el.getAttribute(end) ?? "";
+    const written = el.getAttribute(end);
+    if (!written) throw new PnmlParseError(`${owner} has no ${end}.`);
     const id = refs.get(written) ?? written;
     const node = nodes.get(id);
     if (!node) throw new PnmlParseError(`${owner} references an unknown node "${written}".`);
@@ -523,12 +543,12 @@ export class PnmlCodec {
     return position ? PnmlCodec._point(position) : null;
   }
 
-  /** Grid slot `index` of `count` nodes, in a square block, for a file that has no positions. */
-  private static _gridPoint(index: number, count: number): Vec2 {
+  /** Grid slot `index` of `count` unplaced nodes, in a square block from `origin`. */
+  private static _gridPoint(index: number, count: number, origin: Vec2): Vec2 {
     const columns = Math.ceil(Math.sqrt(count));
     return {
-      x: (index % columns) * PnmlCodec.LAYOUT_STEP,
-      y: Math.floor(index / columns) * PnmlCodec.LAYOUT_STEP,
+      x: origin.x + (index % columns) * PnmlCodec.LAYOUT_STEP,
+      y: origin.y + Math.floor(index / columns) * PnmlCodec.LAYOUT_STEP,
     };
   }
 

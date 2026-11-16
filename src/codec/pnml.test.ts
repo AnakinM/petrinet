@@ -572,6 +572,24 @@ describe("PnmlCodec.parse refusals", () => {
       /the file is a TAPAAL net \(\.tapn\)/,
       "net-type",
     ],
+    [
+      "a WoPeD subprocess",
+      `<pnml><net id="n" type="${PnmlCodec.PT_NET_TYPE}">${P("p1")}<page id="sub1"><net id="inner">${P("p2")}</net></page></net></pnml>`,
+      /the file holds a subprocess, a second net inside a page\. This editor opens one net per file\./,
+      "invalid",
+    ],
+    [
+      "an arc without a source",
+      doc(`${P("p1")}${T("t1")}<arc id="a1" target="t1"/>`),
+      /^arc "a1" has no source\.$/,
+      "invalid",
+    ],
+    [
+      "an arc without a target",
+      doc(`${P("p1")}${T("t1")}<arc id="a1" source="p1"/>`),
+      /^arc "a1" has no target\.$/,
+      "invalid",
+    ],
   ])("refuses %s", (_, xml, message, reason) => {
     const error = refusal(xml);
     expect(error.message).toMatch(message);
@@ -623,6 +641,19 @@ describe("PnmlCodec.parse layout and labels", () => {
       { x: 0, y: step },
       { x: step, y: step },
     ]);
+  });
+
+  it("lays the unplaced nodes out on a grid below the placed ones", () => {
+    const xml = doc(
+      '<place id="p1"><graphics><position x="50" y="100"/></graphics></place><place id="p2"><graphics><position x="200" y="300"/></graphics></place><transition id="t1"/><transition id="t2"/>',
+    );
+    const net = PnmlCodec.parse(xml);
+    const step = PnmlCodec.LAYOUT_STEP;
+    expect(net.transitions.map((t) => t.position)).toEqual([
+      { x: 50, y: 300 + step },
+      { x: 50 + step, y: 300 + step },
+    ]);
+    expect(net.places[1].position).toEqual({ x: 200, y: 300 });
   });
 
   it("reads a name offset into labelPosition and ignores one that covers the node", () => {
