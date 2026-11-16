@@ -4,14 +4,15 @@ import { useBuildStore } from "@/store/buildStore";
 import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import {
   ExportIcon,
-  GridIcon,
   ImageIcon,
   ImportIcon,
+  MagnetIcon,
   NewIcon,
   RedoIcon,
   UndoIcon,
 } from "@/ui/icons";
 import { ModeToggle } from "@/ui/ModeToggle";
+import { Tooltip, type TooltipTriggerProps } from "@/ui/Tooltip";
 import {
   exportNet,
   exportPng,
@@ -20,6 +21,9 @@ import {
   importNet,
   newNet,
 } from "@/ui/toolbarActions";
+
+const SNAP_ON_TIP = "Snap to grid: on. Click to turn off.";
+const SNAP_OFF_TIP = "Snap to grid: off. Click to turn on.";
 
 /** Top bar: New / Import / Export, undo / redo, and the Build ↔ Simulate toggle. */
 export function Toolbar(): JSX.Element {
@@ -65,9 +69,15 @@ export function Toolbar(): JSX.Element {
             onClick={() => useBuildStore.getState().toggleSnap()}
             active={snap}
             ariaLabel="Snap to grid"
-            title="Snap node placement and dragging to the grid"
+            tooltip={snap ? SNAP_ON_TIP : SNAP_OFF_TIP}
           >
-            <GridIcon />
+            {snap ? (
+              <MagnetIcon />
+            ) : (
+              <span className="flex text-slate-400">
+                <MagnetIcon off />
+              </span>
+            )}
           </ToolbarButton>
         </>
       )}
@@ -116,7 +126,8 @@ function ExportAsMenu(): JSX.Element {
       <ToolbarButton
         onClick={() => setOpen((o) => !o)}
         active={open}
-        title="Export the net as PNML, PNG, or SVG"
+        tooltip="Export the net as PNML, PNG, or SVG"
+        tooltipSuppressed={open}
       >
         <ImageIcon />
         Export as
@@ -150,29 +161,35 @@ function MenuItem({
   );
 }
 
+/**
+ * A top bar button. A `tooltip` shows as a quick {@link Tooltip} under it; `tooltipSuppressed`
+ * keeps it hidden while the button's own menu is open there.
+ */
 function ToolbarButton({
   onClick,
   disabled,
   active,
-  title,
+  tooltip,
+  tooltipSuppressed,
   ariaLabel,
   children,
 }: {
   onClick: () => void;
   disabled?: boolean;
   active?: boolean;
-  title?: string;
+  tooltip?: string;
+  tooltipSuppressed?: boolean;
   ariaLabel?: string;
   children: ReactNode;
 }): JSX.Element {
-  return (
+  const button = (trigger?: TooltipTriggerProps): JSX.Element => (
     <button
       type="button"
+      {...trigger}
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
       aria-label={ariaLabel}
-      title={title}
       className={
         active
           ? "inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-700 px-2.5 py-1 text-sm text-white shadow-sm"
@@ -181,5 +198,12 @@ function ToolbarButton({
     >
       {children}
     </button>
+  );
+  return tooltip ? (
+    <Tooltip label={tooltip} suppressed={tooltipSuppressed}>
+      {button}
+    </Tooltip>
+  ) : (
+    button()
   );
 }

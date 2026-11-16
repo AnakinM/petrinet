@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ImageFile, PnmlFile } from "@/lib/download";
+import { useBuildStore } from "@/store/buildStore";
 import { Toolbar } from "@/ui/Toolbar";
 
 describe("Toolbar export-as menu", () => {
@@ -42,5 +43,42 @@ describe("Toolbar export-as menu", () => {
     expect(screen.getByText("SVG vector")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByText("SVG vector")).not.toBeInTheDocument();
+  });
+});
+
+describe("Toolbar snap button", () => {
+  afterEach(cleanup);
+
+  it("names the snap state in a quick tooltip instead of a browser title", () => {
+    useBuildStore.setState({ snap: true });
+    render(<Toolbar />);
+    const button = screen.getByRole("button", { name: "Snap to grid" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(button).not.toHaveAttribute("title");
+
+    fireEvent.focus(button);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Snap to grid: on. Click to turn off.");
+
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    fireEvent.focus(button);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Snap to grid: off. Click to turn on.");
+  });
+
+  it("gives Export as a quick tooltip instead of a browser title", () => {
+    render(<Toolbar />);
+    const button = screen.getByRole("button", { name: /Export as/ });
+    expect(button).not.toHaveAttribute("title");
+    fireEvent.focus(button);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Export the net as PNML, PNG, or SVG");
+  });
+
+  it("keeps the Export as tooltip hidden while its menu is open", () => {
+    render(<Toolbar />);
+    const button = screen.getByRole("button", { name: /Export as/ });
+    fireEvent.click(button);
+    fireEvent.focus(button);
+    expect(screen.getByText("SVG vector")).toBeInTheDocument();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });
