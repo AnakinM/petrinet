@@ -1,3 +1,5 @@
+import { PRERENDER_MARK } from "@/guide/prerenderMark";
+
 /** The address of the guide page. */
 export const GUIDE_URL = "https://petrinet.anikiej.com/guide";
 
@@ -11,9 +13,6 @@ export const GUIDE_HEADLINE = "What is a Petri net? Guide and examples";
 export const GUIDE_DESCRIPTION =
   "Learn what a Petri net is, how places, transitions and tokens work, and how firing moves " +
   "tokens. Then build, simulate and analyse your first net step by step.";
-
-/** The value of `data-prerendered` on the root element of the pre-built guide. */
-const PRERENDER_MARK = "guide";
 
 /** The head tags the guide rewrites: how the tag starts, which attribute, and its new value. */
 const HEAD_ATTRIBUTES: readonly (readonly [string, string, string])[] = [
@@ -55,8 +54,8 @@ export class GuideDocument {
       html,
       /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
       "the JSON-LD block",
-      (_match, json) => {
-        const article = GuideDocument._article(GuideDocument._readWebSite(json));
+      (_match, siteJson) => {
+        const article = GuideDocument._article(GuideDocument._readWebSite(siteJson));
         return `<script type="application/ld+json">${JSON.stringify(article)}</script>`;
       },
     );
@@ -64,11 +63,6 @@ export class GuideDocument {
     return GuideDocument._swap(html, /<div id="root">[\s\S]*?<\/div>/, "the root element", () => {
       return `<div id="root" data-prerendered="${PRERENDER_MARK}">${guideHtml}</div>`;
     });
-  }
-
-  /** Whether `root` already holds the pre-built guide, so the browser should hydrate it. */
-  static isPrerendered(root: HTMLElement): boolean {
-    return root.dataset.prerendered === PRERENDER_MARK;
   }
 
   /** The `TechArticle` that describes the guide, written by the site's author, part of the site. */
@@ -111,8 +105,8 @@ export class GuideDocument {
     value: string,
   ): string {
     const pattern = new RegExp(`(${start.replaceAll(" ", "\\s+")}\\s+${attribute}=")[^"]*"`);
-    return GuideDocument._swap(html, pattern, `${start}>`, (_match, opening) => {
-      return `${opening}${GuideDocument._escape(value)}"`;
+    return GuideDocument._swap(html, pattern, `${start}>`, (_match, found) => {
+      return `${found}${GuideDocument._escape(value)}"`;
     });
   }
 

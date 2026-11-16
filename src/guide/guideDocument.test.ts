@@ -8,6 +8,7 @@ import {
   GUIDE_URL,
   GuideDocument,
 } from "@/guide/guideDocument";
+import { PrerenderMark } from "@/guide/prerenderMark";
 
 /**
  * The real page template, so the test breaks when `index.html` drifts from what the build expects.
@@ -83,7 +84,7 @@ describe("GuideDocument.build", () => {
   it("puts the guide inside the root in place of the home page's fallback", () => {
     const root = guide.getElementById("root");
     expect(root?.innerHTML).toBe(GUIDE_BODY);
-    expect(root && GuideDocument.isPrerendered(root)).toBe(true);
+    expect(root && PrerenderMark.isOn(root)).toBe(true);
     // The home description lived in the head tags and in the fallback paragraph. None is left.
     const homeDescription = attribute(home, 'meta[name="description"]', "content") ?? "";
     expect(homeDescription).not.toBe("");
@@ -101,13 +102,5 @@ describe("GuideDocument.build", () => {
     expect(() => GuideDocument.build(withoutCanonical, GUIDE_BODY)).toThrow(
       'Guide prerender: <link rel="canonical"> is missing from index.html',
     );
-  });
-});
-
-describe("GuideDocument.isPrerendered", () => {
-  it("is false for the home page's root, which only holds the static fallback", () => {
-    const root = parse(INDEX_HTML).getElementById("root");
-    expect(root?.childElementCount).toBeGreaterThan(0);
-    expect(root && GuideDocument.isPrerendered(root)).toBe(false);
   });
 });
