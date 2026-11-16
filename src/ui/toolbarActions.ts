@@ -59,6 +59,7 @@ export function exportPnml(): void {
 /** Export a raster PNG of what's on screen. */
 export function exportPng(): void {
   ImageFile.savePng(imageNet());
+  // Counted when the export starts: the PNG itself is drawn asynchronously afterwards.
   Analytics.track("Export", { format: "png" });
 }
 
