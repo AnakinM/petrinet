@@ -69,6 +69,10 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
   and enabledness **pluggable** so the future extended mode is configuration, not a rewrite. Do not
   implement inhibitor/read/capacity *behaviour* in v1.
 - **Build** and **Simulate** are hard-separated modes; Simulate locks all structural editing.
+- **Vocabulary:** "analytics" means visitor tracking (Umami, `src/lib/analytics.ts`, class `Analytics`).
+  The editor feature that examines a net is the **Analysis panel**.
+- The Analysis panel's code keeps its old identifiers (`analyticsStore`, `src/ui/analytics/`,
+  `AnalyticsPanel`). **Do not rename them.**
 
 ## Code conventions
 
