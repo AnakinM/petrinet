@@ -4,6 +4,9 @@
 const DIST = `${import.meta.dir}/dist`;
 const PORT = Number(Bun.env.PORT ?? 3000);
 const indexHtml = Bun.file(`${DIST}/index.html`);
+// No file in dist has a path this long. A longer one could pass the system's limit for a full file
+// path (1024 bytes on macOS, 4096 on Linux), and then Bun.file throws instead of finding nothing.
+const MAX_PATHNAME_LENGTH = 512;
 
 /**
  * The file in dist for a request path, or null. A directory that holds an index.html serves that
@@ -12,6 +15,7 @@ const indexHtml = Bun.file(`${DIST}/index.html`);
  * so a path cannot leave dist.
  */
 async function distFile(pathname: string): Promise<Bun.BunFile | null> {
+  if (pathname.length > MAX_PATHNAME_LENGTH) return null;
   // Trim trailing slashes with a loop. The regex /\/+$/ takes quadratic time on a path of many
   // slashes followed by a letter, which a visitor controls. There is no test seam: this file starts
   // the server when it loads.
