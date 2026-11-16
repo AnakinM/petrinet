@@ -1,6 +1,7 @@
 import { type JSX, type ReactNode, useEffect } from "react";
 import { GuideNets } from "@/guide/exampleNets";
 import { GuideDiagram } from "@/guide/GuideDiagram";
+import { GUIDE_TITLE } from "@/guide/guideDocument";
 import { BugIcon, GitHubIcon } from "@/ui/icons";
 
 const REPO_URL = "https://github.com/AnakinM/petrinet";
@@ -27,7 +28,7 @@ const CONTENTS: { id: string; label: string }[] = [
  */
 export function GuidePage(): JSX.Element {
   useEffect(() => {
-    document.title = "Guide to the PetriNet Editor and Simulator";
+    document.title = GUIDE_TITLE;
   }, []);
 
   return (

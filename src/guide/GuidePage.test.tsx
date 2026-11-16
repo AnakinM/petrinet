@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, cleanup, render } from "@testing-library/react";
+import { StrictMode } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { GuidePage } from "@/guide/GuidePage";
 
 describe("GuidePage", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("renders the page with tool-drawn diagrams and screenshot slots", () => {
     const { container, getByRole, getAllByText } = render(<GuidePage />);
@@ -28,5 +34,27 @@ describe("GuidePage", () => {
   it("keeps the visible copy free of em dashes", () => {
     const { container } = render(<GuidePage />);
     expect(container.textContent).not.toMatch(/[\u2014\u2013]/);
+  });
+
+  it("hydrates its server-rendered HTML with no mismatch warning", async () => {
+    // The same tree that the build pre-renders and that main.tsx hydrates.
+    const page = (
+      <StrictMode>
+        <GuidePage />
+      </StrictMode>
+    );
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(page);
+    document.body.appendChild(container);
+    const error = vi.spyOn(console, "error");
+    const warn = vi.spyOn(console, "warn");
+
+    const root = await act(async () => hydrateRoot(container, page));
+
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    expect(document.title).toBe("What is a Petri net? Guide and examples | PetriNet Editor");
+    act(() => root.unmount());
+    container.remove();
   });
 });
