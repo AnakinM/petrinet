@@ -26,5 +26,6 @@ describe("NetFile.open import errors", () => {
     const error = await openFile(name, text).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(NetImportError);
     expect((error as NetImportError).format).toBe(format);
+    expect((error as NetImportError).reason).toBe("invalid");
   });
 });
