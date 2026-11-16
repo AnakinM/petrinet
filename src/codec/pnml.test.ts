@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { PnmlCodec, PnmlParseError } from "@/codec/pnml";
+import { PnmlCodec, PnmlParseError, type PnmlRefusalReason } from "@/codec/pnml";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
 
 const place = (id: string, position: Vec, tokens = 0, name = id): Place => ({
@@ -167,5 +167,296 @@ describe("PnmlCodec.parse", () => {
     const a = back.arcs[0];
     expect([a.id, a.source, a.target, a.multiplicity]).toEqual(["a1", "P1", "t1", 2]);
     expect(a.points[1]).toEqual({ x: 100, y: 80 });
+  });
+});
+
+/** The files in `fixtures/pnml/`, each hand-written to imitate one tool, by path. */
+const FIXTURES = import.meta.glob<string>("./fixtures/pnml/*.pnml", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+});
+const fixture = (name: string): string => FIXTURES[`./fixtures/pnml/${name}`];
+
+/** Each node as `[id, name, tokens or null, labelPosition]`, and each arc as `[id, source, target, weight]`. */
+const summary = (net: PetriNet): { nodes: unknown[]; arcs: unknown[] } => ({
+  nodes: [
+    ...net.places.map((p) => [p.id, p.name, p.tokens, p.labelPosition]),
+    ...net.transitions.map((t) => [t.id, t.name, null, t.labelPosition]),
+  ],
+  arcs: net.arcs.map((a) => [a.id, a.source, a.target, a.multiplicity]),
+});
+
+describe("PnmlCodec.parse dialects", () => {
+  it("reads PIPE: <value> labels, colour-prefixed counts, no page, <arcpath> bends", () => {
+    const net = PnmlCodec.parse(fixture("pipe.pnml"));
+    expect(summary(net)).toEqual({
+      nodes: [
+        ["P0", "idle", 2, undefined], // offset (0, 0) would cover the place: default spot
+        ["P1", "busy", 0, { x: -5, y: 35 }],
+        ["T0", "start", null, { x: -5, y: 35 }],
+      ],
+      arcs: [
+        ["P0 to T0", "P0", "T0", 1],
+        ["T0 to P1", "T0", "P1", 3],
+      ],
+    });
+    expect(net.places[0].position).toEqual({ x: 120, y: 90 });
+    // The <arcpath> list holds both ends; only the inner point is a bend.
+    expect(net.arcs[0].points).toHaveLength(2);
+    expect(net.arcs[1].points[1]).toEqual({ x: 300, y: 150 });
+  });
+
+  it("reads WoPeD: no namespace, the older ptNetb type, label offsets made relative", () => {
+    const net = PnmlCodec.parse(fixture("woped.pnml"));
+    expect(summary(net)).toEqual({
+      nodes: [
+        ["p1", "start", 1, { x: 0, y: 40 }],
+        ["p2", "end", 0, { x: 0, y: 40 }],
+        ["t1", "work", null, { x: 0, y: -40 }],
+      ],
+      arcs: [
+        ["a1", "p1", "t1", 1],
+        ["a2", "t1", "p2", 1],
+      ],
+    });
+    expect(net.arcs[1].points[1]).toEqual({ x: 200, y: 160 });
+  });
+
+  it("reads TAPAAL: the arc type attribute and the offset before the text", () => {
+    const net = PnmlCodec.parse(fixture("tapaal.pnml"));
+    expect(summary(net)).toEqual({
+      nodes: [
+        ["P0", "P0", 4, { x: 0, y: -30 }],
+        ["P1", "P1", 0, { x: 0, y: 30 }],
+        ["T0", "T0", null, { x: 0, y: 30 }],
+      ],
+      arcs: [
+        ["A0", "P0", "T0", 2],
+        ["A1", "T0", "P1", 1],
+      ],
+    });
+    expect(net.arcs[1].points[1]).toEqual({ x: 375, y: 210 });
+  });
+
+  it("reads TINA: the tpn net type, and a firing interval is ignored", () => {
+    const net = PnmlCodec.parse(fixture("tina.pnml"));
+    expect(summary(net)).toEqual({
+      nodes: [
+        ["p-1A2B-3C50-2", "p0", 3, undefined], // a 10px offset would cover the place
+        ["p-1A2B-3C52-3", "p1", 0, { x: 0, y: 40 }],
+        ["t-1A2B-3C54-4", "t0", null, { x: 0, y: -35 }],
+      ],
+      arcs: [
+        ["e-1A2B-3C56-5", "p-1A2B-3C50-2", "t-1A2B-3C54-4", 2],
+        ["e-1A2B-3C58-6", "t-1A2B-3C54-4", "p-1A2B-3C52-3", 1],
+      ],
+    });
+  });
+
+  it("reads the class tool's one-line export", () => {
+    const net = PnmlCodec.parse(fixture("class-tool.pnml"));
+    expect(summary(net)).toEqual({
+      nodes: [
+        ["P1", "P1", 2, { x: 0, y: -30 }],
+        ["P2", "P2", 0, undefined],
+        ["T1", "T1", null, undefined],
+      ],
+      arcs: [
+        ["A1", "P1", "T1", 3],
+        ["A2", "T1", "P2", 1],
+      ],
+    });
+    expect(net.arcs[1].points[1]).toEqual({ x: 325, y: 160 });
+  });
+
+  it("reads several and nested pages, and follows reference nodes to the real node", () => {
+    const net = PnmlCodec.parse(fixture("standard-pages.pnml"));
+    expect(net.places.map((p) => p.id)).toEqual(["ready", "buffer", "done"]);
+    expect(net.transitions.map((t) => t.id)).toEqual(["produce", "consume"]);
+    expect(net.arcs.map((a) => [a.id, a.source, a.target])).toEqual([
+      ["a1", "ready", "produce"],
+      ["a2", "produce", "buffer"],
+      ["a3", "buffer", "consume"],
+      ["a4", "consume", "done"],
+      ["a5", "consume", "ready"], // through two references
+      ["a6", "done", "produce"],
+    ]);
+  });
+});
+
+/** A PNML document with one page around `body`, and the net type `type` (none when null). */
+const doc = (body: string, type: string | null = PnmlCodec.PT_NET_TYPE): string => {
+  const typeAttr = type === null ? "" : ` type="${type}"`;
+  return `<pnml xmlns="${PnmlCodec.NS}"><net id="n"${typeAttr}><page id="pg">${body}</page></net></pnml>`;
+};
+const P = (id: string, inner = ""): string =>
+  `<place id="${id}"><graphics><position x="0" y="0"/></graphics>${inner}</place>`;
+const T = (id: string): string =>
+  `<transition id="${id}"><graphics><position x="100" y="0"/></graphics></transition>`;
+const ARC = (inner: string, attrs = ""): string =>
+  `${P("p1")}${T("t1")}<arc id="a1" source="p1" target="t1"${attrs}>${inner}</arc>`;
+
+/** The error that `parse` throws for `xml`; fails the test when it loads. */
+const refusal = (xml: string): PnmlParseError => {
+  try {
+    PnmlCodec.parse(xml);
+  } catch (error) {
+    if (error instanceof PnmlParseError) return error;
+    throw error;
+  }
+  throw new Error("the file loaded");
+};
+
+describe("PnmlCodec.parse refusals", () => {
+  it.each<[string, string, RegExp, PnmlRefusalReason]>([
+    [
+      "an inhibitor arc as PIPE and TINA write it",
+      doc(ARC('<type value="inhibitor"/>')),
+      /arc "a1" has the type "inhibitor"\. This editor supports only normal arcs\./,
+      "unsupported-arc",
+    ],
+    [
+      "an inhibitor arc as TAPAAL writes it",
+      doc(ARC("", ' type="inhibitor"')),
+      /arc "a1" has the type "inhibitor"/,
+      "unsupported-arc",
+    ],
+    [
+      "a read arc as TINA writes it",
+      doc(ARC('<type value="test"/>')),
+      /arc "a1" has the type "test"/,
+      "unsupported-arc",
+    ],
+    [
+      "a reset arc written as a label",
+      doc(ARC("<type><text>reset</text></type>")),
+      /arc "a1" has the type "reset"/,
+      "unsupported-arc",
+    ],
+    [
+      "a coloured net",
+      doc(P("p1"), "http://www.pnml.org/version-2009/grammar/symmetricnet"),
+      /net type "http:\/\/www\.pnml\.org\/version-2009\/grammar\/symmetricnet" is not a place\/transition net/,
+      "net-type",
+    ],
+    [
+      "tokens of several colours as PIPE writes them",
+      doc(P("p1", "<initialMarking><value>Default,1,Red,2</value></initialMarking>")),
+      /place "p1" has tokens of several colours in its initial marking \("Default,1,Red,2"\)/,
+      "net-type",
+    ],
+    [
+      "a marking that is not a number",
+      doc(P("p1", "<initialMarking><text>two</text></initialMarking>")),
+      /place "p1" has the initial marking "two", which is not a whole number\./,
+      "invalid",
+    ],
+    [
+      "a negative marking",
+      doc(P("p1", "<initialMarking><text>-1</text></initialMarking>")),
+      /place "p1" has the initial marking "-1"/,
+      "invalid",
+    ],
+    [
+      "a weight that is not a whole number",
+      doc(ARC("<inscription><text>1.5</text></inscription>")),
+      /arc "a1" has the weight "1\.5", which is not a whole number\./,
+      "invalid",
+    ],
+    [
+      "a weight of 0",
+      doc(ARC("<inscription><text>0</text></inscription>")),
+      /arc "a1" has the weight 0\. A weight must be 1 or more\./,
+      "invalid",
+    ],
+    [
+      "a place capacity as PIPE writes it",
+      doc(P("p1", "<capacity><value>3</value></capacity>")),
+      /place "p1" has a capacity of 3\. This editor does not support place capacities\./,
+      "capacity",
+    ],
+    [
+      "an arc between two places",
+      doc(`${P("p1")}${P("p2")}<arc id="a1" source="p1" target="p2"/>`),
+      /arc "a1" joins two places, "p1" and "p2"\. An arc must join a place and a transition\./,
+      "invalid",
+    ],
+    [
+      "an arc between two transitions",
+      doc(`${T("t1")}${T("t2")}<arc id="a1" source="t1" target="t2"/>`),
+      /arc "a1" joins two transitions, "t1" and "t2"/,
+      "invalid",
+    ],
+    [
+      "an id used twice",
+      doc(`${P("x1")}${T("x1")}`),
+      /the id "x1" is used by more than one element\./,
+      "invalid",
+    ],
+    [
+      "several nets",
+      `<pnml><net id="n1" type="${PnmlCodec.PT_NET_TYPE}"/><net id="n2"/></pnml>`,
+      /the file holds 2 nets\. This editor opens one net per file\./,
+      "invalid",
+    ],
+    ["a file with no net", "<pnml/>", /the file has no <net> element\./, "invalid"],
+    [
+      "references that lead round in a circle",
+      doc(
+        `${T("t1")}<referencePlace id="r1" ref="r2"/><referencePlace id="r2" ref="r1"/><arc id="a1" source="r1" target="t1"/>`,
+      ),
+      /the reference "r1" leads round in a circle\./,
+      "invalid",
+    ],
+  ])("refuses %s", (_, xml, message, reason) => {
+    const error = refusal(xml);
+    expect(error.message).toMatch(message);
+    expect(error.reason).toBe(reason);
+  });
+
+  it.each([
+    ["no net type", null],
+    ["the 2009 ptnet type", PnmlCodec.PT_NET_TYPE],
+    ["the older ptNetb type of WoPeD", "http://www.informatik.hu-berlin.de/top/pntd/ptNetb"],
+    ["the older ptNetb type of PNML 1", "http://www.informatik.hu-berlin.de/top/pnml/ptNetb"],
+    ["PIPE's type", "P/T net"],
+    ["TINA's tpn type", "http://www.laas.fr/tina/tpn"],
+  ])("accepts %s", (_, type) => {
+    expect(PnmlCodec.parse(doc(P("p1"), type)).places).toHaveLength(1);
+  });
+
+  it("accepts a capacity of 0, which PIPE writes for no limit", () => {
+    const net = PnmlCodec.parse(doc(P("p1", "<capacity><value>0</value></capacity>")));
+    expect(net.places).toHaveLength(1);
+  });
+});
+
+describe("PnmlCodec.parse layout and labels", () => {
+  it("lays the nodes out on a grid when no node has a position", () => {
+    const xml = doc(
+      '<place id="p1"/><place id="p2"/><place id="p3"/><transition id="t1"/><transition id="t2"/><arc id="a1" source="p1" target="t1"/>',
+    );
+    const net = PnmlCodec.parse(xml);
+    const step = PnmlCodec.LAYOUT_STEP;
+    expect([...net.places, ...net.transitions].map((n) => n.position)).toEqual([
+      { x: 0, y: 0 },
+      { x: step, y: 0 },
+      { x: 2 * step, y: 0 },
+      { x: 0, y: step },
+      { x: step, y: step },
+    ]);
+  });
+
+  it("reads a name offset into labelPosition and ignores one that covers the node", () => {
+    const named = (x: number, y: number): string =>
+      `<name><text>p</text><graphics><offset x="${x}" y="${y}"/></graphics></name>`;
+    const net = PnmlCodec.parse(doc(`${P("p1", named(12, -30))}${P("p2", named(5, 5))}`));
+    expect(net.places.map((p) => p.labelPosition)).toEqual([{ x: 12, y: -30 }, undefined]);
+  });
+
+  it("never reads nodes inside a tool-specific block", () => {
+    const xml = doc(`${P("p1")}<toolspecific tool="X"><place id="hidden"/></toolspecific>`);
+    expect(PnmlCodec.parse(xml).places.map((p) => p.id)).toEqual(["p1"]);
   });
 });

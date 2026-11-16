@@ -28,4 +28,11 @@ describe("NetFile.open import errors", () => {
     expect((error as NetImportError).format).toBe(format);
     expect((error as NetImportError).reason).toBe("invalid");
   });
+
+  it("carries the PNML refusal reason", async () => {
+    const coloured =
+      '<pnml><net id="n" type="http://www.pnml.org/version-2009/grammar/symmetricnet"/></pnml>';
+    const error = await openFile("coloured.pnml", coloured).catch((e: unknown) => e);
+    expect((error as NetImportError).reason).toBe("net-type");
+  });
 });
