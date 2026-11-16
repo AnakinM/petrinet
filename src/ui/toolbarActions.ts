@@ -1,6 +1,13 @@
 import type { PetriNet } from "@/domain/types";
 import { Analytics } from "@/lib/analytics";
-import { ImageFile, NetFile, NetImportError, NpnFile, PnmlFile } from "@/lib/download";
+import {
+  ImageFile,
+  NetFile,
+  NetImportError,
+  NpnFile,
+  type OpenedNet,
+  PnmlFile,
+} from "@/lib/download";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 import { useNoticeStore } from "@/store/noticeStore";
@@ -22,11 +29,26 @@ export function newNet(): void {
   }
 }
 
+/** Import a net file chosen in the file picker. */
 export function importNet(): void {
-  NetFile.open()
+  load(NetFile.open(), "button");
+}
+
+/**
+ * Import a net file dropped on the editor, exactly as {@link importNet} would open it. Simulate
+ * locks the net, as the disabled Import button shows, so a drop there does nothing.
+ */
+export function importDroppedFile(file: File): void {
+  if (useNetStore.getState().mode === "simulate") return;
+  load(NetFile.read(file), "drop");
+}
+
+/** Replace the net with an opened file, or report why the file was refused. */
+function load(opening: Promise<OpenedNet>, method: "button" | "drop"): void {
+  opening
     .then(({ net, format }) => {
       useNetStore.getState().setNet(net);
-      Analytics.track("Import", { format, method: "button" });
+      Analytics.track("Import", { format, method });
     })
     .catch((error: Error) => {
       if (error instanceof NetImportError) {

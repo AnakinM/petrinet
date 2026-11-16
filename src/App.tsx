@@ -4,6 +4,7 @@ import { Canvas } from "@/flow/Canvas";
 import { useBuildStore } from "@/store/buildStore";
 import { netHistory, useNetStore } from "@/store/netStore";
 import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
+import { DropImport } from "@/ui/DropImport";
 import { MobileShell } from "@/ui/mobile/MobileShell";
 import { Notice } from "@/ui/Notice";
 import { Palette } from "@/ui/Palette";
@@ -60,10 +61,11 @@ export default function App(): JSX.Element {
 
   // Below the breakpoint, swap in the touch shell; the desktop layout is left byte-identical. The
   // keydown handler above still runs on mobile. That is harmless, and useful with an attached
-  // keyboard. The notice serves both layouts.
+  // keyboard. The notice and the drop import serve both layouts.
   return (
     <>
       {isMobile ? <MobileShell /> : <DesktopShell />}
+      <DropImport />
       <Notice />
     </>
   );
