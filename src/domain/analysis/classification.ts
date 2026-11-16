@@ -121,7 +121,7 @@ export class NetClassification {
     return {
       verdict: "no",
       reasons: [
-        `${NetClassification._count(bad.length, "transition")} lack exactly one input and one output place.`,
+        `${NetClassification._count(bad.length, "transition")} ${bad.length === 1 ? "lacks" : "lack"} exactly one input and one output place.`,
       ],
       erroneous: bad.map((t) => t.id),
       erroneousArcs: [],
@@ -156,7 +156,7 @@ export class NetClassification {
     return {
       verdict: "no",
       reasons: [
-        `${NetClassification._count(bad.length, "place")} lack exactly one input and one output transition.`,
+        `${NetClassification._count(bad.length, "place")} ${bad.length === 1 ? "lacks" : "lack"} exactly one input and one output transition.`,
       ],
       erroneous: bad.map((p) => p.id),
       erroneousArcs: [],
@@ -196,7 +196,7 @@ export class NetClassification {
     return {
       verdict: "no",
       reasons: [
-        `${NetClassification._count(violations, "arc")} break free choice: a place with several outputs feeds a transition that also has other input places.`,
+        `${NetClassification._count(violations, "arc")} ${violations === 1 ? "breaks" : "break"} free choice: a place with several outputs feeds a transition that also has other input places.`,
       ],
       erroneous: [...erroneous],
       erroneousArcs: [],

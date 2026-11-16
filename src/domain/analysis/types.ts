@@ -79,29 +79,35 @@ export interface Classification {
 /**
  * The largest token count each place reaches over all explored markings, keyed by place id.
  * `exact` is true only when the whole state space was explored; otherwise every number is just a
- * lower limit (the state space was capped or unbounded).
+ * lower limit (the state space was capped or unbounded). `unbounded` lists the ids of places proven
+ * to grow without limit (a reached marking covers an earlier one on them); they have no bound.
  */
 export interface PlaceBounds {
   max: Record<string, number>;
   exact: boolean;
+  unbounded: string[];
 }
 
-/** One firing out of a marking: transition id and the name ("M3") of the marking it leads to. */
+/** One firing out of a marking: the transition id and the index of the target row in `StateTable.rows`. */
 export interface StateFiring {
   transition: string;
-  to: string;
+  to: number;
 }
 
 /**
  * One explored marking. `name` is "M0" (the initial marking), "M1", ... in order of discovery.
  * `tokens[i]` is the token count of `StateTable.placeIds[i]`. `deadlock` is true for a marking in
  * which no transition is enabled (a marking that was merely not expanded is not a deadlock).
+ * `explored` is false when the search stopped before listing all of this marking's firings (the
+ * state cap cut it off, or it was never expanded, or it was cut off as covering an earlier marking);
+ * `firings` is then partial or empty and must not be read as "nothing can fire".
  */
 export interface StateRow {
   name: string;
   tokens: number[];
   firings: StateFiring[];
   deadlock: boolean;
+  explored: boolean;
 }
 
 /**
@@ -110,7 +116,7 @@ export interface StateRow {
  * explored part. Rows are compact (arrays, no per-marking maps) because up to 10,000 can exist.
  */
 export interface StateTable {
-  placeIds: string[];
+  placeIds: readonly string[];
   rows: StateRow[];
   complete: boolean;
 }

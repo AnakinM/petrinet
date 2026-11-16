@@ -299,7 +299,7 @@ describe("NetAnalysis place bounds and state table", () => {
 
   it("fills both after the full analysis", () => {
     const result = NetAnalysis.analyze(net, { behavioral: true });
-    expect(result.placeBounds).toEqual({ max: { p1: 1, p2: 1 }, exact: true });
+    expect(result.placeBounds).toEqual({ max: { p1: 1, p2: 1 }, exact: true, unbounded: [] });
     expect(result.stateTable?.rows.map((r) => r.name)).toEqual(["M0", "M1"]);
   });
 });
