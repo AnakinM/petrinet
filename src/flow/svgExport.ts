@@ -65,6 +65,25 @@ class BBox {
 export class NetSvg {
   static readonly TOKEN_DOT = 7; // dot diameter (matches the 7px on-screen dots)
   static readonly TOKEN_GAP = 4; // gap between dots (Tailwind gap-1)
+  /** Default name-label offsets below a node, shared with the TikZ export. */
+  static readonly PLACE_LABEL_DY = PLACE_LABEL_DY;
+  static readonly TRANSITION_LABEL_DY = TRANSITION_LABEL_DY;
+
+  /** Centres of the token dots (1 to MAX_DOTS) in a two-column grid centred on `center`. */
+  static tokenDotCenters(center: Vec2, count: number): Vec2[] {
+    const cols = Math.min(count, 2);
+    const rows = Math.ceil(count / cols);
+    const pitch = NetSvg.TOKEN_DOT + NetSvg.TOKEN_GAP;
+    const gridW = cols * NetSvg.TOKEN_DOT + (cols - 1) * NetSvg.TOKEN_GAP;
+    const gridH = rows * NetSvg.TOKEN_DOT + (rows - 1) * NetSvg.TOKEN_GAP;
+    const left = center.x - gridW / 2 + NetSvg.TOKEN_DOT / 2;
+    const top = center.y - gridH / 2 + NetSvg.TOKEN_DOT / 2;
+    const centers: Vec2[] = [];
+    for (let i = 0; i < count; i++) {
+      centers.push({ x: left + (i % cols) * pitch, y: top + Math.floor(i / cols) * pitch });
+    }
+    return centers;
+  }
 
   static serialize(net: PetriNet): string {
     const bbox = new BBox();
@@ -176,23 +195,12 @@ export class NetSvg {
     if (display.kind === "number") {
       return `<text x="${NetSvg._r(center.x)}" y="${NetSvg._r(center.y)}" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="${TOKEN_FILL}">${display.value}</text>`;
     }
-    const n = display.count;
-    const cols = Math.min(n, 2);
-    const rows = Math.ceil(n / cols);
-    const pitch = NetSvg.TOKEN_DOT + NetSvg.TOKEN_GAP;
-    const gridW = cols * NetSvg.TOKEN_DOT + (cols - 1) * NetSvg.TOKEN_GAP;
-    const gridH = rows * NetSvg.TOKEN_DOT + (rows - 1) * NetSvg.TOKEN_GAP;
-    const left = center.x - gridW / 2 + NetSvg.TOKEN_DOT / 2;
-    const top = center.y - gridH / 2 + NetSvg.TOKEN_DOT / 2;
-    const dots: string[] = [];
-    for (let i = 0; i < n; i++) {
-      const cx = left + (i % cols) * pitch;
-      const cy = top + Math.floor(i / cols) * pitch;
-      dots.push(
-        `<circle cx="${NetSvg._r(cx)}" cy="${NetSvg._r(cy)}" r="${NetSvg.TOKEN_DOT / 2}" fill="${TOKEN_FILL}"/>`,
-      );
-    }
-    return dots.join("");
+    return NetSvg.tokenDotCenters(center, display.count)
+      .map(
+        (c) =>
+          `<circle cx="${NetSvg._r(c.x)}" cy="${NetSvg._r(c.y)}" r="${NetSvg.TOKEN_DOT / 2}" fill="${TOKEN_FILL}"/>`,
+      )
+      .join("");
   }
 
   private static _label(

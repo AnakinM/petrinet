@@ -9,6 +9,10 @@ export const TIKZ_FILE_NAME = "net.tex";
 
 const LATEX_ESCAPES: Record<string, string> = {
   "\\": "\\textbackslash{}",
+  "<": "\\textless{}",
+  ">": "\\textgreater{}",
+  "|": "\\textbar{}",
+  "-": "{-}",
   "{": "\\{",
   "}": "\\}",
   $: "\\$",
@@ -19,15 +23,6 @@ const LATEX_ESCAPES: Record<string, string> = {
   "%": "\\%",
   "~": "\\textasciitilde{}",
 };
-
-const STYLES = [
-  "netplace/.style={draw=black!75, fill=white, line width=1pt}",
-  "nettransition/.style={draw=black!75, fill=black!75}",
-  "netarc/.style={draw=black!75, line width=0.75pt, rounded corners=6pt, -{Stealth[length=2.5mm]}}",
-  "nettoken/.style={fill=black!90, draw=none}",
-  "netlabel/.style={font=\\small, text=black!75}",
-  "netweight/.style={fill=white, draw=black!20, inner sep=1.5pt, font=\\scriptsize\\bfseries}",
-];
 
 /**
  * Exports a {@link PetriNet} as a TikZ (LaTeX) snippet that mirrors the canvas picture: same
@@ -47,13 +42,24 @@ export class TikzCodec {
     for (const place of net.places) body.push(...TikzCodec._place(place));
     for (const transition of net.transitions) body.push(...TikzCodec._transition(transition));
 
+    const cm = (px: number): string => `${TikzCodec._n(px * TikzCodec.CM_PER_PX)}cm`;
+    const styles = [
+      `netplace/.style={draw=black!75, fill=white, line width=${cm(2)}}`,
+      "nettransition/.style={fill=black!75}",
+      `netarc/.style={draw=black!75, line width=${cm(1.5)}, rounded corners=${cm(ArcGeometry.CORNER_RADIUS)}, -{Stealth[length=${cm(12)}]}}`,
+      "nettoken/.style={fill=black!90}",
+      "netlabel/.style={font=\\small, text=black!75}",
+      "netweight/.style={fill=white, draw=black!20, inner sep=1.5pt, font=\\scriptsize\\bfseries}",
+    ];
+
     return [
       "% Petri net exported from PetriNet Editor.",
       "% Add these lines to the preamble of your document:",
+      "%   \\usepackage[T1]{fontenc}",
       "%   \\usepackage{tikz}",
       "%   \\usetikzlibrary{petri,arrows.meta}",
       "% Cyrillic and other non-Latin names need a suitable font setup (or xelatex / lualatex).",
-      `\\begin{tikzpicture}[${STYLES.join(",\n  ")}]`,
+      `\\begin{tikzpicture}[${styles.join(",\n  ")}]`,
       ...body.map((line) => `  ${line}`),
       "\\end{tikzpicture}",
       "",
@@ -76,9 +82,7 @@ export class TikzCodec {
     const r = TikzCodec._n(NodeGeometry.PLACE_RADIUS * TikzCodec.CM_PER_PX);
     const lines = [`\\draw[netplace] ${TikzCodec._pt(c)} circle (${r});`];
     lines.push(...TikzCodec._tokens(c, place.tokens));
-    lines.push(
-      ...TikzCodec._label(place.name, c, place.labelPosition, NodeGeometry.PLACE_RADIUS + 10),
-    );
+    lines.push(...TikzCodec._label(place.name, c, place.labelPosition, NetSvg.PLACE_LABEL_DY));
     return lines;
   }
 
@@ -92,8 +96,8 @@ export class TikzCodec {
     // Screen rotation is clockwise; with the y flip TikZ needs the negated angle.
     const rotate = rot ? `, rotate around={${TikzCodec._n(-rot)}:${TikzCodec._pt(c)}}` : "";
     return [
-      `\\draw[nettransition${rotate}] ${corner1} rectangle ${corner2};`,
-      ...TikzCodec._label(t.name, c, t.labelPosition, NodeGeometry.TRANSITION_BOX / 2 + 10),
+      `\\fill[nettransition${rotate}] ${corner1} rectangle ${corner2};`,
+      ...TikzCodec._label(t.name, c, t.labelPosition, NetSvg.TRANSITION_LABEL_DY),
     ];
   }
 
@@ -106,22 +110,10 @@ export class TikzCodec {
         `\\node[font=\\normalsize\\bfseries] at ${TikzCodec._pt(center)} {${display.value}};`,
       ];
     }
-    const n = display.count;
-    const cols = Math.min(n, 2);
-    const rows = Math.ceil(n / cols);
-    const dot = NetSvg.TOKEN_DOT;
-    const pitch = dot + NetSvg.TOKEN_GAP;
-    const gridW = cols * dot + (cols - 1) * NetSvg.TOKEN_GAP;
-    const gridH = rows * dot + (rows - 1) * NetSvg.TOKEN_GAP;
-    const left = center.x - gridW / 2 + dot / 2;
-    const top = center.y - gridH / 2 + dot / 2;
-    const r = TikzCodec._n((dot / 2) * TikzCodec.CM_PER_PX);
-    const lines: string[] = [];
-    for (let i = 0; i < n; i++) {
-      const p = { x: left + (i % cols) * pitch, y: top + Math.floor(i / cols) * pitch };
-      lines.push(`\\fill[nettoken] ${TikzCodec._pt(p)} circle (${r});`);
-    }
-    return lines;
+    const r = TikzCodec._n((NetSvg.TOKEN_DOT / 2) * TikzCodec.CM_PER_PX);
+    return NetSvg.tokenDotCenters(center, display.count).map(
+      (p) => `\\fill[nettoken] ${TikzCodec._pt(p)} circle (${r});`,
+    );
   }
 
   private static _label(
@@ -150,6 +142,6 @@ export class TikzCodec {
   }
 
   private static _escape(s: string): string {
-    return s.replace(/\r?\n/g, " ").replace(/[\\{}$&#^_%~]/g, (c) => LATEX_ESCAPES[c]);
+    return s.replace(/\r?\n/g, " ").replace(/[\\{}$&#^_%~<>|-]/g, (c) => LATEX_ESCAPES[c]);
   }
 }
