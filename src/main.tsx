@@ -16,7 +16,10 @@ if (!root) throw new Error("Root element #root not found");
 // static server returns it for /guide. React hydrates that markup: it keeps the HTML and attaches
 // its handlers. Any other root holds only the home page's static fallback, which React replaces.
 const prerendered = PrerenderMark.isOn(root);
-const isGuide = prerendered || window.location.pathname.replace(/\/+$/, "") === "/guide";
+const path = window.location.pathname;
+let end = path.length;
+while (end > 0 && path[end - 1] === "/") end--;
+const isGuide = prerendered || path.slice(0, end) === "/guide";
 const page = <StrictMode>{isGuide ? <GuidePage /> : <App />}</StrictMode>;
 
 if (prerendered) hydrateRoot(root, page);
