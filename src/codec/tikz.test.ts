@@ -39,19 +39,20 @@ describe("TikzCodec", () => {
       [
         "% Petri net exported from PetriNet Editor.",
         "% Add these lines to the preamble of your document:",
+        "%   \\usepackage[T1]{fontenc}",
         "%   \\usepackage{tikz}",
         "%   \\usetikzlibrary{petri,arrows.meta}",
         "% Cyrillic and other non-Latin names need a suitable font setup (or xelatex / lualatex).",
-        "\\begin{tikzpicture}[netplace/.style={draw=black!75, fill=white, line width=1pt},",
-        "  nettransition/.style={draw=black!75, fill=black!75},",
-        "  netarc/.style={draw=black!75, line width=0.75pt, rounded corners=6pt, -{Stealth[length=2.5mm]}},",
-        "  nettoken/.style={fill=black!90, draw=none},",
+        "\\begin{tikzpicture}[netplace/.style={draw=black!75, fill=white, line width=0.05cm},",
+        "  nettransition/.style={fill=black!75},",
+        "  netarc/.style={draw=black!75, line width=0.04cm, rounded corners=0.2cm, -{Stealth[length=0.3cm]}},",
+        "  nettoken/.style={fill=black!90},",
         "  netlabel/.style={font=\\small, text=black!75},",
         "  netweight/.style={fill=white, draw=black!20, inner sep=1.5pt, font=\\scriptsize\\bfseries}]",
         "  \\draw[netarc] (0.5,0) -- (2.5,-1);",
         "  \\draw[netplace] (0,0) circle (0.5);",
         "  \\node[netlabel] at (0,-0.75) {p1};",
-        "  \\draw[nettransition] (2.81,-0.5) rectangle (3.19,-1.5);",
+        "  \\fill[nettransition] (2.81,-0.5) rectangle (3.19,-1.5);",
         "  \\node[netlabel] at (3,-1.75) {t1};",
         "\\end{tikzpicture}",
         "",
@@ -103,7 +104,7 @@ describe("TikzCodec", () => {
     expect(withTokens(4).match(/\\fill\[nettoken\]/g)).toHaveLength(4);
     expect(withTokens(4)).not.toContain("\\normalsize");
     const five = withTokens(5);
-    expect(five).not.toContain("\\fill");
+    expect(five).not.toContain("\\fill[nettoken]");
     expect(five).toContain("\\node[font=\\normalsize\\bfseries] at (0,0) {5};");
   });
 
@@ -125,11 +126,11 @@ describe("TikzCodec", () => {
   it("rotates a transition about its centre, negating the angle for the y flip", () => {
     const out = TikzCodec.serialize(
       net({
-        transitions: [{ id: "t", name: "", position: { x: 40, y: 0 }, gui: { rotation: 90 } }],
+        transitions: [{ id: "t", name: "", position: { x: 40, y: 0 }, gui: { rotation: 30 } }],
         arcs: [],
       }),
     );
-    expect(out).toContain("\\draw[nettransition, rotate around={-90:(1,0)}]");
+    expect(out).toContain("\\fill[nettransition, rotate around={-30:(1,0)}]");
     expect(TikzCodec.serialize(net())).not.toContain("rotate around");
   });
 
@@ -163,6 +164,27 @@ describe("TikzCodec", () => {
       "{a\\_b \\%\\{x\\}\\textbackslash{}\\$\\&\\#\\textasciicircum{}\\textasciitilde{}}",
     );
     expect(out).toContain("{Zażółć Москва}");
+  });
+
+  it("escapes characters that OT1 would print wrongly and dash ligatures", () => {
+    const out = TikzCodec.serialize(
+      net({
+        places: [{ id: "p", name: "a<b>|c--d", tokens: 0, position: { x: 0, y: 0 } }],
+        arcs: [],
+      }),
+    );
+    expect(out).toContain("{a\\textless{}b\\textgreater{}\\textbar{}c{-}{-}d}");
+  });
+
+  it("asks for T1 font encoding so Polish letters compile", () => {
+    const out = TikzCodec.serialize(
+      net({
+        places: [{ id: "p", name: "łąka ręka", tokens: 0, position: { x: 0, y: 0 } }],
+        arcs: [],
+      }),
+    );
+    expect(out).toContain("%   \\usepackage[T1]{fontenc}");
+    expect(out).toContain("{łąka ręka}");
   });
 
   it("is deterministic and balanced for the sample net", () => {
