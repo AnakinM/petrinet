@@ -97,6 +97,9 @@ export function Menu({
     };
     const onKeyDown = (e: globalThis.KeyboardEvent): void => {
       if (e.key !== "Escape") return;
+      // This Escape belongs to the menu: it must not also leave a placing tool or cancel an arc,
+      // whose listeners sit on the window.
+      e.stopPropagation();
       setOpenAt(null);
       triggerRef.current?.focus();
     };
