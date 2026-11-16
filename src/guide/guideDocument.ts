@@ -106,7 +106,8 @@ export class GuideDocument {
     attribute: string,
     value: string,
   ): string {
-    const pattern = new RegExp(`(${start.replaceAll(" ", "\\s+")}\\s+${attribute}=")[^"]*"`);
+    const opening = `${GuideDocument._literal(start)}\\s+${GuideDocument._literal(attribute)}="`;
+    const pattern = new RegExp(`(${opening})[^"]*"`);
     return GuideDocument._swap(html, pattern, `${start}>`, (_match, found) => {
       return `${found}${GuideDocument._escape(value)}"`;
     });
@@ -123,6 +124,11 @@ export class GuideDocument {
       throw new Error(`Guide prerender: ${missing} is missing from index.html`);
     }
     return html.replace(pattern, replace);
+  }
+
+  /** A regex source that matches `text` literally, with any run of whitespace for each space. */
+  private static _literal(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&").replaceAll(" ", "\\s+");
   }
 
   /** Escape text for an HTML attribute value or element content. */
