@@ -1,98 +1,230 @@
-import { type JSX, type ReactNode, useMemo } from "react";
+import type { JSX } from "react";
 import { NetAnalysis } from "@/domain/analysis/netAnalysis";
-import type { AnalysisResult, PropertyResult, Verdict } from "@/domain/analysis/types";
+import type { AnalysisResult, Deadlock, Verdict } from "@/domain/analysis/types";
 import { NetNames } from "@/domain/netNames";
-import { useAnalyticsStore } from "@/store/analyticsStore";
-import { useNetStore } from "@/store/netStore";
-import { DISPLAY_CAP, HighlightChip, StatusCard } from "@/ui/analytics/widgets";
+import type { Place } from "@/domain/types";
+import { useNetNames } from "@/ui/analytics/useNetNames";
+import {
+  ChipList,
+  DISPLAY_CAP,
+  ElementChip,
+  HighlightChip,
+  Note,
+  Overflow,
+  PENDING_LABEL,
+  SubHeading,
+  VerdictCard,
+} from "@/ui/analytics/widgets";
+
+const VERDICT_WORDS: Record<Verdict, string> = { yes: "yes", no: "no", indeterminate: "unknown" };
 
 /**
- * Status + Reasons cards for the net's properties. The algebraic ones (structural boundedness,
- * conservative) resolve from the live slice; the behavioural ones (safe, live, reversible,
- * deadlock-free) read `indeterminate` until the on-demand reachability pass runs, then carry a
- * one-line witness with bulleted reasons.
+ * The net's properties, one card each. Conservative, and Bounded when a place invariant covers the
+ * net, come from the instant slice. The rest need the full analysis and show "Needs the full
+ * analysis" until it runs. Then they carry their evidence: the place bounds in Bounded, the
+ * transitions that never fire in Live, and the deadlock markings in Deadlock-free.
  */
 export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Element {
-  const { boundedness, conservative, live, quasiLive, reversible, deadlockFree } = result;
-  const transitions = useNetStore((s) => s.net).transitions;
-  const transitionName = useMemo(() => NetNames.resolver(transitions), [transitions]);
-  const lit = useAnalyticsStore((s) => s.highlight).join(",");
+  const { boundedness, conservative, live, reversible, deadlockFree } = result;
+  // The full analysis has run for this net once it has place bounds.
+  const ran = result.placeBounds !== null;
+  const pending = (verdict: Verdict): boolean => !ran && verdict === "indeterminate";
   return (
-    <div className="flex flex-col gap-2">
-      <StatusCard
+    <div className="flex flex-col gap-3">
+      <VerdictCard
         title="Bounded"
+        help="Bounded"
         verdict={boundedness.bounded}
-        help="Bounded if some finite k caps the tokens in every place across all reachable markings, so no place can grow without limit."
+        pending={pending(boundedness.bounded)}
         {...NetAnalysis.boundedDetail(result)}
-      />
-      <StatusCard
+      >
+        <PlaceBoundsPart result={result} />
+      </VerdictCard>
+      <VerdictCard
         title="Safe"
+        help="Safe"
         verdict={boundedness.safe}
-        help="Safe (1-bounded) if no reachable marking ever puts more than one token in any place."
+        pending={pending(boundedness.safe)}
         {...NetAnalysis.safeDetail(result)}
       />
-      <StatusCard
+      <VerdictCard
         title="Conservative"
+        help="Conservative"
         verdict={conservative.verdict}
         detail={conservative.detail}
         items={conservative.items}
-        help="Conservative if a positive place weighting keeps the weighted token total constant under every firing; strictly conservative if the plain token count never changes."
       />
-      <StatusCard
+      <VerdictCard
         title="Live"
+        help="Live"
         verdict={live.verdict}
+        pending={pending(live.verdict)}
         detail={live.detail}
         items={live.items}
-        help="Live if, from every reachable marking, each transition can eventually be made to fire again, so none becomes permanently dead."
       >
-        {liveSub(live, quasiLive, result.diagnostics.deadTransitions, transitionName, lit)}
-      </StatusCard>
-      <StatusCard
+        {ran && <NeverFiresPart result={result} />}
+      </VerdictCard>
+      <VerdictCard
         title="Reversible"
+        help="Reversible"
         verdict={reversible.verdict}
+        pending={pending(reversible.verdict)}
         detail={reversible.detail}
         items={reversible.items}
-        help="Reversible if the initial marking M0 is reachable again from every reachable marking."
       />
-      <StatusCard
+      <VerdictCard
         title="Deadlock-free"
+        help="Deadlock-free"
         verdict={deadlockFree.verdict}
-        detail={deadlockFree.detail}
-        items={deadlockFree.items}
-        help="Deadlock-free if every reachable marking enables at least one transition, so the net never fully stalls."
-      />
+        pending={pending(deadlockFree.verdict)}
+        detail={deadlockLead(result)}
+      >
+        {ran && <DeadlocksPart result={result} />}
+      </VerdictCard>
     </div>
   );
 }
 
 /**
- * The Live card's quasi-live sub-note. When a transition never fires its name becomes a chip that
- * spotlights it on the canvas (ids from the structured diagnostics, not the detail text). The list
- * is clipped to {@link DISPLAY_CAP} so it agrees with the Structure tab's dead-transition list.
+ * The bound of each place, from the full analysis. On an incomplete state space the numbers are only
+ * lower limits, and the card says so; a place proven to grow without limit reads "no bound".
  */
-function liveSub(
-  live: PropertyResult,
-  quasiLive: PropertyResult,
-  dead: string[],
-  transitionName: (id: string) => string,
-  lit: string,
-): ReactNode {
-  if (live.verdict === "yes") return undefined;
-  const prefix = `Quasi-live: ${PILL_LABELS[quasiLive.verdict].toLowerCase()}`;
-  if (quasiLive.verdict !== "no" || dead.length === 0) {
-    return <span className="text-slate-500 text-xs">{`${prefix}. ${quasiLive.detail}`}</span>;
-  }
+function PlaceBoundsPart({ result }: { result: AnalysisResult }): JSX.Element {
+  const { net, placeName } = useNetNames();
+  const bounds = result.placeBounds;
+  const places = net.places.slice(0, DISPLAY_CAP);
   return (
-    <span className="flex flex-wrap items-center gap-1 text-slate-500 text-xs">
-      <span>{prefix}. Never fires:</span>
-      {dead.slice(0, DISPLAY_CAP).map((id) => (
-        <HighlightChip key={id} ids={[id]} lit={lit} size="chip">
-          {transitionName(id)}
-        </HighlightChip>
-      ))}
-      {dead.length > DISPLAY_CAP && <span>and {dead.length - DISPLAY_CAP} more.</span>}
-    </span>
+    <div className="flex flex-col gap-1.5 border-slate-100 border-t pt-2">
+      <SubHeading title="Place bounds" help="Place bounds" />
+      {bounds === null ? (
+        <Note>{PENDING_LABEL}.</Note>
+      ) : net.places.length === 0 ? (
+        <p>none</p>
+      ) : (
+        <>
+          {!bounds.exact && (
+            <p className="text-amber-800">
+              These numbers are only lower limits, because the full analysis could not explore every
+              marking.
+            </p>
+          )}
+          <dl className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
+            {places.map((p) => {
+              const max = bounds.max[p.id] ?? 0;
+              const value = bounds.unbounded.includes(p.id)
+                ? "no bound"
+                : bounds.exact
+                  ? String(max)
+                  : `at least ${max}`;
+              return (
+                <div key={p.id} className="contents">
+                  <dt className="min-w-0">
+                    <ElementChip id={p.id} kind="place" name={placeName(p.id)} />
+                  </dt>
+                  <dd className="text-right font-mono">{value}</dd>
+                </div>
+              );
+            })}
+          </dl>
+          <Overflow total={net.places.length} />
+        </>
+      )}
+    </div>
   );
 }
 
-const PILL_LABELS: Record<Verdict, string> = { yes: "Yes", no: "No", indeterminate: "Unknown" };
+/**
+ * The Live card's evidence: whether every transition can fire at least once (quasi-live), and the
+ * transitions that never fire as chips. On an incomplete state space that list is undetermined.
+ */
+function NeverFiresPart({ result }: { result: AnalysisResult }): JSX.Element {
+  const { transitionName } = useNetNames();
+  const { quasiLive, stateSpaceComplete } = result;
+  const dead = result.diagnostics.deadTransitions;
+  return (
+    <div className="flex flex-col gap-1.5 border-slate-100 border-t pt-2">
+      <p>
+        Quasi-live: {VERDICT_WORDS[quasiLive.verdict]}.
+        {quasiLive.verdict === "indeterminate" && ` ${quasiLive.detail}`}
+      </p>
+      {!stateSpaceComplete ? (
+        <p>Never fires: undetermined. The reachability graph is incomplete.</p>
+      ) : dead.length === 0 ? (
+        <p>Never fires: none.</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-1">
+          <span>Never fires:</span>
+          {dead.slice(0, DISPLAY_CAP).map((id) => (
+            <ElementChip key={id} id={id} kind="transition" name={transitionName(id)} />
+          ))}
+          {dead.length > DISPLAY_CAP && <span>and {dead.length - DISPLAY_CAP} more.</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The Deadlock-free card's lead: the count of dead markings found, or the verdict's own reason. */
+function deadlockLead(result: AnalysisResult): string {
+  const n = result.diagnostics.deadlocks.length;
+  if (result.deadlockFree.verdict !== "no" || n === 0) return result.deadlockFree.detail;
+  return n === 1 ? "Reaches a dead marking:" : `Reaches ${n} dead markings:`;
+}
+
+/**
+ * The deadlock markings that the full analysis found, each with a firing sequence that leads to it.
+ * Three cases stay apart: markings found, none in a complete state space (the lead says so), and
+ * none found in the explored part of an incomplete one.
+ */
+function DeadlocksPart({ result }: { result: AnalysisResult }): JSX.Element | null {
+  const { net, transitionName } = useNetNames();
+  const { deadlocks } = result.diagnostics;
+  if (deadlocks.length === 0) {
+    if (result.stateSpaceComplete) return null;
+    return <Note>None found in the explored markings. The graph is incomplete.</Note>;
+  }
+  // Found deadlocks are real witnesses even on an incomplete graph, so they always show.
+  return (
+    <div className="flex flex-col gap-1">
+      <ChipList>
+        {deadlocks.slice(0, DISPLAY_CAP).map((dl) => (
+          <DeadlockRow
+            key={deadlockKey(dl)}
+            deadlock={dl}
+            places={net.places}
+            transitionName={transitionName}
+          />
+        ))}
+      </ChipList>
+      <Overflow total={deadlocks.length} />
+    </div>
+  );
+}
+
+/** A deadlock witness; clicking spotlights the places that still hold tokens in the dead marking. */
+function DeadlockRow({
+  deadlock,
+  places,
+  transitionName,
+}: {
+  deadlock: Deadlock;
+  places: Place[];
+  transitionName: (id: string) => string;
+}): JSX.Element {
+  // All-zero dead markings have nothing to spotlight; HighlightChip then renders non-interactive.
+  const marked = places.filter((p) => (deadlock.marking[p.id] ?? 0) > 0).map((p) => p.id);
+  return (
+    <HighlightChip target={{ nodes: marked, arcs: [] }} layout="row">
+      <span className="font-mono">{NetNames.formatMarking(deadlock.marking, places)}</span>
+      {deadlock.path.length > 0 && (
+        <span className="text-[13px] text-slate-500">
+          via {deadlock.path.map(transitionName).join(" → ")}
+        </span>
+      )}
+    </HighlightChip>
+  );
+}
+
+function deadlockKey(deadlock: Deadlock): string {
+  return deadlock.path.join(",") || JSON.stringify(deadlock.marking);
+}

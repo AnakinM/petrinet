@@ -1,88 +1,76 @@
 import { type JSX, useMemo } from "react";
 import { NetClassification } from "@/domain/analysis/classification";
 import type { ClassResult } from "@/domain/analysis/types";
-import { NetNames } from "@/domain/netNames";
-import { useAnalyticsStore } from "@/store/analyticsStore";
-import { useNetStore } from "@/store/netStore";
-import { HighlightChip, StatusCard } from "@/ui/analytics/widgets";
+import type { HelpTopic } from "@/ui/analytics/helpTexts";
+import { useNetNames } from "@/ui/analytics/useNetNames";
+import { ChipList, ElementChip, HighlightChip, VerdictCard } from "@/ui/analytics/widgets";
 
 /**
- * The net's structural classifications (Ordinary / State machine / Marked graph / Free choice), each
- * a Status + Reasons card. When a class fails, its erroneous elements are listed as click-to-spotlight
- * chips. Computed straight from the live net (instant, no behavioural pass), so it is always current.
+ * The net's structural classes (Ordinary, State machine, Marked graph, Free choice), one card each.
+ * State machine, marked graph and free choice require an ordinary net, as in the textbooks, so an
+ * arc with a weight above 1 makes them answer "no". A failing card lists what breaks it as chips:
+ * the places and transitions, and the heavy arcs, which light up on the canvas. Computed straight
+ * from the live net (instant, no full analysis), so it is always current.
  */
 export function ClassificationTab(): JSX.Element {
-  const net = useNetStore((s) => s.net);
-  const lit = useAnalyticsStore((s) => s.highlight).join(",");
+  const { net } = useNetNames();
   const classification = useMemo(() => NetClassification.classify(net), [net]);
-  const nameOf = useMemo(() => NetNames.resolver([...net.places, ...net.transitions]), [net]);
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <ClassCard
         title="Ordinary"
-        help="An ordinary net has every arc weight equal to 1, so there are no multiplicities."
         result={classification.ordinary}
-        nameOf={nameOf}
-        lit={lit}
+        nodesLabel="Places and transitions at their ends:"
       />
-      <ClassCard
-        title="State machine"
-        help="A state machine has every transition with exactly one input place and one output place, so there is no synchronisation or splitting."
-        result={classification.stateMachine}
-        nameOf={nameOf}
-        lit={lit}
-      />
-      <ClassCard
-        title="Marked graph"
-        help="A marked graph (T-net) has every place with exactly one input transition and one output transition, so there is no choice."
-        result={classification.markedGraph}
-        nameOf={nameOf}
-        lit={lit}
-      />
-      <ClassCard
-        title="Free choice"
-        help="A free-choice net never forces a conflict: wherever a place feeds several transitions, those transitions have no other input places."
-        result={classification.freeChoice}
-        nameOf={nameOf}
-        lit={lit}
-      />
+      <ClassCard title="State machine" result={classification.stateMachine} />
+      <ClassCard title="Marked graph" result={classification.markedGraph} />
+      <ClassCard title="Free choice" result={classification.freeChoice} />
     </div>
   );
 }
 
 function ClassCard({
   title,
-  help,
   result,
-  nameOf,
-  lit,
+  nodesLabel = "Elements that break it:",
 }: {
-  title: string;
-  help: string;
+  title: HelpTopic;
   result: ClassResult;
-  nameOf: (id: string) => string;
-  lit: string;
+  nodesLabel?: string;
 }): JSX.Element {
+  const { net, nodeName, kindOf } = useNetNames();
+  const heavy = new Set(result.erroneousArcs);
+  const arcs = net.arcs.filter((a) => heavy.has(a.id));
   return (
-    <StatusCard
+    <VerdictCard
       title={title}
+      help={title}
       verdict={result.verdict}
       detail={result.reasons[0]}
       items={result.reasons.slice(1)}
-      help={help}
     >
       {result.erroneous.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-slate-400 text-xs">Erroneous elements</span>
-          <div className="flex flex-wrap gap-1">
+          <span className="text-slate-500">{nodesLabel}</span>
+          <ChipList>
             {result.erroneous.map((id) => (
-              <HighlightChip key={id} ids={[id]} lit={lit} size="chip">
-                {nameOf(id)}
-              </HighlightChip>
+              <ElementChip key={id} id={id} kind={kindOf(id)} name={nodeName(id)} />
             ))}
-          </div>
+          </ChipList>
         </div>
       )}
-    </StatusCard>
+      {arcs.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-slate-500">Arcs with a weight above 1:</span>
+          <ChipList>
+            {arcs.map((arc) => (
+              <HighlightChip key={arc.id} target={{ nodes: [], arcs: [arc.id] }} kind="arc">
+                {`${nodeName(arc.source)} → ${nodeName(arc.target)}, weight ${arc.multiplicity}`}
+              </HighlightChip>
+            ))}
+          </ChipList>
+        </div>
+      )}
+    </VerdictCard>
   );
 }

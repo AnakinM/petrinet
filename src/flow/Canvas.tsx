@@ -87,6 +87,7 @@ export function Canvas(): JSX.Element {
   // just drops a node and never nudges/selects an existing one).
   const lockNodes = tokenTool || arcTool || (isMobile && placing);
   const highlight = useAnalyticsStore((s) => s.highlight);
+  const preview = useAnalyticsStore((s) => s.preview);
   const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<PetriFlowNode>(
@@ -101,7 +102,8 @@ export function Canvas(): JSX.Element {
   // this never fights an in-progress drag. The highlight is read imperatively (its own effect
   // below tracks changes), so a layout nudge re-paints the glow on the moved node.
   useEffect(() => {
-    const lit = new Set(useAnalyticsStore.getState().highlight);
+    const { highlight: kept, preview: hovered } = useAnalyticsStore.getState();
+    const lit = new Set([...kept.nodes, ...hovered.nodes]);
     // Project the domain selection (netStore) onto React Flow. Carrying the *domain* selection
     // rather than RF's previous flags is what lets a paste preselect its brand-new ids. They were
     // never selected in RF before, but netStore.paste set them. RF mirrors back via
@@ -113,17 +115,28 @@ export function Canvas(): JSX.Element {
     setEdges(withSelection(FlowProjection.toEdges(net), edgeSel));
   }, [net, setNodes, setEdges]);
 
-  // Paint the analytics highlight onto the matching nodes and frame them: clicking a diagnostic
-  // (a dead transition, a loop, a source place) spotlights it and pans it into view, wherever it is.
-  // The panel overlays the canvas's right edge, so reserve its width as right padding; otherwise a
-  // framed node would centre under the panel and stay hidden.
+  // Paint the analysis glow onto the kept and the hovered nodes. Arcs light themselves (ArcEdge
+  // reads the same store), so only nodes need painting here.
   useEffect(() => {
-    const lit = new Set(highlight);
+    const lit = new Set([...highlight.nodes, ...preview.nodes]);
     setNodes((prev) => withHighlight(prev, lit));
-    if (highlight.length > 0) {
+  }, [highlight, preview, setNodes]);
+
+  // Frame a clicked result: clicking a diagnostic (a dead transition, a loop, a heavy arc) pans it
+  // into view, wherever it is. Hovering never pans. A lit arc is framed by its two ends. The panel
+  // overlays the canvas's right edge, so reserve its width as right padding; otherwise a framed node
+  // would centre under the panel and stay hidden.
+  useEffect(() => {
+    const arcs = new Set(highlight.arcs);
+    const ends = useNetStore
+      .getState()
+      .net.arcs.filter((a) => arcs.has(a.id))
+      .flatMap((a) => [a.source, a.target]);
+    const frame = [...new Set([...highlight.nodes, ...ends])];
+    if (frame.length > 0) {
       const { open, width } = useAnalyticsStore.getState();
       fitView({
-        nodes: highlight.map((id) => ({ id })),
+        nodes: frame.map((id) => ({ id })),
         duration: 400,
         maxZoom: 1.5,
         padding: {
@@ -134,7 +147,7 @@ export function Canvas(): JSX.Element {
         },
       });
     }
-  }, [highlight, setNodes, fitView]);
+  }, [highlight, fitView]);
 
   // In the marquee (select) tool, Esc clears the current selection (right-click clears it via the
   // A5 context-menu policy). Other tools own Esc themselves (exit placing / cancel an arc draw).

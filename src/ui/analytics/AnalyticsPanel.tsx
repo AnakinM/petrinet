@@ -1,17 +1,29 @@
 import { type JSX, type PointerEvent as ReactPointerEvent, useEffect, useState } from "react";
+import { AnalysisReport } from "@/domain/analysis/analysisReport";
 import type { AnalysisResult } from "@/domain/analysis/types";
-import { type AnalyticsTab, useAnalyticsStore } from "@/store/analyticsStore";
+import { ANALYTICS_TABS, type AnalyticsTab, useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
 import { ClassificationTab } from "@/ui/analytics/ClassificationTab";
+import { copyResults } from "@/ui/analytics/copyActions";
 import { InvariantsTab } from "@/ui/analytics/InvariantsTab";
 import { PropertiesTab } from "@/ui/analytics/PropertiesTab";
+import { ReachabilityTab } from "@/ui/analytics/ReachabilityTab";
 import { StructureTab } from "@/ui/analytics/StructureTab";
 import { useIsMobile } from "@/ui/useIsMobile";
+
+const TAB_LABELS: Record<AnalyticsTab, string> = {
+  properties: "Properties",
+  classification: "Classification",
+  invariants: "Invariants",
+  structure: "Structure",
+  reachability: "Reachability",
+};
 
 /**
  * Resizable right-side overlay rendering the current net's analysis. It floats above the canvas
  * (which keeps its size underneath), anchored to the canvas's right edge, so the left sidebar
- * always stays visible. Closed ⇒ renders nothing.
+ * always stays visible. Closed ⇒ renders nothing. Under the tabs, the Analyse bar runs the full
+ * analysis on request and says whether its results are current.
  */
 export function AnalyticsPanel(): JSX.Element | null {
   const isMobile = useIsMobile();
@@ -34,6 +46,7 @@ export function AnalyticsPanel(): JSX.Element | null {
 
   if (!open) return null;
   const empty = net.places.length === 0 && net.transitions.length === 0;
+  const ready = !empty && result !== null;
 
   return (
     <aside
@@ -46,12 +59,15 @@ export function AnalyticsPanel(): JSX.Element | null {
     >
       {/* Desktop floats a resizable right rail; mobile takes over the canvas area full-screen. */}
       {!isMobile && <ResizeHandle />}
-      <PanelHeader activeTab={activeTab} />
-      <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4">
-        {empty || result === null ? (
-          <p className="text-slate-400 text-sm">Nothing to analyse. Add places and transitions.</p>
-        ) : (
+      <PanelHeader activeTab={activeTab} canCopy={ready} />
+      {ready && <AnalyseBar result={result} />}
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-50/60 p-4">
+        {ready ? (
           <TabBody tab={activeTab} result={result} />
+        ) : (
+          <p className="text-base text-slate-500">
+            Nothing to analyse. Add places and transitions.
+          </p>
         )}
       </div>
     </aside>
@@ -62,51 +78,47 @@ function TabBody({ tab, result }: { tab: AnalyticsTab; result: AnalysisResult })
   if (tab === "properties") return <PropertiesTab result={result} />;
   if (tab === "classification") return <ClassificationTab />;
   if (tab === "invariants") return <InvariantsTab result={result} />;
+  if (tab === "reachability") return <ReachabilityTab result={result} />;
   return <StructureTab result={result} />;
 }
 
-function PanelHeader({ activeTab }: { activeTab: AnalyticsTab }): JSX.Element {
-  const stale = useAnalyticsStore((s) => s.stale);
+function PanelHeader({
+  activeTab,
+  canCopy,
+}: {
+  activeTab: AnalyticsTab;
+  canCopy: boolean;
+}): JSX.Element {
   return (
     <div className="shrink-0 border-slate-200 border-b">
       <div className="flex items-center gap-2 px-4 py-2">
-        <h2 className="font-semibold text-slate-800 text-sm">Analysis</h2>
-        {stale && (
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-700 text-xs">
-            Stale
-          </span>
-        )}
+        <h2 className="font-semibold text-base text-slate-900">Analysis</h2>
         <div className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => useAnalyticsStore.getState().reanalyze()}
-            className="rounded border border-slate-300 px-2 py-0.5 font-medium text-slate-600 text-xs hover:bg-slate-100"
-          >
-            Re-analyze
-          </button>
+          {canCopy && (
+            <button
+              type="button"
+              onClick={copyResults}
+              className="rounded border border-slate-300 bg-white px-2.5 py-1 font-medium text-slate-700 text-sm hover:bg-slate-100"
+            >
+              Copy results
+            </button>
+          )}
           <button
             type="button"
             onClick={() => useAnalyticsStore.getState().close()}
             aria-label="Close analysis"
-            className="rounded px-1.5 text-lg text-slate-400 leading-none hover:bg-slate-100 hover:text-slate-700"
+            className="rounded px-1.5 text-2xl text-slate-500 leading-none hover:bg-slate-100 hover:text-slate-800"
           >
             ×
           </button>
         </div>
       </div>
       <div className="flex flex-wrap gap-1 px-4 pb-2">
-        <TabButton tab="properties" active={activeTab === "properties"}>
-          Properties
-        </TabButton>
-        <TabButton tab="classification" active={activeTab === "classification"}>
-          Classification
-        </TabButton>
-        <TabButton tab="invariants" active={activeTab === "invariants"}>
-          Invariants
-        </TabButton>
-        <TabButton tab="structure" active={activeTab === "structure"}>
-          Structure
-        </TabButton>
+        {ANALYTICS_TABS.map((tab) => (
+          <TabButton key={tab} tab={tab} active={activeTab === tab}>
+            {TAB_LABELS[tab]}
+          </TabButton>
+        ))}
       </div>
     </div>
   );
@@ -128,12 +140,48 @@ function TabButton({
       aria-pressed={active}
       className={
         active
-          ? "rounded bg-slate-700 px-2.5 py-1 font-medium text-white text-xs"
-          : "rounded px-2.5 py-1 font-medium text-slate-600 text-xs hover:bg-slate-100"
+          ? "rounded bg-slate-700 px-2.5 py-1 font-medium text-sm text-white"
+          : "rounded px-2.5 py-1 font-medium text-slate-700 text-sm hover:bg-slate-100"
       }
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * The bar across the top of every tab. Before the full analysis has run for this net it asks for
+ * it; after an edit it says the net changed; once the results are current it turns into a quiet line
+ * with the number of explored markings. The full analysis never runs by itself.
+ */
+function AnalyseBar({ result }: { result: AnalysisResult }): JSX.Element {
+  const stale = useAnalyticsStore((s) => s.stale);
+  if (!stale && result.placeBounds !== null) {
+    return (
+      <p className="shrink-0 border-slate-200 border-b px-4 py-2 text-slate-600 text-sm">
+        {AnalysisReport.upToDate(result)}
+      </p>
+    );
+  }
+  return (
+    <div
+      className={`flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3 ${
+        stale ? "border-amber-300 bg-amber-50" : "border-blue-200 bg-blue-50"
+      }`}
+    >
+      <p className="min-w-0 flex-1 text-base text-slate-900">
+        {stale
+          ? "The net changed. The results may be out of date."
+          : "Some results need the full analysis."}
+      </p>
+      <button
+        type="button"
+        onClick={() => useAnalyticsStore.getState().reanalyze()}
+        className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-base text-white shadow-sm hover:bg-blue-700"
+      >
+        {stale ? "Analyse again" : "Analyse"}
+      </button>
+    </div>
   );
 }
 

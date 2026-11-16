@@ -1,25 +1,31 @@
 import { type JSX, useMemo } from "react";
+import { IncidenceMatrix } from "@/domain/analysis/incidenceMatrix";
 import type { AnalysisResult, Invariant } from "@/domain/analysis/types";
-import { NetNames } from "@/domain/netNames";
-import { useAnalyticsStore } from "@/store/analyticsStore";
-import { useNetStore } from "@/store/netStore";
-import { DISPLAY_CAP, HighlightChip, Overflow, Section } from "@/ui/analytics/widgets";
+import type { PetriNet } from "@/domain/types";
+import { copyMatrixLatex, copyMatrixText } from "@/ui/analytics/copyActions";
+import type { HelpTopic } from "@/ui/analytics/helpTexts";
+import { useNetNames } from "@/ui/analytics/useNetNames";
+import {
+  Card,
+  CopyButton,
+  CountMark,
+  DISPLAY_CAP,
+  HighlightChip,
+  Note,
+  Overflow,
+} from "@/ui/analytics/widgets";
 
 /**
  * P- and T-invariants, each shown three ways: the readable weighted sum over element names, the
  * structural weight vector, and the system law (a P-invariant's conserved token total `Yᵀ·M₀`, a
  * T-invariant's return-to-M₀ firing multiset `σ`), plus the coverage summary. Every invariant is a
- * chip: clicking it spotlights its support set on the canvas (and pans to it).
+ * chip that lights its support set on the canvas. Then the incidence matrix they are computed from.
  */
 export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Element {
-  const net = useNetStore((s) => s.net);
-  // A comma-joined key of the live highlight, so each chip can tell whether it is the lit one.
-  const lit = useAnalyticsStore((s) => s.highlight).join(",");
-  // Order arrays and resolvers rebuild only when the net changes, not on every render.
+  const { net, placeName, transitionName } = useNetNames();
+  // Order arrays rebuild only when the net changes, not on every render.
   const placeOrder = useMemo(() => net.places.map((p) => p.id), [net.places]);
   const transitionOrder = useMemo(() => net.transitions.map((t) => t.id), [net.transitions]);
-  const placeName = useMemo(() => NetNames.resolver(net.places), [net.places]);
-  const transitionName = useMemo(() => NetNames.resolver(net.transitions), [net.transitions]);
   // M0 (each place's persisted tokens) fixes the conserved value k in a P-invariant's system law.
   const m0 = useMemo(
     () => Object.fromEntries(net.places.map((p) => [p.id, p.tokens])),
@@ -27,76 +33,67 @@ export function InvariantsTab({ result }: { result: AnalysisResult }): JSX.Eleme
   );
   const { invariants } = result;
   return (
-    <div className="flex flex-col gap-4">
-      <InvariantSection
+    <div className="flex flex-col gap-3">
+      <InvariantCard
         title="Place invariants"
-        help="A place invariant (P-invariant) is a positive place weighting whose weighted token sum is unchanged by every firing. This is a conservation law."
         kind="place"
         invariants={invariants.place}
         truncated={invariants.placeTruncated}
         order={placeOrder}
         nameOf={placeName}
         m0={m0}
-        lit={lit}
         covered={invariants.placesCovered}
         coveredNote="All places covered, so the net is structurally bounded and conservative."
-        emptyNote="No place invariants."
       />
-      <InvariantSection
+      <InvariantCard
         title="Transition invariants"
-        help="A transition invariant (T-invariant) is a multiset of firings that, run from a marking, returns the net to that same marking."
         kind="transition"
         invariants={invariants.transition}
         truncated={invariants.transitionTruncated}
         order={transitionOrder}
         nameOf={transitionName}
         m0={m0}
-        lit={lit}
         covered={invariants.transitionsCovered}
         coveredNote="All transitions covered, so the net is consistent."
-        emptyNote="No transition invariants."
       />
+      <IncidenceMatrixCard net={net} />
     </div>
   );
 }
 
-function InvariantSection({
+function InvariantCard({
   title,
-  help,
   kind,
   invariants,
   truncated,
   order,
   nameOf,
   m0,
-  lit,
   covered,
   coveredNote,
-  emptyNote,
 }: {
-  title: string;
-  help: string;
+  title: HelpTopic;
   kind: "place" | "transition";
   invariants: Invariant[];
   truncated: boolean;
   order: string[];
   nameOf: (id: string) => string;
   m0: Record<string, number>;
-  lit: string;
   covered: boolean;
   coveredNote: string;
-  emptyNote: string;
 }): JSX.Element {
   return (
-    <Section title={title} help={help}>
+    <Card
+      title={title}
+      help={title}
+      mark={truncated ? undefined : <CountMark>{invariants.length}</CountMark>}
+    >
       {truncated ? (
-        // A truncated family yields an empty list that does NOT mean "none". Say so per-family, so
+        // A truncated family yields an empty list that does NOT mean "none". Say so per family, so
         // an overflow on one family never hides the other family that computed fine.
-        <p className="text-slate-400 text-sm">
-          Too many to enumerate within the safety cap. Simplify the net to list them.
-        </p>
+        <Note>Too many to enumerate within the safety cap. Simplify the net to list them.</Note>
       ) : invariants.length === 0 ? (
-        <p className="text-slate-400 text-sm">{emptyNote}</p>
+        <p>none</p>
       ) : (
         <>
           <ul className="flex flex-col gap-1">
@@ -107,12 +104,10 @@ function InvariantSection({
               return (
                 // Key on the id-based support (element names can collide); display uses names.
                 <li key={invariantKey(inv)}>
-                  <HighlightChip ids={ids} lit={lit} size="row">
-                    <span className="flex flex-col gap-0.5 font-mono leading-tight">
-                      <span className="text-slate-700">{n.sum}</span>
-                      <span className="text-[11px] text-slate-400">
-                        {n.vector} · {n.system}
-                      </span>
+                  <HighlightChip target={{ nodes: ids, arcs: [] }} layout="row">
+                    <span className="font-mono">{n.sum}</span>
+                    <span className="font-mono text-[13px] text-slate-500">
+                      {n.vector} · {n.system}
                     </span>
                   </HighlightChip>
                 </li>
@@ -120,10 +115,82 @@ function InvariantSection({
             })}
           </ul>
           <Overflow total={invariants.length} />
-          {covered && <p className="text-slate-500 text-xs">{coveredNote}</p>}
+          {covered && <p>{coveredNote}</p>}
         </>
       )}
-    </Section>
+    </Card>
+  );
+}
+
+/**
+ * The incidence matrix as a table: one row per place, one column per transition, names in the
+ * headers. A large matrix scrolls inside the card. Two buttons copy it for a report.
+ */
+function IncidenceMatrixCard({ net }: { net: PetriNet }): JSX.Element {
+  const matrix = useMemo(() => new IncidenceMatrix(net), [net]);
+  const empty = net.places.length === 0 || net.transitions.length === 0;
+  return (
+    <Card
+      title="Incidence matrix"
+      help="Incidence matrix"
+      mark={
+        empty ? undefined : (
+          <CountMark>
+            {net.places.length} × {net.transitions.length}
+          </CountMark>
+        )
+      }
+    >
+      {empty ? (
+        <p>none</p>
+      ) : (
+        <>
+          <div className="max-h-72 overflow-auto rounded border border-slate-200">
+            <table className="border-separate border-spacing-0 font-mono text-sm">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 left-0 z-20 border-slate-200 border-r border-b bg-slate-50" />
+                  {net.transitions.map((t) => (
+                    <th
+                      key={t.id}
+                      scope="col"
+                      className="sticky top-0 z-10 whitespace-nowrap border-slate-200 border-b bg-slate-50 px-2 py-1 text-right font-medium text-slate-800"
+                    >
+                      {t.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {net.places.map((p, i) => (
+                  <tr key={p.id}>
+                    <th
+                      scope="row"
+                      className="sticky left-0 z-10 whitespace-nowrap border-slate-200 border-r bg-slate-50 px-2 py-1 text-left font-medium text-slate-800"
+                    >
+                      {p.name}
+                    </th>
+                    {matrix.c[i].map((value, j) => (
+                      <td
+                        // biome-ignore lint/suspicious/noArrayIndexKey: a column's index is its transition; the row never reorders
+                        key={j}
+                        className={`px-2 py-1 text-right ${value === 0 ? "text-slate-400" : "text-slate-900"}`}
+                      >
+                        {value}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <CopyButton onClick={copyMatrixText}>Copy as text</CopyButton>
+            <CopyButton onClick={copyMatrixLatex}>Copy as LaTeX</CopyButton>
+          </div>
+        </>
+      )}
+    </Card>
   );
 }
 
