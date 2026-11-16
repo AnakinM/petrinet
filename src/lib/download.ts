@@ -43,31 +43,40 @@ export class NetImportError extends Error {
   }
 }
 
+/** A net file that was read and parsed: its file name, the format that was detected, and the net. */
+export interface OpenedNet {
+  name: string;
+  format: NetFormat;
+  net: PetriNet;
+}
+
 /**
- * Opens any supported net file through one picker, auto-detecting the format: native `.npn` (JSON) or
- * `.pnml` / `.xml` (PNML). The codec selection (by extension, falling back to a leading `<` for
- * XML) stays here so the UI just asks for "a net". A parse error rejects with a
- * {@link NetImportError}, so the caller can surface it and knows which format was refused.
+ * Opens any supported net file, auto-detecting the format: native `.npn` (JSON) or `.pnml` / `.xml`
+ * (PNML). The codec selection (by extension, falling back to a leading `<` for XML) stays here so
+ * the UI just asks for "a net". The file picker and a file dropped on the editor share
+ * {@link NetFile.read}. A parse error rejects with a {@link NetImportError}, so the caller can
+ * surface it and knows which format was refused.
  */
 export class NetFile {
   /** Open the file picker for `.npn`/`.pnml` and resolve with the parsed net, its format and filename. */
-  static open(): Promise<{ name: string; format: NetFormat; net: PetriNet }> {
+  static open(): Promise<OpenedNet> {
     return new Promise((resolve, reject) => {
       const input = document.createElement("input");
       input.type = "file";
       input.accept = ".npn,.pnml,.xml,application/json,application/xml";
       input.addEventListener("change", () => {
         const file = input.files?.[0];
-        if (!file) return;
-        file
-          .text()
-          .then((text) => {
-            const format = NetFile._format(file.name, text);
-            resolve({ name: file.name, format, net: NetFile._parse(format, text) });
-          })
-          .catch(reject);
+        if (file) NetFile.read(file).then(resolve, reject);
       });
       input.click();
+    });
+  }
+
+  /** Read and parse one net file, from the picker or from a drop. */
+  static read(file: File): Promise<OpenedNet> {
+    return file.text().then((text) => {
+      const format = NetFile._format(file.name, text);
+      return { name: file.name, format, net: NetFile._parse(format, text) };
     });
   }
 
