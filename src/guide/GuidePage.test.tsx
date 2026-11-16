@@ -31,6 +31,12 @@ describe("GuidePage", () => {
     expect(getAllByText("Open the editor").length).toBeGreaterThan(0);
   });
 
+  it("names the site PetriNet Editor in its top bar link, not in a second h1", () => {
+    const { getAllByRole, getByRole } = render(<GuidePage />);
+    expect(getByRole("link", { name: "PetriNet Editor" })).toHaveAttribute("href", "/");
+    expect(getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
   it("keeps the visible copy free of em dashes", () => {
     const { container } = render(<GuidePage />);
     expect(container.textContent).not.toMatch(/[\u2014\u2013]/);
