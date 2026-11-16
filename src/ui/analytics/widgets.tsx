@@ -1,165 +1,290 @@
 import type { JSX, ReactNode } from "react";
 import type { Verdict } from "@/domain/analysis/types";
-import { useAnalyticsStore } from "@/store/analyticsStore";
+import {
+  NO_SPOTLIGHT,
+  type Spotlight,
+  spotlightKey,
+  useAnalyticsStore,
+} from "@/store/analyticsStore";
+import { HelpTip } from "@/ui/analytics/HelpTip";
+import type { HelpTopic } from "@/ui/analytics/helpTexts";
 import { CheckIcon, CrossIcon, QuestionIcon } from "@/ui/icons";
 
-/** Cap on any analytics list (invariants, deadlocks, dead transitions); the overflow collapses to a note. */
+/** Cap on any analysis list (invariants, deadlocks, dead transitions); the overflow collapses to a note. */
 export const DISPLAY_CAP = 50;
+
+/** The kind of net element a chip names, shown as a small mark in front of its name. */
+export type ElementKind = "place" | "transition" | "arc";
+
+/** The mark of a card whose answer needs the full analysis, shown until that has run. */
+export const PENDING_LABEL = "Needs the full analysis";
 
 const VERDICT_META: Record<
   Verdict,
   { label: string; tone: string; Icon: (p: { className?: string }) => JSX.Element }
 > = {
-  yes: { label: "Yes", tone: "bg-green-500", Icon: CheckIcon },
-  no: { label: "No", tone: "bg-red-500", Icon: CrossIcon },
+  yes: { label: "Yes", tone: "bg-green-600", Icon: CheckIcon },
+  no: { label: "No", tone: "bg-red-600", Icon: CrossIcon },
   indeterminate: { label: "Unknown", tone: "bg-amber-500", Icon: QuestionIcon },
 };
 
-/**
- * A small "?" help affordance. The explanation shows as a native tooltip on hover, matching the
- * app's other title-based hints (nodes, the resize grip) and never clipping inside the scrolling
- * panel, and is exposed to assistive tech via aria-label.
- */
-export function HelpTip({ text }: { text: string }): JSX.Element {
-  return (
-    <span
-      role="img"
-      title={text}
-      aria-label={`Help: ${text}`}
-      className="inline-flex h-3.5 w-3.5 shrink-0 cursor-help select-none items-center justify-center rounded-full border border-slate-300 font-normal text-[9px] text-slate-400 normal-case leading-none"
-    >
-      ?
-    </span>
-  );
-}
-
-/** A labelled status pill for a property's verdict: coloured icon + word (Yes / No / Unknown). */
-export function StatusBadge({ verdict }: { verdict: Verdict }): JSX.Element {
+/** A labelled status pill for a verdict: coloured icon + word (Yes / No / Unknown). */
+export function VerdictBadge({ verdict }: { verdict: Verdict }): JSX.Element {
   const { label, tone, Icon } = VERDICT_META[verdict];
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-semibold text-white text-xs ${tone}`}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold text-sm text-white ${tone}`}
     >
-      <Icon className="h-3 w-3" />
+      <Icon className="h-3.5 w-3.5" />
       {label}
     </span>
   );
 }
 
+/** The grey mark of a card whose answer needs the full analysis, which has not run for this net. */
+export function PendingBadge(): JSX.Element {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300 bg-slate-50 px-2.5 py-0.5 font-medium text-slate-600 text-sm">
+      {PENDING_LABEL}
+    </span>
+  );
+}
+
+/** A quiet mark for a card that counts something ("3", "Acyclic", "14 markings"). */
+export function CountMark({ children }: { children: ReactNode }): JSX.Element {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2.5 py-0.5 font-medium text-slate-700 text-sm">
+      {children}
+    </span>
+  );
+}
+
 /**
- * A property card in the competitor's Status + Reasons shape: the title and a labelled status pill on
- * one header row, then the explanation as a lead line plus bulleted reasons. `children` carries rich
- * extras (e.g. click-to-spotlight chips) below the reasons.
+ * The one card of the Analysis panel: a dark title of normal size with its help icon, an optional
+ * mark on the right (a verdict, a count, "Acyclic" ...), and a body in normal dark text.
  */
-export function StatusCard({
+export function Card({
   title,
-  verdict,
-  detail,
-  items,
   help,
+  mark,
   children,
 }: {
   title: string;
-  verdict: Verdict;
-  detail?: string;
-  items?: string[];
-  help?: string;
+  help?: HelpTopic;
+  mark?: ReactNode;
   children?: ReactNode;
 }): JSX.Element {
   return (
-    <div className="flex flex-col gap-1.5 rounded border border-slate-200 p-2.5 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1 font-medium text-slate-700 text-sm">
+    <section className="flex flex-col gap-2 rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <h3 className="flex items-center gap-1.5 font-medium text-base text-slate-900">
           {title}
-          {help && <HelpTip text={help} />}
-        </span>
-        <StatusBadge verdict={verdict} />
+          {help && <HelpTip topic={help} />}
+        </h3>
+        {mark}
       </div>
-      {detail && <p className="text-slate-500 text-xs">{detail}</p>}
-      {items && items.length > 0 && (
-        <ul className="flex flex-col gap-0.5 text-slate-500 text-xs">
-          {items.map((item) => (
-            <li key={item} className="flex gap-1.5">
-              <span aria-hidden="true" className="select-none text-slate-300">
-                •
-              </span>
-              <span className="min-w-0">{item}</span>
-            </li>
-          ))}
-        </ul>
+      {children !== undefined && (
+        <div className="flex flex-col gap-2 text-slate-700 text-sm">{children}</div>
       )}
-      {children}
-    </div>
+    </section>
   );
+}
+
+/**
+ * A {@link Card} for one verdict: the verdict pill, a lead sentence and optional bullets. `pending`
+ * marks a result that needs the full analysis before it can say anything, so the card shows
+ * {@link PendingBadge} instead of an amber "Unknown", which stays for results the analysis could
+ * not settle.
+ */
+export function VerdictCard({
+  title,
+  help,
+  verdict,
+  pending = false,
+  detail,
+  items,
+  children,
+}: {
+  title: string;
+  help?: HelpTopic;
+  verdict: Verdict;
+  pending?: boolean;
+  detail?: string;
+  items?: string[];
+  children?: ReactNode;
+}): JSX.Element {
+  return (
+    <Card
+      title={title}
+      help={help}
+      mark={pending ? <PendingBadge /> : <VerdictBadge verdict={verdict} />}
+    >
+      {!pending && detail && <p>{detail}</p>}
+      {!pending && items && items.length > 0 && <Bullets items={items} />}
+      {children}
+    </Card>
+  );
+}
+
+export function Bullets({ items }: { items: string[] }): JSX.Element {
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {items.map((item) => (
+        <li key={item} className="flex gap-1.5">
+          <span aria-hidden="true" className="select-none text-slate-400">
+            •
+          </span>
+          <span className="min-w-0">{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A heading inside a card for one of its parts, such as "Place bounds" in the Bounded card. */
+export function SubHeading({ title, help }: { title: string; help?: HelpTopic }): JSX.Element {
+  return (
+    <h4 className="flex items-center gap-1.5 font-medium text-slate-900 text-sm">
+      {title}
+      {help && <HelpTip topic={help} />}
+    </h4>
+  );
+}
+
+/** A quieter line of text in a card: a caveat or a summary. */
+export function Note({ children }: { children: ReactNode }): JSX.Element {
+  return <p className="text-slate-500 text-sm">{children}</p>;
 }
 
 /** "Showing N of M" footer when a list is clipped to {@link DISPLAY_CAP}; renders nothing when it fits. */
 export function Overflow({ total }: { total: number }): JSX.Element | null {
   if (total <= DISPLAY_CAP) return null;
   return (
-    <p className="text-slate-400 text-xs">
+    <Note>
       Showing {DISPLAY_CAP} of {total}.
-    </p>
+    </Note>
   );
 }
 
-/** A titled panel section with the shared uppercase heading and an optional "?" help tooltip. */
-export function Section({
-  title,
-  help,
-  children,
-}: {
-  title: string;
-  help?: string;
-  children: ReactNode;
-}): JSX.Element {
+/** A small mark that says what a name stands for: a circle for a place, a bar for a transition. */
+export function ElementMark({ kind }: { kind: ElementKind }): JSX.Element {
+  if (kind === "place") {
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] border-current opacity-70"
+      />
+    );
+  }
+  if (kind === "transition") {
+    return (
+      <span aria-hidden="true" className="inline-block h-3 w-1.5 shrink-0 bg-current opacity-70" />
+    );
+  }
   return (
-    <section className="flex flex-col gap-2">
-      <h3 className="flex items-center gap-1 font-semibold text-slate-500 text-xs uppercase tracking-wide">
-        {title}
-        {help && <HelpTip text={help} />}
-      </h3>
-      {children}
-    </section>
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 14 10"
+      className="h-2.5 w-3.5 shrink-0 opacity-70"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <path d="M1 5h10M8 1.5 11.5 5 8 8.5" />
+    </svg>
   );
+}
+
+/** A wrapping row of chips. */
+export function ChipList({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="flex flex-wrap gap-1">{children}</div>;
 }
 
 /**
- * The single click-to-spotlight affordance shared by every analytics tab: a button that lights
- * `ids` on the canvas (and toggles the spotlight off when they are already lit), amber-filled while
- * active. With no ids to spotlight it renders a non-interactive element, so an empty witness (e.g. a
- * deadlock at the all-zero marking) never looks clickable. `lit` is the live highlight joined with
- * commas. The parent reads it once and threads it down so each chip can tell if it is the lit one.
+ * The single click-to-spotlight control shared by every tab: a button that names elements of the
+ * net. Resting the mouse on it lights `target` on the canvas at once, and leaving clears that; a
+ * click keeps them lit and pans the canvas to them (a second click turns it off). Amber while kept.
+ * With nothing to light it renders a plain element, so an empty witness (a deadlock at the all-zero
+ * marking) never looks clickable. `kind` adds the mark of a single element's kind; `layout="row"`
+ * makes a full-width block for a multi-line entry (an invariant, a loop, a deadlock marking).
  */
 export function HighlightChip({
-  ids,
-  lit,
-  size = "row",
+  target,
+  kind,
+  layout = "chip",
   children,
 }: {
-  ids: string[];
-  lit: string;
-  size?: "row" | "chip";
+  target: Spotlight;
+  kind?: ElementKind;
+  layout?: "chip" | "row";
   children: ReactNode;
 }): JSX.Element {
+  const key = spotlightKey(target);
+  const active = useAnalyticsStore((s) => spotlightKey(s.highlight) === key);
   const shape =
-    size === "chip"
-      ? "rounded border px-1.5 py-0.5 text-xs"
-      : "rounded border px-2 py-1 text-left text-sm";
-  if (ids.length === 0) {
-    return <div className={`${shape} border-slate-200 bg-slate-50 text-slate-700`}>{children}</div>;
+    layout === "chip"
+      ? "inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 text-sm"
+      : "flex w-full flex-col rounded border px-2 py-1 text-left text-sm";
+  const content = (
+    <>
+      {kind && <ElementMark kind={kind} />}
+      {children}
+    </>
+  );
+  if (target.nodes.length === 0 && target.arcs.length === 0) {
+    return <div className={`${shape} border-slate-200 bg-slate-50 text-slate-800`}>{content}</div>;
   }
-  const active = ids.join(",") === lit;
+  const store = useAnalyticsStore.getState;
   return (
     <button
       type="button"
-      onClick={() => useAnalyticsStore.getState().highlightNodes(ids)}
+      onClick={() => store().toggleHighlight(target)}
+      onPointerEnter={(e) => {
+        if (e.pointerType !== "touch") store().setPreview(target);
+      }}
+      onPointerLeave={() => store().setPreview(NO_SPOTLIGHT)}
       aria-pressed={active}
       className={`${shape} transition-colors ${
         active
-          ? "border-amber-400 bg-amber-50 text-amber-800"
-          : "border-slate-200 bg-slate-50 text-slate-700 hover:border-amber-300 hover:bg-amber-50"
+          ? "border-amber-400 bg-amber-50 text-amber-900"
+          : "border-slate-200 bg-slate-50 text-slate-800 hover:border-amber-300 hover:bg-amber-50"
       }`}
+    >
+      {content}
+    </button>
+  );
+}
+
+/** A chip for one place or transition, by id. */
+export function ElementChip({
+  id,
+  kind,
+  name,
+}: {
+  id: string;
+  kind: "place" | "transition";
+  name: string;
+}): JSX.Element {
+  return (
+    <HighlightChip target={{ nodes: [id], arcs: [] }} kind={kind}>
+      {name}
+    </HighlightChip>
+  );
+}
+
+/** A small secondary button for a copy action inside a card. */
+export function CopyButton({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: string;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded border border-slate-300 bg-white px-2.5 py-1 font-medium text-slate-700 text-sm hover:bg-slate-100"
     >
       {children}
     </button>
