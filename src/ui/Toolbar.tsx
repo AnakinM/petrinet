@@ -36,10 +36,14 @@ export function Toolbar(): JSX.Element {
 
   return (
     <header className="relative z-20 flex items-center gap-2 border-slate-300 border-b-[3px] bg-white px-3 py-2 shadow-[0_4px_8px_-4px_rgba(15,23,42,0.15)]">
-      <span className="mr-2 flex items-center gap-1.5">
+      <div className="mr-2 flex items-center gap-1.5">
         <img src="/apple-touch-icon.png" alt="" width={24} height={24} className="h-6 w-6" />
-        <span className="font-semibold text-slate-800 text-sm">PetriNet</span>
-      </span>
+        {/* The site name is the page heading. "Editor" shows from 1280 pixels up only, so the bar
+            is no wider than before on a narrow window. Screen readers and crawlers always get it. */}
+        <h1 className="whitespace-nowrap font-semibold text-slate-800 text-sm">
+          PetriNet <span className="sr-only xl:not-sr-only">Editor</span>
+        </h1>
+      </div>
       <ToolbarButton onClick={newNet} disabled={simulating}>
         <NewIcon />
         New

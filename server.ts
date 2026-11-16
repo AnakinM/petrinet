@@ -4,15 +4,35 @@
 const DIST = `${import.meta.dir}/dist`;
 const PORT = Number(Bun.env.PORT ?? 3000);
 const indexHtml = Bun.file(`${DIST}/index.html`);
+// No file in dist has a path this long. A longer one could pass the system's limit for a full file
+// path (1024 bytes on macOS, 4096 on Linux), and then Bun.file throws instead of finding nothing.
+const MAX_PATHNAME_LENGTH = 512;
+
+/**
+ * The file in dist for a request path, or null. A directory that holds an index.html serves that
+ * file, with or without a trailing slash: / is dist/index.html and /guide is dist/guide/index.html.
+ * `exists()` is false for a directory itself. URL parsing has already removed every `..` segment,
+ * so a path cannot leave dist.
+ */
+async function distFile(pathname: string): Promise<Bun.BunFile | null> {
+  if (pathname.length > MAX_PATHNAME_LENGTH) return null;
+  // Trim trailing slashes with a loop. The regex /\/+$/ takes quadratic time on a path of many
+  // slashes followed by a letter, which a visitor controls. There is no test seam: this file starts
+  // the server when it loads.
+  let end = pathname.length;
+  while (end > 0 && pathname[end - 1] === "/") end--;
+  for (const path of [pathname, `${pathname.slice(0, end)}/index.html`]) {
+    const file = Bun.file(`${DIST}${path}`);
+    if (await file.exists()) return file;
+  }
+  return null;
+}
 
 const server = Bun.serve({
   port: PORT,
   async fetch(req): Promise<Response> {
-    const { pathname } = new URL(req.url);
-    const file = Bun.file(`${DIST}${pathname === "/" ? "/index.html" : pathname}`);
-    if (await file.exists()) {
-      return new Response(file);
-    }
+    const file = await distFile(new URL(req.url).pathname);
+    if (file) return new Response(file);
     return new Response(indexHtml, { headers: { "Content-Type": "text/html" } });
   },
 });
