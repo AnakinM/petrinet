@@ -13,7 +13,7 @@ import {
 } from "@/ui/icons";
 import { Menu, type MenuEntry, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
-import { THEME_LABEL, ThemeIcon, ThemeMenu } from "@/ui/ThemeMenu";
+import { useThemeToggle } from "@/ui/ThemeToggle";
 import { Tooltip, type TooltipTriggerProps } from "@/ui/Tooltip";
 import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
 
@@ -33,6 +33,7 @@ export function Toolbar(): JSX.Element {
   const snap = useBuildStore((s) => s.snap);
   const canUndo = useTemporal((t) => t.pastStates.length > 0);
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
+  const theme = useThemeToggle();
 
   return (
     <header className="relative z-20 flex items-center gap-2 border-line-strong border-b-[3px] bg-surface px-3 py-2 shadow-[0_4px_8px_-4px_var(--color-shadow)]">
@@ -89,19 +90,10 @@ export function Toolbar(): JSX.Element {
         </>
       )}
       <div className="ml-auto flex items-center gap-2">
-        <ThemeMenu>
-          {(trigger, open) => (
-            <ToolbarButton
-              menu={trigger}
-              active={open}
-              ariaLabel={THEME_LABEL}
-              tooltip={THEME_LABEL}
-              tooltipSuppressed={open}
-            >
-              <ThemeIcon />
-            </ToolbarButton>
-          )}
-        </ThemeMenu>
+        <ToolbarButton onClick={theme.toggle} ariaLabel={theme.label} tooltip={theme.label}>
+          {/* As tall as a line of text, so the button is as tall as the ones with a label. */}
+          <span className="flex h-5 items-center">{theme.icon}</span>
+        </ToolbarButton>
         <ToolbarButton onClick={() => useAnalyticsStore.getState().toggle()} active={analyticsOpen}>
           Analysis
         </ToolbarButton>
