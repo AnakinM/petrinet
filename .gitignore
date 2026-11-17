@@ -4,8 +4,9 @@ dist/
 *.local
 .DS_Store
 
-# .npn samples
+# .npn samples, except the committed test samples made in the course tool
 *.npn
+!src/codec/fixtures/npn/*.npn
 
 # Local-only
 local/

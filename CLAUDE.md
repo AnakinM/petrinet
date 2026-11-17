@@ -43,8 +43,9 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
 
 - Export is **byte-faithful**: UTF-8 **BOM**, single-line **minified** JSON, **preserved key
   order**, **no trailing newline**. Each arc's *current* geometry is serialized back into `points`.
-- Round-tripping `export-12.npn` with no edits must produce a **byte-identical** file. There is a
-  Vitest test that enforces this. Never regress it.
+- Round-tripping `src/codec/fixtures/npn/class-tool-sample.npn` (a real file exported from the
+  course tool) with no edits must produce a **byte-identical** file. There is a Vitest test that
+  enforces this. Never regress it.
 - Import is **lenient and forward-compatible**: validate structure, default missing optional fields
   (e.g. absent `labelPosition`), and **preserve unknown/extra fields** per element so a future
   extended `.npn` survives a round-trip through this editor. Malformed input fails with a clear,
@@ -101,7 +102,8 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
 
 - **Vitest.** Unit tests co-located as `*.test.ts(x)` next to the code they cover.
 - The **`.npn` codec and the firing engine must have unit tests**, including the byte-identical
-  round-trip test against `export-12.npn` (kept as a fixture).
+  round-trip test against `src/codec/fixtures/npn/class-tool-sample.npn` (a committed fixture,
+  exported from the course tool; never re-save it through an editor).
 - Group tests in `describe` blocks. No loose top-level tests.
 - Testing pyramid: most coverage from pure-unit tests on `domain/` and `codec/`. Component tests cover
   each interactive surface's happy path plus an error path where one exists.
@@ -129,7 +131,7 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
 
 ### Never do
 - Commit `.env` files or hardcode credentials/secrets.
-- Break `.npn` byte-compatibility or the `export-12.npn` round-trip test.
+- Break `.npn` byte-compatibility or the round-trip test against the course tool sample.
 - Make React Flow state the source of truth instead of the domain model.
 - Introduce a second state-management or diagramming library without flagging it first.
 - Implement extended semantics (inhibitor/read arcs, capacities, colored tokens) in v1.
