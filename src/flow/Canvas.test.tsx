@@ -8,6 +8,7 @@ import { Canvas } from "@/flow/Canvas";
 import { SAMPLE_NET } from "@/flow/sampleNet";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
+import { enterBuild, enterSimulate } from "@/ui/toolbarActions";
 
 beforeAll(() => {
   // React Flow measures its pane and nodes via ResizeObserver, which jsdom lacks.
@@ -214,5 +215,35 @@ describe("Canvas stacking", () => {
     const overlay = container.querySelector<HTMLElement>('[style*="z-index: 1100"]');
     expect(overlay).not.toBeNull();
     expect(overlay?.parentElement).toHaveClass("isolate");
+  });
+});
+
+describe("Canvas selection across a mode switch", () => {
+  beforeEach(() => {
+    useBuildStore.getState().setTool("idle");
+    useNetStore.getState().setMode("build");
+  });
+
+  it.each(["p-ready", "t-start"])("selects %s again after Simulate and back", (id) => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <Canvas />
+      </ReactFlowProvider>,
+    );
+    const el = (): Element => {
+      const found = container.querySelector(`[data-id="${id}"]`);
+      if (!found) throw new Error(`${id} not rendered`);
+      return found;
+    };
+    fireEvent.click(el());
+    expect(useNetStore.getState().selection.nodes).toEqual([id]);
+
+    act(() => enterSimulate());
+    act(() => enterBuild());
+    // React Flow must not keep the old flag, or a second click is not a selection change.
+    expect(el().classList.contains("selected")).toBe(false);
+
+    fireEvent.click(el());
+    expect(useNetStore.getState().selection.nodes).toEqual([id]);
   });
 });
