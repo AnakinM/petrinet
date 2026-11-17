@@ -31,12 +31,12 @@ export function Toolbar(): JSX.Element {
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
 
   return (
-    <header className="relative z-20 flex items-center gap-2 border-slate-300 border-b-[3px] bg-white px-3 py-2 shadow-[0_4px_8px_-4px_rgba(15,23,42,0.15)]">
+    <header className="relative z-20 flex items-center gap-2 border-line-strong border-b-[3px] bg-surface px-3 py-2 shadow-[0_4px_8px_-4px_var(--color-shadow)]">
       <div className="mr-2 flex items-center gap-1.5">
         <img src="/apple-touch-icon.png" alt="" width={24} height={24} className="h-6 w-6" />
         {/* The site name is the page heading. "Editor" shows from 1280 pixels up only, so the bar
             is no wider than before on a narrow window. Screen readers and crawlers always get it. */}
-        <h1 className="whitespace-nowrap font-semibold text-slate-800 text-sm">
+        <h1 className="whitespace-nowrap font-semibold text-fg text-sm">
           PetriNet <span className="sr-only xl:not-sr-only">Editor</span>
         </h1>
       </div>
@@ -56,7 +56,7 @@ export function Toolbar(): JSX.Element {
         <ImageIcon />
         Image
       </ToolbarMenu>
-      <span className="mx-1 h-5 w-px bg-slate-200" />
+      <span className="mx-1 h-5 w-px bg-line" />
       <ToolbarButton onClick={netHistory.undo} disabled={simulating || !canUndo}>
         <UndoIcon />
         Undo
@@ -67,7 +67,7 @@ export function Toolbar(): JSX.Element {
       </ToolbarButton>
       {!simulating && (
         <>
-          <span className="mx-1 h-5 w-px bg-slate-200" />
+          <span className="mx-1 h-5 w-px bg-line" />
           <ToolbarButton
             onClick={() => useBuildStore.getState().toggleSnap()}
             active={snap}
@@ -77,7 +77,7 @@ export function Toolbar(): JSX.Element {
             {snap ? (
               <MagnetIcon />
             ) : (
-              <span className="flex text-slate-400">
+              <span className="flex text-fg-faint">
                 <MagnetIcon off />
               </span>
             )}
@@ -150,8 +150,8 @@ function ToolbarButton({
       aria-label={ariaLabel}
       className={
         active
-          ? "inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-700 px-2.5 py-1 text-sm text-white shadow-sm"
-          : "inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2.5 py-1 text-slate-700 text-sm shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          ? "inline-flex items-center gap-1.5 rounded border border-accent bg-accent px-2.5 py-1 text-on-accent text-sm shadow-sm"
+          : "inline-flex items-center gap-1.5 rounded border border-line-strong bg-surface-raised px-2.5 py-1 text-fg-soft text-sm shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
       }
     >
       {children}
