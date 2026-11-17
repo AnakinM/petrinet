@@ -14,7 +14,7 @@ import { useSimStore } from "@/store/simStore";
 const DIAMETER = NodeGeometry.PLACE_DIAMETER;
 
 const CIRCLE =
-  "flex h-full w-full items-center justify-center rounded-full border-2 border-slate-700 bg-white shadow-sm";
+  "flex h-full w-full items-center justify-center rounded-full border-2 border-canvas-node bg-canvas-place shadow-sm";
 
 /** A place: a circle whose tokens render as dots (few) or a numeral (many). In Simulate it
  *  is a token source: click adds a token, shift-click removes one. */
@@ -41,13 +41,13 @@ export function PlaceNode({ data, selected }: NodeProps<PlaceFlowNode>): JSX.Ele
             <span
               // biome-ignore lint/suspicious/noArrayIndexKey: dots are positionless and identical
               key={i}
-              className="h-[7px] w-[7px] rounded-full bg-slate-900"
+              className="h-[7px] w-[7px] rounded-full bg-canvas-token"
             />
           ))}
         </div>
       )}
       {display.kind === "number" && (
-        <span className="font-semibold text-slate-900 text-sm">{display.value}</span>
+        <span className="font-semibold text-canvas-token text-sm">{display.value}</span>
       )}
     </>
   );
@@ -64,19 +64,19 @@ export function PlaceNode({ data, selected }: NodeProps<PlaceFlowNode>): JSX.Ele
           title="Click to add a token · shift-click to remove"
           // pointer-events-auto re-enables clicks: React Flow locks the node wrapper to
           // pointer-events:none in Simulate (not draggable/selectable).
-          className={`pointer-events-auto cursor-pointer hover:ring-2 hover:ring-slate-300 ${CIRCLE}`}
+          className={`pointer-events-auto cursor-pointer hover:ring-2 hover:ring-canvas-hover-ring ${CIRCLE}`}
         >
           {tokens}
         </button>
       ) : (
         <div
-          className={`${CIRCLE} ${tokenMode ? "cursor-pointer hover:ring-2 hover:ring-slate-300" : ""}`}
+          className={`${CIRCLE} ${tokenMode ? "cursor-pointer hover:ring-2 hover:ring-canvas-hover-ring" : ""}`}
         >
           {tokens}
         </div>
       )}
       <span
-        className="pointer-events-none absolute top-1/2 left-1/2 whitespace-nowrap text-slate-700 text-xs"
+        className="pointer-events-none absolute top-1/2 left-1/2 whitespace-nowrap text-canvas-label text-xs"
         style={{ transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))` }}
       >
         {place.name}

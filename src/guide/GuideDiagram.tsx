@@ -29,13 +29,16 @@ export function GuideDiagram({
   const svg = useMemo(() => inlineSvg(net), [net]);
   return (
     <figure className={`flex flex-col items-center ${className ?? ""}`}>
+      {/* The picture is always light, as in an exported image. In the dark theme it gets a border
+          and rounded corners, so it reads as a white card on purpose. The light theme shows no
+          frame: `border-line` only sets the colour, and `dark:border` adds the width. */}
       <div
-        className="w-full [&>svg]:mx-auto [&>svg]:h-auto [&>svg]:w-full"
+        className="w-full border-line dark:overflow-hidden dark:rounded-lg dark:border [&>svg]:mx-auto [&>svg]:h-auto [&>svg]:w-full"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: the markup comes from our own NetSvg serializer applied to static example nets, never user input.
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       {caption && (
-        <figcaption className="mt-3 text-center text-slate-500 text-sm">{caption}</figcaption>
+        <figcaption className="mt-3 text-center text-fg-subtle text-sm">{caption}</figcaption>
       )}
     </figure>
   );
