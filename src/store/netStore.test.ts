@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
+import { NpnCodec } from "@/codec/npn";
 import type { PetriNet } from "@/domain/types";
 import type { Analytics } from "@/lib/analytics";
-import { type netHistory, useNetStore } from "@/store/netStore";
+import { netHistory, useNetStore } from "@/store/netStore";
 
 /** p1 (0,0) → t1 (48,0), one arc with both endpoints in the pair. */
 const NET: PetriNet = {
@@ -146,5 +148,28 @@ describe("netStore Edit net usage event", () => {
     expect(track).not.toHaveBeenCalled();
     store.getState().connect("t1", "p1");
     expect(track).toHaveBeenCalledExactlyOnceWith("Edit net");
+  });
+});
+
+describe("netStore with an imported .npn net", () => {
+  it("still exports it byte-identically after Simulate, an undone edit and a redo", () => {
+    // A course tool sample with one arc's labelPosition written before its points.
+    const text = readFileSync(
+      new URL("../codec/fixtures/npn/class-tool-arc-label-first.npn", import.meta.url),
+      "utf8",
+    );
+    const exported = (): string => NpnCodec.BOM + NpnCodec.serialize(useNetStore.getState().net);
+    const { setNet, setMode, addPlace } = useNetStore.getState();
+
+    setNet(NpnCodec.parse(text));
+    setMode("simulate");
+    setMode("build");
+    addPlace({ x: 900, y: 0 });
+    netHistory.undo();
+    expect(exported()).toBe(text);
+
+    netHistory.redo();
+    netHistory.undo();
+    expect(exported()).toBe(text);
   });
 });

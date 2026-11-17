@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NpnCodec } from "@/codec/npn";
 import { NetOps } from "@/domain/netOps";
 import type { PetriNet } from "@/domain/types";
 
@@ -486,6 +487,28 @@ describe("NetOps.paste", () => {
     const arc = net.arcs.find((a) => a.multiplicity === 3 && a.id !== "a1");
     expect(arc?.srcMagnetic).toBe(true);
     expect(arc?.destMagnetic).toBe(true);
+  });
+
+  it("carries an imported arc's .npn key order, so its label still exports before its points", () => {
+    const base = copyNet();
+    base.arcs[0] = { ...base.arcs[0], labelPosition: { x: 25, y: -10 }, _labelBeforePoints: true };
+    const clip = NetOps.inducedSubgraph(base, ["p1", "t1"]);
+    const { net, arcIds } = NetOps.paste(base, clip, OFFSET);
+    const arc = net.arcs.find((a) => a.id === arcIds[0]);
+    if (!arc) throw new Error("the pasted arc is missing");
+    expect(arc._labelBeforePoints).toBe(true);
+
+    const { arcs } = JSON.parse(NpnCodec.serialize(net)) as {
+      arcs: Record<string, Record<string, object>>;
+    };
+    expect(Object.keys(arcs[arc.source][arc.target])).toEqual([
+      "id",
+      "srcMagnetic",
+      "destMagnetic",
+      "multiplicity",
+      "labelPosition",
+      "points",
+    ]);
   });
 
   it("allocates distinct names so a multi-node paste can't self-collide", () => {
