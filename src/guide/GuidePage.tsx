@@ -3,6 +3,8 @@ import { GuideNets } from "@/guide/exampleNets";
 import { GuideDiagram } from "@/guide/GuideDiagram";
 import { GUIDE_TITLE } from "@/guide/guideDocument";
 import { BugIcon, GitHubIcon } from "@/ui/icons";
+import { THEME_LABEL, ThemeIcon, ThemeMenu } from "@/ui/ThemeMenu";
+import { Tooltip } from "@/ui/Tooltip";
 
 const REPO_URL = "https://github.com/AnakinM/petrinet";
 const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
@@ -32,25 +34,22 @@ export function GuidePage(): JSX.Element {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-surface-subtle text-fg">
       <TopBar />
       <main className="mx-auto max-w-3xl px-5 py-10">
         <header className="mb-10">
-          <h1 className="font-bold text-3xl text-slate-900 tracking-tight">
+          <h1 className="font-bold text-3xl text-fg-strong tracking-tight">
             Guide to the PetriNet editor and simulator
           </h1>
-          <p className="mt-4 text-lg text-slate-600 leading-relaxed">
+          <p className="mt-4 text-lg text-fg-muted leading-relaxed">
             This guide explains what a Petri net is and how to build, run, and analyse one with this
             editor. You do not need any prior background. Read it top to bottom the first time, or
             jump straight to the part you need from the contents below.
           </p>
         </header>
 
-        <nav
-          aria-label="Contents"
-          className="mb-12 rounded-lg border border-slate-200 bg-white p-5"
-        >
-          <h2 className="mb-3 font-semibold text-slate-500 text-sm uppercase tracking-wide">
+        <nav aria-label="Contents" className="mb-12 rounded-lg border border-line bg-surface p-5">
+          <h2 className="mb-3 font-semibold text-fg-subtle text-sm uppercase tracking-wide">
             On this page
           </h2>
           <ol className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
@@ -58,9 +57,9 @@ export function GuidePage(): JSX.Element {
               <li key={item.id}>
                 <a
                   href={`#${item.id}`}
-                  className="flex gap-2 rounded px-1 py-1 text-slate-700 text-sm hover:bg-slate-100 hover:text-slate-900"
+                  className="flex gap-2 rounded px-1 py-1 text-fg-soft text-sm hover:bg-surface-muted hover:text-fg-strong"
                 >
-                  <span className="text-slate-400 tabular-nums">{i + 1}.</span>
+                  <span className="text-fg-faint tabular-nums">{i + 1}.</span>
                   {item.label}
                 </a>
               </li>
@@ -80,14 +79,14 @@ export function GuidePage(): JSX.Element {
         <ControlsSection />
         <SavingSection />
 
-        <div className="mt-14 rounded-lg border border-slate-200 bg-white p-6 text-center">
-          <p className="text-slate-600">
+        <div className="mt-14 rounded-lg border border-line bg-surface p-6 text-center">
+          <p className="text-fg-muted">
             That is everything you need to get started. The best way to learn is to open the editor
             and build a small net of your own.
           </p>
           <a
             href="/"
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-slate-800 px-4 py-2 font-medium text-sm text-white shadow-sm hover:bg-slate-900"
+            className="mt-4 inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-medium text-on-accent text-sm shadow-sm hover:bg-accent-hover"
           >
             Open the editor
           </a>
@@ -102,40 +101,70 @@ export function GuidePage(): JSX.Element {
 
 function TopBar(): JSX.Element {
   return (
-    <header className="sticky top-0 z-10 border-slate-200 border-b bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-10 border-line border-b bg-surface/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-2 px-5 py-3">
         <a href="/" className="flex items-center gap-2">
           <img src="/apple-touch-icon.png" alt="" width={24} height={24} className="h-6 w-6" />
           {/* The site name, as in the editor's top bar. "Editor" shows from 640 pixels up only: a
               small phone has no room for it. Screen readers and crawlers always get it. */}
-          <span className="whitespace-nowrap font-semibold text-slate-800">
+          <span className="whitespace-nowrap font-semibold text-fg">
             PetriNet <span className="sr-only sm:not-sr-only">Editor</span>
           </span>
         </a>
-        <span className="text-slate-400 text-sm">Guide</span>
-        <a
-          href="/"
-          className="ml-auto inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-slate-700 text-sm shadow-sm hover:bg-slate-50"
-        >
-          Open the editor
-        </a>
+        <span className="text-fg-faint text-sm">Guide</span>
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeSwitch />
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 rounded-md border border-line-strong bg-surface-raised px-3 py-1.5 text-fg-soft text-sm shadow-sm hover:bg-surface-hover"
+          >
+            Open the editor
+          </a>
+        </div>
       </div>
     </header>
   );
 }
 
+/**
+ * The theme switch of the editor's top bar, styled like the button beside it. The guide is
+ * pre-rendered, and the theme store gives React its neutral first state while it hydrates, so the
+ * monitor icon of the build's HTML always matches; the stored choice shows right after.
+ */
+function ThemeSwitch(): JSX.Element {
+  return (
+    <ThemeMenu>
+      {(menu, open) => (
+        <Tooltip label={THEME_LABEL} suppressed={open}>
+          {(tip) => (
+            <button
+              type="button"
+              {...tip}
+              {...menu}
+              aria-label={THEME_LABEL}
+              className="inline-flex items-center rounded-md border border-line-strong bg-surface-raised p-2 text-fg-soft shadow-sm hover:bg-surface-hover"
+            >
+              <ThemeIcon />
+            </button>
+          )}
+        </Tooltip>
+      )}
+    </ThemeMenu>
+  );
+}
+
 function SiteFooter(): JSX.Element {
   return (
-    <footer className="border-slate-200 border-t bg-white">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-6 text-slate-500 text-sm">
-        <a href="/" className="hover:text-slate-800">
+    <footer className="border-line border-t bg-surface">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-6 text-fg-subtle text-sm">
+        <a href="/" className="hover:text-fg">
           Open the editor
         </a>
         <a
           href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 hover:text-slate-800"
+          className="inline-flex items-center gap-2 hover:text-fg"
         >
           <GitHubIcon />
           GitHub
@@ -144,7 +173,7 @@ function SiteFooter(): JSX.Element {
           href={NEW_ISSUE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 hover:text-slate-800"
+          className="inline-flex items-center gap-2 hover:text-fg"
         >
           <BugIcon />
           Report an issue
@@ -250,7 +279,7 @@ function FiringSection(): JSX.Element {
       </p>
       <div className="my-8 grid items-center gap-6 sm:grid-cols-[1fr_auto_1fr]">
         <GuideDiagram net={GuideNets.firingBefore()} caption="Before: T1 is enabled." />
-        <div aria-hidden className="text-center font-medium text-slate-400 text-sm">
+        <div aria-hidden className="text-center font-medium text-fg-faint text-sm">
           fire T1 →
         </div>
         <GuideDiagram net={GuideNets.firingAfter()} caption="After: the token has moved to P2." />
@@ -286,7 +315,7 @@ function EditorSection(): JSX.Element {
         changing a net. Simulate mode is for running it. Build mode is where you spend most of your
         time, so start there.
       </p>
-      <h3 className="mt-8 mb-3 font-semibold text-lg text-slate-900">
+      <h3 className="mt-8 mb-3 font-semibold text-lg text-fg-strong">
         Placing places and transitions
       </h3>
       <p>
@@ -300,7 +329,7 @@ function EditorSection(): JSX.Element {
         alt="The PetriNet editor in Build mode, with the Palette and Properties panel on the left, the toolbar on top, and a net on the canvas."
         caption="The editor in Build mode. The Palette and Properties panel are on the left, the toolbar runs across the top, and the net sits on the canvas."
       />
-      <h3 className="mt-8 mb-3 font-semibold text-lg text-slate-900">Drawing arcs</h3>
+      <h3 className="mt-8 mb-3 font-semibold text-lg text-fg-strong">Drawing arcs</h3>
       <p>
         To connect two shapes, move your cursor over a place or a transition. Two small round
         handles appear on its left and right edges. Press one handle and move toward the shape you
@@ -312,7 +341,7 @@ function EditorSection(): JSX.Element {
         join two places or two transitions, because that is not a valid Petri net. Press Escape or
         right-click to cancel an arc you have started.
       </p>
-      <h3 className="mt-8 mb-3 font-semibold text-lg text-slate-900">Selecting and moving</h3>
+      <h3 className="mt-8 mb-3 font-semibold text-lg text-fg-strong">Selecting and moving</h3>
       <p>
         Click a shape or an arc to select it. Drag a shape to move it, and any connected arcs follow
         along. To move several shapes at once, choose the Select tool and drag a box around them on
@@ -320,13 +349,13 @@ function EditorSection(): JSX.Element {
         when a shape lines up with its neighbours. You can turn snapping off with the magnet button
         in the toolbar. When snapping is off, the magnet is grey and crossed out.
       </p>
-      <h3 className="mt-8 mb-3 font-semibold text-lg text-slate-900">Adding tokens</h3>
+      <h3 className="mt-8 mb-3 font-semibold text-lg text-fg-strong">Adding tokens</h3>
       <p>
         Choose the Token tool from the Palette, then click a place to add a token to it. Hold Shift
         and click to remove one. This sets the initial marking, which is the starting state saved
         with your net. You can also set an exact token count in the Properties panel.
       </p>
-      <h3 className="mt-8 mb-3 font-semibold text-lg text-slate-900">Editing properties</h3>
+      <h3 className="mt-8 mb-3 font-semibold text-lg text-fg-strong">Editing properties</h3>
       <p>
         Select a single element to edit it in the Properties panel on the left. A place lets you
         change its name and its token count. A transition lets you change its name and rotate it so
@@ -434,7 +463,7 @@ function ExamplesSection(): JSX.Element {
         A couple of small examples show the kinds of behaviour Petri nets capture well. Try
         recreating them in the editor and running them.
       </p>
-      <h3 className="mt-8 mb-3 font-semibold text-lg text-slate-900">A traffic light</h3>
+      <h3 className="mt-8 mb-3 font-semibold text-lg text-fg-strong">A traffic light</h3>
       <p>
         A single token moves around a loop, standing for the light that is currently lit. Each
         transition moves the token to the next colour. Because there is only ever one token, only
@@ -445,7 +474,7 @@ function ExamplesSection(): JSX.Element {
         caption="One token cycles through Red, Green, and Yellow."
         className="my-8 max-w-md mx-auto"
       />
-      <h3 className="mt-8 mb-3 font-semibold text-lg text-slate-900">Fork and join</h3>
+      <h3 className="mt-8 mb-3 font-semibold text-lg text-fg-strong">Fork and join</h3>
       <p>
         This net shows work splitting into two parallel tasks and then coming back together. Firing
         Split puts a token into both Task A and Task B, so the two tasks can proceed at the same
@@ -565,9 +594,9 @@ function ControlsSection(): JSX.Element {
       <p>
         These shortcuts speed up editing. They apply in Build mode, where you are changing the net.
       </p>
-      <div className="my-6 overflow-hidden rounded-lg border border-slate-200">
+      <div className="my-6 overflow-hidden rounded-lg border border-line">
         <table className="w-full text-sm">
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-line">
             <ShortcutRow action="Undo" keys={["Ctrl / Cmd", "Z"]} />
             <ShortcutRow action="Redo" keys={["Ctrl / Cmd", "Shift", "Z"]} />
             <ShortcutRow action="Copy the selection" keys={["Ctrl / Cmd", "C"]} />
@@ -627,18 +656,18 @@ function Section({
   children: ReactNode;
 }): JSX.Element {
   return (
-    <section id={id} className="scroll-mt-20 border-slate-200 border-t py-10">
-      <h2 className="mb-4 font-bold text-2xl text-slate-900 tracking-tight">{title}</h2>
-      <div className="space-y-4 text-slate-700 leading-relaxed [&_p]:text-[15px]">{children}</div>
+    <section id={id} className="scroll-mt-20 border-line border-t py-10">
+      <h2 className="mb-4 font-bold text-2xl text-fg-strong tracking-tight">{title}</h2>
+      <div className="space-y-4 text-fg-soft leading-relaxed [&_p]:text-[15px]">{children}</div>
     </section>
   );
 }
 
 function Term({ name, children }: { name: string; children: ReactNode }): JSX.Element {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <dt className="font-semibold text-slate-900">{name}</dt>
-      <dd className="mt-1 text-slate-600 text-sm leading-relaxed">{children}</dd>
+    <div className="rounded-lg border border-line bg-surface p-4">
+      <dt className="font-semibold text-fg-strong">{name}</dt>
+      <dd className="mt-1 text-fg-muted text-sm leading-relaxed">{children}</dd>
     </div>
   );
 }
@@ -646,10 +675,10 @@ function Term({ name, children }: { name: string; children: ReactNode }): JSX.El
 function Step({ n, children }: { n: number; children: ReactNode }): JSX.Element {
   return (
     <li className="flex gap-3">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-800 font-semibold text-white text-xs">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-inverse font-semibold text-on-inverse text-xs">
         {n}
       </span>
-      <span className="text-slate-700">{children}</span>
+      <span className="text-fg-soft">{children}</span>
     </li>
   );
 }
@@ -657,12 +686,12 @@ function Step({ n, children }: { n: number; children: ReactNode }): JSX.Element 
 function ShortcutRow({ action, keys }: { action: string; keys: string[] }): JSX.Element {
   return (
     <tr>
-      <td className="px-4 py-2.5 text-slate-700">{action}</td>
+      <td className="px-4 py-2.5 text-fg-soft">{action}</td>
       <td className="px-4 py-2.5 text-right">
         <span className="inline-flex flex-wrap justify-end gap-1">
           {keys.map((k, i) => (
             <span key={k} className="inline-flex items-center gap-1">
-              {i > 0 && <span className="text-slate-400">+</span>}
+              {i > 0 && <span className="text-fg-faint">+</span>}
               <Kbd>{k}</Kbd>
             </span>
           ))}
@@ -674,7 +703,7 @@ function ShortcutRow({ action, keys }: { action: string; keys: string[] }): JSX.
 
 function Kbd({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <kbd className="rounded border border-slate-300 border-b-2 bg-slate-100 px-1.5 py-0.5 font-medium font-mono text-slate-700 text-xs">
+    <kbd className="rounded border border-line-strong border-b-2 bg-surface-muted px-1.5 py-0.5 font-medium font-mono text-fg-soft text-xs">
       {children}
     </kbd>
   );
@@ -699,9 +728,9 @@ function Screenshot({
         src={src}
         alt={alt}
         loading="lazy"
-        className="w-full rounded-lg border border-slate-200 shadow-sm"
+        className="w-full rounded-lg border border-line shadow-sm"
       />
-      <figcaption className="mt-3 text-center text-slate-500 text-sm">{caption}</figcaption>
+      <figcaption className="mt-3 text-center text-fg-subtle text-sm">{caption}</figcaption>
     </figure>
   );
 }

@@ -106,7 +106,7 @@ function InvariantCard({
                 <li key={invariantKey(inv)}>
                   <HighlightChip target={{ nodes: ids, arcs: [] }} layout="row">
                     <span className="font-mono">{n.sum}</span>
-                    <span className="font-mono text-[13px] text-slate-500">
+                    <span className="font-mono text-[13px] text-fg-subtle">
                       {n.vector} · {n.system}
                     </span>
                   </HighlightChip>
@@ -145,16 +145,16 @@ function IncidenceMatrixCard({ net }: { net: PetriNet }): JSX.Element {
         <p>none</p>
       ) : (
         <>
-          <div className="max-h-72 overflow-auto rounded border border-slate-200">
+          <div className="max-h-72 overflow-auto rounded border border-line">
             <table className="border-separate border-spacing-0 font-mono text-sm">
               <thead>
                 <tr>
-                  <th className="sticky top-0 left-0 z-20 border-slate-200 border-r border-b bg-slate-50" />
+                  <th className="sticky top-0 left-0 z-20 border-line border-r border-b bg-surface-subtle" />
                   {net.transitions.map((t) => (
                     <th
                       key={t.id}
                       scope="col"
-                      className="sticky top-0 z-10 whitespace-nowrap border-slate-200 border-b bg-slate-50 px-2 py-1 text-right font-medium text-slate-800"
+                      className="sticky top-0 z-10 whitespace-nowrap border-line border-b bg-surface-subtle px-2 py-1 text-right font-medium text-fg"
                     >
                       {t.name}
                     </th>
@@ -166,7 +166,7 @@ function IncidenceMatrixCard({ net }: { net: PetriNet }): JSX.Element {
                   <tr key={p.id}>
                     <th
                       scope="row"
-                      className="sticky left-0 z-10 whitespace-nowrap border-slate-200 border-r bg-slate-50 px-2 py-1 text-left font-medium text-slate-800"
+                      className="sticky left-0 z-10 whitespace-nowrap border-line border-r bg-surface-subtle px-2 py-1 text-left font-medium text-fg"
                     >
                       {p.name}
                     </th>
@@ -174,7 +174,7 @@ function IncidenceMatrixCard({ net }: { net: PetriNet }): JSX.Element {
                       <td
                         // biome-ignore lint/suspicious/noArrayIndexKey: a column's index is its transition; the row never reorders
                         key={j}
-                        className={`px-2 py-1 text-right ${value === 0 ? "text-slate-400" : "text-slate-900"}`}
+                        className={`px-2 py-1 text-right ${value === 0 ? "text-fg-faint" : "text-fg-strong"}`}
                       >
                         {value}
                       </td>

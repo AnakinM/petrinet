@@ -5,6 +5,7 @@ import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { MenuIcon, RedoIcon, UndoIcon } from "@/ui/icons";
 import { Menu, type MenuSection, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
+import { THEME_LABEL, useThemeEntries } from "@/ui/ThemeMenu";
 import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
 
 const GUIDE_URL = "/guide";
@@ -14,9 +15,9 @@ const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
 /**
  * Condensed top bar for the mobile shell: icon-only Undo/Redo (Build only), the Build↔Simulate
  * {@link ModeToggle}, and a hamburger menu holding the secondary actions that live in the desktop
- * toolbar and sidebar footer (the Export and Image groups, the Analysis toggle, and the
- * Guide/GitHub links). All actions come from the shared {@link EXPORT_ENTRIES} et al., so they match
- * the desktop.
+ * toolbar and sidebar footer (the Export and Image groups, the Analysis toggle, the theme choices
+ * in one row, and the Guide/GitHub links). All actions come from the shared
+ * {@link EXPORT_ENTRIES} et al., so they match the desktop.
  */
 export function MobileTopBar(): JSX.Element {
   const mode = useNetStore((s) => s.mode);
@@ -25,7 +26,7 @@ export function MobileTopBar(): JSX.Element {
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
 
   return (
-    <header className="relative z-40 flex items-center gap-1.5 border-slate-300 border-b-[3px] bg-white px-2 py-1.5 shadow-[0_4px_8px_-4px_rgba(15,23,42,0.15)]">
+    <header className="relative z-40 flex items-center gap-1.5 border-line-strong border-b-[3px] bg-surface px-2 py-1.5 shadow-[0_4px_8px_-4px_var(--color-shadow)]">
       <img
         src="/apple-touch-icon.png"
         alt=""
@@ -35,7 +36,7 @@ export function MobileTopBar(): JSX.Element {
       />
       {/* The site name is the page heading. "Editor" shows from 640 pixels up only: a phone's bar
           has no room for it. Screen readers and crawlers always get it. */}
-      <h1 className="whitespace-nowrap font-semibold text-slate-800 text-sm">
+      <h1 className="whitespace-nowrap font-semibold text-fg text-sm">
         PetriNet <span className="sr-only sm:not-sr-only">Editor</span>
       </h1>
       {!simulating && (
@@ -59,6 +60,7 @@ export function MobileTopBar(): JSX.Element {
 /** The hamburger {@link Menu}: the desktop top bar's actions in groups, then the links. */
 function HamburgerMenu({ simulating }: { simulating: boolean }): JSX.Element {
   const analyticsOpen = useAnalyticsStore((s) => s.open);
+  const themeEntries = useThemeEntries();
   const sections: MenuSection[] = [
     {
       entries: [
@@ -76,6 +78,7 @@ function HamburgerMenu({ simulating }: { simulating: boolean }): JSX.Element {
         },
       ],
     },
+    { label: THEME_LABEL, entries: themeEntries, row: true },
     {
       entries: [
         { label: "Guide", href: GUIDE_URL },
@@ -134,8 +137,8 @@ function IconButton({
       title={label}
       className={`inline-flex h-9 w-9 touch-manipulation items-center justify-center rounded border shadow-sm disabled:cursor-not-allowed disabled:opacity-40 ${
         active
-          ? "border-slate-700 bg-slate-700 text-white"
-          : "border-slate-300 bg-white text-slate-700"
+          ? "border-accent bg-accent text-on-accent"
+          : "border-line-strong bg-surface-raised text-fg-soft"
       }`}
     >
       {children}

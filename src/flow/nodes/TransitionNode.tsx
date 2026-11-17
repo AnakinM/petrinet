@@ -62,7 +62,7 @@ export function TransitionNode({ data, selected }: NodeProps<TransitionFlowNode>
         )}
       </div>
       <span
-        className="pointer-events-none absolute top-1/2 left-1/2 whitespace-nowrap text-slate-700 text-xs"
+        className="pointer-events-none absolute top-1/2 left-1/2 whitespace-nowrap text-canvas-label text-xs"
         style={{ transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))` }}
       >
         {transition.name}
@@ -71,10 +71,11 @@ export function TransitionNode({ data, selected }: NodeProps<TransitionFlowNode>
   );
 }
 
-/** Bar styling: flashing (just fired) > enabled glow > resting slate. */
+/** Bar styling: flashing (just fired) > enabled glow > resting bar. */
 function barClass(fireable: boolean, flash: boolean): string {
-  if (flash) return `${BASE_BAR} bg-emerald-300 shadow-[0_0_14px_4px_rgba(16,185,129,0.9)]`;
+  if (flash)
+    return `${BASE_BAR} bg-canvas-flash shadow-[0_0_14px_4px_var(--color-canvas-flash-glow)]`;
   if (fireable)
-    return `${BASE_BAR} cursor-pointer bg-emerald-600 ring-2 ring-emerald-400 shadow-[0_0_10px_2px_rgba(16,185,129,0.7)]`;
-  return `${BASE_BAR} bg-slate-700`;
+    return `${BASE_BAR} cursor-pointer bg-canvas-enabled ring-2 ring-canvas-enabled-ring shadow-[0_0_10px_2px_var(--color-canvas-enabled-glow)]`;
+  return `${BASE_BAR} bg-canvas-transition`;
 }

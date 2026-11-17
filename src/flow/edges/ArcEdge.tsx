@@ -14,9 +14,6 @@ import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
 import { useIsMobile } from "@/ui/useIsMobile";
 
-/** The amber glow under an arc that the Analysis panel lights, matching the node highlight. */
-const GLOW_COLOR = "#f59e0b";
-
 /** An in-progress handle drag: the active point index plus a live draft polyline. */
 type Drag =
   | { kind: "waypoint"; index: number; points: Vec2[] }
@@ -107,12 +104,13 @@ export function ArcEdge({
   const path = ArcGeometry.roundedPath(points);
   return (
     <>
+      {/* The amber glow under an arc that the Analysis panel lights, matching the node highlight.
+          Full strength: at any lower opacity it falls below 3:1 against the light canvas. */}
       {lit && (
         <path
           d={path}
           fill="none"
-          stroke={GLOW_COLOR}
-          strokeOpacity={0.55}
+          className="stroke-canvas-highlight"
           strokeWidth={9}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -128,7 +126,7 @@ export function ArcEdge({
       <EdgeLabelRenderer>
         {weightLabel && (
           <div
-            className="nodrag nopan pointer-events-none absolute rounded border border-slate-300 bg-white px-1 font-semibold text-[11px] text-slate-700 leading-tight shadow-sm"
+            className="nodrag nopan pointer-events-none absolute rounded border border-canvas-chip-line bg-canvas-chip px-1 font-semibold text-[11px] text-canvas-chip-fg leading-tight shadow-sm"
             style={{
               transform: `translate(-50%, -50%) translate(${weightLabel.x}px, ${weightLabel.y}px)`,
             }}
@@ -194,9 +192,10 @@ type DotVariant = "endpoint" | "waypoint" | "insert";
 // The visible handle (an inner element) keeps its small size at every breakpoint; the outer element
 // is the pointer target, widened to a comfortable ~24px on touch (see {@link Dot}).
 const DOT_VISUAL: Record<DotVariant, string> = {
-  endpoint: "h-[10px] w-[10px] border border-white bg-indigo-500",
-  waypoint: "h-[10px] w-[10px] border-2 border-indigo-500 bg-white",
-  insert: "h-[9px] w-[9px] border border-indigo-400 bg-white opacity-40 group-hover:opacity-100",
+  endpoint: "h-[10px] w-[10px] border border-canvas-handle-fill bg-canvas-handle",
+  waypoint: "h-[10px] w-[10px] border-2 border-canvas-handle bg-canvas-handle-fill",
+  insert:
+    "h-[9px] w-[9px] border border-canvas-handle-soft bg-canvas-handle-fill opacity-40 group-hover:opacity-100",
 };
 const DOT_CURSOR: Record<DotVariant, string> = {
   endpoint: "cursor-grab active:cursor-grabbing",

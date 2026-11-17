@@ -51,7 +51,7 @@ function ClassCard({
     >
       {result.erroneous.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">{nodesLabel}</span>
+          <span className="text-fg-subtle">{nodesLabel}</span>
           <ChipList>
             {result.erroneous.map((id) => (
               <ElementChip key={id} id={id} kind={kindOf(id)} name={nodeName(id)} />
@@ -61,7 +61,7 @@ function ClassCard({
       )}
       {arcs.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Arcs with a weight above 1:</span>
+          <span className="text-fg-subtle">Arcs with a weight above 1:</span>
           <ChipList>
             {arcs.map((arc) => (
               <HighlightChip key={arc.id} target={{ nodes: [], arcs: [arc.id] }}>

@@ -26,20 +26,20 @@ export function MobilePropertiesSheet(): JSX.Element | null {
   const title = simulating ? "History" : count > 1 ? `${count} selected` : "Properties";
 
   return (
-    <div className="pointer-events-auto border-slate-300 border-t-[3px] bg-white shadow-[0_-6px_10px_-6px_rgba(15,23,42,0.2)]">
+    <div className="pointer-events-auto border-line-strong border-t-[3px] bg-surface shadow-[0_-6px_10px_-6px_var(--color-shadow)]">
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
         aria-expanded={expanded}
         className="flex w-full touch-manipulation flex-col items-center gap-1 px-4 pt-1.5 pb-1.5"
       >
-        <span className="h-1 w-10 rounded-full bg-slate-300" />
+        <span className="h-1 w-10 rounded-full bg-line-strong" />
         {!expanded && (
-          <span className="font-medium text-slate-500 text-sm">{title} · tap to open</span>
+          <span className="font-medium text-fg-subtle text-sm">{title} · tap to open</span>
         )}
       </button>
       {expanded && (
-        <div className="max-h-[45dvh] overflow-auto overscroll-contain border-slate-200 border-t">
+        <div className="max-h-[45dvh] overflow-auto overscroll-contain border-line border-t">
           <PropertiesPanel />
         </div>
       )}

@@ -41,6 +41,7 @@ import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/pro
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
+import { useThemeStore } from "@/store/themeStore";
 import { useIsMobile } from "@/ui/useIsMobile";
 
 // Stable module-level references: recreating these each render makes React Flow warn.
@@ -50,7 +51,8 @@ const EDGE_TYPES: EdgeTypes = { arc: ArcEdge };
 // Amber ring + soft glow an analytics highlight paints onto a node wrapper. Purely a `style`
 // overlay (untouched by the projection), so it layers cleanly over selection and survives Simulate.
 const HIGHLIGHT_STYLE: CSSProperties = {
-  boxShadow: "0 0 0 3px #f59e0b, 0 0 18px 6px rgba(245, 158, 11, 0.45)",
+  boxShadow:
+    "0 0 0 3px var(--color-canvas-highlight), 0 0 18px 6px var(--color-canvas-highlight-glow)",
   zIndex: 5,
 };
 
@@ -82,6 +84,8 @@ export function Canvas(): JSX.Element {
   // suppresses node drag/select so a tap starts/finishes the arc instead of moving or selecting.
   const arcTool = editable && tool === "arc";
   const isMobile = useIsMobile();
+  // React Flow's own controls and minimap follow the theme.
+  const colorMode = useThemeStore((s) => s.resolved);
   // Suppress node drag + marquee-select for any tool that turns a tap into its own action: token,
   // arc, and (on touch only, where placing has no capture overlay) the placing tools (so a tap
   // just drops a node and never nudges/selects an existing one).
@@ -347,13 +351,15 @@ export function Canvas(): JSX.Element {
   return (
     // `isolate` gives the canvas its own stacking context. The capture overlays below sit at
     // z-index 1100 to cover React Flow's own layers. Without it they would compete with the page
-    // itself and cover the top bar's menus and tooltips while a tool is active.
+    // itself and cover the top bar's menus and tooltips while a tool is active. `bg-canvas` keeps
+    // a space after it: Tailwind finds a class only when it stands alone in the source.
     // biome-ignore lint/a11y/noStaticElementInteractions: canvas-only right-click policy; all other pointer interaction is React Flow's pane below.
     <div
-      className={`relative isolate h-full w-full bg-white${isMobile ? " canvas-surface" : ""}`}
+      className={`relative isolate h-full w-full bg-canvas ${isMobile ? "canvas-surface" : ""}`}
       onContextMenu={onContextMenu}
     >
       <ReactFlow
+        colorMode={colorMode}
         nodes={nodes}
         edges={edges}
         onNodesChange={handleNodesChange}
@@ -394,15 +400,21 @@ export function Canvas(): JSX.Element {
           ? { defaultViewport: initialViewport }
           : { fitView: true, fitViewOptions: { padding: 0.2 } })}
       >
-        <Background variant={BackgroundVariant.Lines} gap={24} color="#e2e8f0" />
+        {/* React Flow puts these colours into inline styles and CSS variables, so the theme
+            tokens resolve there. */}
+        <Background variant={BackgroundVariant.Lines} gap={24} color="var(--color-canvas-grid)" />
         {/* The minimap and zoom controls sit where the mobile tool dock does; pinch replaces them. */}
         {!isMobile && (
           <>
             <MiniMap
               pannable
               zoomable
-              nodeStrokeColor="#334155"
-              nodeColor={(node) => (node.type === "transition" ? "#334155" : "#ffffff")}
+              nodeStrokeColor="var(--color-canvas-node)"
+              nodeColor={(node) =>
+                node.type === "transition"
+                  ? "var(--color-canvas-transition)"
+                  : "var(--color-canvas-place)"
+              }
             />
             <Controls showInteractive={false} />
           </>

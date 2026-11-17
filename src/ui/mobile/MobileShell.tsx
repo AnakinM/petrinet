@@ -38,12 +38,12 @@ function ArcCancelPill(): JSX.Element | null {
   if (!drafting) return null;
   return (
     <div className="mb-2 flex justify-center">
-      <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-slate-300 bg-white/95 px-4 py-2 text-slate-700 text-sm shadow-lg backdrop-blur">
+      <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-line-strong bg-surface/95 px-4 py-2 text-fg-soft text-sm shadow-lg backdrop-blur">
         <span>Tap a target node</span>
         <button
           type="button"
           onClick={() => useBuildStore.getState().cancelArc()}
-          className="touch-manipulation rounded-full bg-slate-700 px-3 py-1 font-medium text-white text-sm"
+          className="touch-manipulation rounded-full bg-accent px-3 py-1 font-medium text-on-accent text-sm"
         >
           Cancel
         </button>
