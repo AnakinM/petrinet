@@ -3,8 +3,8 @@ import { GuideNets } from "@/guide/exampleNets";
 import { GuideDiagram } from "@/guide/GuideDiagram";
 import { GUIDE_TITLE } from "@/guide/guideDocument";
 import { BugIcon, GitHubIcon } from "@/ui/icons";
-import { useThemeToggle } from "@/ui/ThemeToggle";
 import { Tooltip } from "@/ui/Tooltip";
+import { useThemeToggle } from "@/ui/useThemeToggle";
 
 const REPO_URL = "https://github.com/AnakinM/petrinet";
 const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";

@@ -135,24 +135,6 @@ describe("Menu", () => {
     );
   });
 
-  it("marks the current choice with a check", async () => {
-    renderMenu([
-      {
-        entries: [
-          { label: "Light", selected: true },
-          { label: "Dark", selected: false },
-        ],
-      },
-    ]);
-    await userEvent.click(trigger());
-    const light = screen.getByRole("menuitemradio", { name: "Light" });
-    expect(light).toHaveAttribute("aria-checked", "true");
-    expect(light.querySelector("svg")).not.toBeNull();
-    const dark = screen.getByRole("menuitemradio", { name: "Dark" });
-    expect(dark).toHaveAttribute("aria-checked", "false");
-    expect(dark.querySelector("svg")).toBeNull();
-  });
-
   it("renders a link entry that opens in a new tab", async () => {
     const onSelect = vi.fn();
     renderMenu([{ entries: [{ label: "Docs", href: "https://example.com", onSelect }] }]);

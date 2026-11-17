@@ -5,12 +5,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Analytics } from "@/lib/analytics";
 import { ImageFile } from "@/lib/download";
 import { useThemeStore } from "@/store/themeStore";
+import { ThemeTestHelpers } from "@/store/themeTestHelpers";
 import { MobileTopBar } from "@/ui/mobile/MobileTopBar";
 
 describe("MobileTopBar usage events", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    ThemeTestHelpers.reset();
   });
 
   it.each([
@@ -57,7 +59,6 @@ describe("MobileTopBar menu", () => {
   });
 
   it("has one theme entry that names the switch and toggles the look", () => {
-    useThemeStore.setState({ choice: null, resolved: "light" });
     render(<MobileTopBar />);
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Switch to dark theme" }));
@@ -66,9 +67,6 @@ describe("MobileTopBar menu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
     expect(screen.getByRole("menuitem", { name: "Switch to light theme" })).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Theme" })).not.toBeInTheDocument();
-    localStorage.clear();
-    useThemeStore.setState({ choice: null, resolved: "light" });
-    document.documentElement.classList.remove("dark");
   });
 });
 

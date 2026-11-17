@@ -7,12 +7,14 @@ import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GuidePage } from "@/guide/GuidePage";
 import { useThemeStore } from "@/store/themeStore";
+import { ThemeTestHelpers } from "@/store/themeTestHelpers";
 import { SunIcon } from "@/ui/icons";
 
 describe("GuidePage", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    ThemeTestHelpers.reset();
   });
 
   it("renders the page with tool-drawn diagrams and screenshot slots", () => {
@@ -86,8 +88,5 @@ describe("GuidePage", () => {
     expect(theme?.innerHTML).toBe(renderToStaticMarkup(<SunIcon />));
     act(() => root.unmount());
     container.remove();
-    localStorage.clear();
-    useThemeStore.setState({ choice: null, resolved: "light" });
-    document.documentElement.classList.remove("dark");
   });
 });

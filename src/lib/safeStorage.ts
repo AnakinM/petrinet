@@ -21,12 +21,4 @@ export class SafeStorage {
       // Blocked or full: the value is not kept.
     }
   }
-
-  static remove(key: string): void {
-    try {
-      globalThis.localStorage?.removeItem(key);
-    } catch {
-      // Blocked: nothing to remove.
-    }
-  }
 }

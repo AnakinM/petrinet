@@ -6,7 +6,7 @@ export type ResolvedTheme = "light" | "dark";
 
 /**
  * The `localStorage` key of the visitor's choice. No key means no choice yet, and the app follows
- * the system. An old value `system`, saved by an earlier version, counts as no choice. The inline
+ * the system. Any other value, such as `system`, counts as no choice. The inline
  * script in `index.html` reads the same key before the first paint, and a test keeps them equal.
  */
 export const THEME_STORAGE_KEY = "petrinet:theme";

@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { JSX } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { THEME_STORAGE_KEY, useThemeStore } from "@/store/themeStore";
+import { ThemeTestHelpers } from "@/store/themeTestHelpers";
 import { MoonIcon, SunIcon } from "@/ui/icons";
-import { useThemeToggle } from "@/ui/ThemeToggle";
 import { Toolbar } from "@/ui/Toolbar";
+import { useThemeToggle } from "@/ui/useThemeToggle";
 
 function ThemeButton(): JSX.Element {
   const theme = useThemeToggle();
@@ -19,14 +20,20 @@ function ThemeButton(): JSX.Element {
   );
 }
 
+/**
+ * Focus `el` the way a Tab does. jsdom cannot tell a Tab from a focus that a script moves, so the
+ * test states it: the element matches `:focus-visible`.
+ */
+function keyboardFocus(el: HTMLElement): void {
+  const matches = Element.prototype.matches;
+  vi.spyOn(el, "matches").mockImplementation(
+    (selector: string) => selector === ":focus-visible" || matches.call(el, selector),
+  );
+  fireEvent.focus(el);
+}
+
 const LIGHT_NAME = "Switch to dark theme";
 const DARK_NAME = "Switch to light theme";
-
-function resetTheme(): void {
-  localStorage.clear();
-  useThemeStore.setState({ choice: null, resolved: "light" });
-  document.documentElement.classList.remove("dark");
-}
 
 /** The button shows exactly this icon. */
 function expectIcon(name: string, icon: JSX.Element): void {
@@ -34,10 +41,9 @@ function expectIcon(name: string, icon: JSX.Element): void {
 }
 
 describe("Theme button", () => {
-  beforeEach(resetTheme);
   afterEach(() => {
     cleanup();
-    resetTheme();
+    ThemeTestHelpers.reset();
   });
 
   it("shows a moon and offers the dark theme while the app is light", () => {
@@ -69,10 +75,9 @@ describe("Theme button", () => {
 });
 
 describe("Toolbar theme button", () => {
-  beforeEach(resetTheme);
   afterEach(() => {
     cleanup();
-    resetTheme();
+    ThemeTestHelpers.reset();
   });
 
   it("sits just before the Analysis button and toggles on a click", async () => {
@@ -85,5 +90,16 @@ describe("Toolbar theme button", () => {
     await userEvent.click(theme);
     expect(screen.getByRole("button", { name: DARK_NAME })).toBeInTheDocument();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("names the switch in a quick tooltip, and the name follows the theme", () => {
+    render(<Toolbar />);
+    const button = screen.getByRole("button", { name: LIGHT_NAME });
+    keyboardFocus(button);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(LIGHT_NAME);
+
+    fireEvent.click(button);
+    keyboardFocus(button);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(DARK_NAME);
   });
 });
