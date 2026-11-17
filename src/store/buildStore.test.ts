@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useBuildStore } from "@/store/buildStore";
 
 describe("buildStore arc draft", () => {
@@ -92,5 +92,25 @@ describe("buildStore snap-to-grid", () => {
     expect(useBuildStore.getState().snap).toBe(!before);
     expect(localStorage.getItem("petrinet:snap-to-grid")).toBe(String(!before));
     useBuildStore.getState().toggleSnap(); // restore for any later tests
+  });
+});
+
+describe("buildStore with blocked storage", () => {
+  const storage = globalThis.localStorage;
+  const denied = (): never => {
+    throw new DOMException("The operation is insecure.", "SecurityError");
+  };
+
+  afterEach(() => {
+    vi.stubGlobal("localStorage", storage);
+  });
+
+  it("starts with snap on and still toggles it when getItem and setItem throw", async () => {
+    vi.stubGlobal("localStorage", { getItem: denied, setItem: denied, removeItem: denied });
+    vi.resetModules();
+    const { useBuildStore: fresh } = await import("@/store/buildStore");
+    expect(fresh.getState().snap).toBe(true);
+    fresh.getState().toggleSnap();
+    expect(fresh.getState().snap).toBe(false);
   });
 });
