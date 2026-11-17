@@ -54,7 +54,7 @@ function StateTableCard({ result }: { result: AnalysisResult }): JSX.Element {
       {table !== null && (
         <>
           {!table.complete && (
-            <p className="text-amber-800">
+            <p className="text-warning-fg">
               {result.stateSpaceExceeded ? STATE_CAP_EXCEEDED : UNBOUNDED_NOTE} The table shows only
               the explored part.
             </p>
@@ -79,7 +79,7 @@ function StateRows({ table }: { table: StateTable }): JSX.Element {
   const { placeName, transitionName } = useNetNames();
   const litKey = useAnalyticsStore((s) => s.highlightKey);
   return (
-    <div className="max-h-96 overflow-auto rounded border border-slate-200">
+    <div className="max-h-96 overflow-auto rounded border border-line">
       <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
@@ -121,7 +121,7 @@ function HeaderCell({
   return (
     <th
       scope="col"
-      className={`sticky top-0 whitespace-nowrap border-slate-200 border-b bg-slate-50 px-2 py-1 font-medium text-slate-800 ${numeric ? "text-right" : "text-left"} ${sticky ? "left-0 z-20 border-r" : "z-10"}`}
+      className={`sticky top-0 whitespace-nowrap border-line border-b bg-surface-subtle px-2 py-1 font-medium text-fg ${numeric ? "text-right" : "text-left"} ${sticky ? "left-0 z-20 border-r" : "z-10"}`}
     >
       {children}
     </th>
@@ -150,7 +150,7 @@ function StateRowView({
   const hover = useHoverPreview(target);
   const clickable = marked.length > 0;
   const active = clickable && key === litKey;
-  const cell = "border-slate-100 border-b px-2 py-1 align-top";
+  const cell = "border-line-subtle border-b px-2 py-1 align-top";
   return (
     <tr
       // The name cell holds a button whose click bubbles here, which gives the keyboard access.
@@ -158,17 +158,17 @@ function StateRowView({
         clickable ? () => useAnalyticsStore.getState().toggleHighlight(target, key) : undefined
       }
       {...(clickable ? hover : {})}
-      className={`group ${clickable ? "cursor-pointer hover:bg-amber-50" : ""} ${active ? "bg-amber-50" : ""}`}
+      className={`group ${clickable ? "cursor-pointer hover:bg-highlight-soft" : ""} ${active ? "bg-highlight-soft" : ""}`}
     >
       {/* The name stays in view while the table scrolls sideways to the firings. */}
       <td
-        className={`${cell} sticky left-0 z-[5] whitespace-nowrap border-r border-r-slate-200 font-mono ${active ? "bg-amber-50" : "bg-white"} ${clickable ? "group-hover:bg-amber-50" : ""}`}
+        className={`${cell} sticky left-0 z-[5] whitespace-nowrap border-r border-r-line font-mono ${active ? "bg-highlight-soft" : "bg-surface"} ${clickable ? "group-hover:bg-highlight-soft" : ""}`}
       >
         {clickable ? (
           <button
             type="button"
             aria-pressed={active}
-            className={`rounded px-1 font-mono ${active ? "bg-amber-200 text-amber-900" : "text-slate-900 underline decoration-slate-300 underline-offset-2"}`}
+            className={`rounded px-1 font-mono ${active ? "bg-highlight-tint text-highlight-fg" : "text-fg-strong underline decoration-line-strong underline-offset-2"}`}
           >
             {row.name}
           </button>
@@ -179,16 +179,16 @@ function StateRowView({
       {row.tokens.map((n, i) => (
         <td
           key={table.placeIds[i]}
-          className={`${cell} text-right font-mono ${n === 0 ? "text-slate-400" : "text-slate-900"}`}
+          className={`${cell} text-right font-mono ${n === 0 ? "text-fg-faint" : "text-fg-strong"}`}
         >
           {n}
         </td>
       ))}
       <td className={`${cell} min-w-40`}>
         {!row.explored ? (
-          <span className="text-slate-500 italic">not explored</span>
+          <span className="text-fg-subtle italic">not explored</span>
         ) : row.deadlock ? (
-          <span className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-800">
+          <span className="rounded bg-danger-tint px-1.5 py-0.5 font-medium text-danger-fg-strong">
             deadlock
           </span>
         ) : (

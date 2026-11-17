@@ -135,7 +135,7 @@ export function HelpTip({ topic }: { topic: HelpTopic }): JSX.Element {
         onBlur={() => {
           if (card?.by !== "mouse") close();
         }}
-        className="inline-flex h-[18px] w-[18px] shrink-0 cursor-help select-none items-center justify-center rounded-full border border-slate-500 bg-white font-semibold text-[13px] text-slate-600 leading-none hover:border-slate-700 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-1"
+        className="inline-flex h-[18px] w-[18px] shrink-0 cursor-help select-none items-center justify-center rounded-full border border-fg-subtle bg-surface-raised font-semibold text-[13px] text-fg-muted leading-none hover:border-fg-soft hover:text-fg focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-1"
       >
         ?
       </button>
@@ -151,9 +151,9 @@ export function HelpTip({ topic }: { topic: HelpTopic }): JSX.Element {
               top: placement?.top ?? 0,
               visibility: placement ? "visible" : "hidden",
             }}
-            className="pointer-events-none z-[60] flex w-[272px] flex-col gap-2 rounded-md border border-slate-300 bg-white p-3 text-left font-normal text-slate-700 text-sm normal-case leading-snug tracking-normal shadow-lg"
+            className="pointer-events-none z-[60] flex w-[272px] flex-col gap-2 rounded-md border border-line-strong bg-surface-raised p-3 text-left font-normal text-fg-soft text-sm normal-case leading-snug tracking-normal shadow-lg"
           >
-            <p className="font-semibold text-base text-slate-900">{topic}</p>
+            <p className="font-semibold text-base text-fg-strong">{topic}</p>
             <HelpPart label="Meaning" text={text.meaning} />
             <HelpPart label="Tells you" text={text.tellsYou} />
             <HelpPart label="Example" text={text.example} />
@@ -167,7 +167,7 @@ export function HelpTip({ topic }: { topic: HelpTopic }): JSX.Element {
 function HelpPart({ label, text }: { label: string; text: string }): JSX.Element {
   return (
     <div>
-      <p className="font-semibold text-[13px] text-slate-500">{label}</p>
+      <p className="font-semibold text-[13px] text-fg-subtle">{label}</p>
       <p>{text}</p>
     </div>
   );
