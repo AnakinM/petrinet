@@ -13,8 +13,11 @@ export type PetriFlowNode = PlaceFlowNode | TransitionFlowNode;
 export type ArcEdgeData = { arc: Arc };
 export type ArcFlowEdge = Edge<ArcEdgeData, "arc">;
 
-/** Stroke + arrowhead colour for arcs (slate-700), shared by the projection and the edge. */
-export const ARC_COLOR = "#334155";
+/**
+ * Stroke + arrowhead colour for arcs, shared by the projection and the edge. A theme token: React
+ * Flow puts the marker colour and the edge stroke into inline styles, where `var()` resolves.
+ */
+export const ARC_COLOR = "var(--color-canvas-arc)";
 
 /**
  * Derives the React Flow view from the domain {@link PetriNet}.

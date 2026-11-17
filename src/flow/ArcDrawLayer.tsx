@@ -13,9 +13,10 @@ import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { type ArcDraft, useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
 
-const RUBBER_COLOR = "#6366f1"; // indigo-500
-const VALID_COLOR = "#10b981"; // emerald-500
-const INVALID_COLOR = "#ef4444"; // red-500
+// Theme tokens. They go into inline styles only, where `var()` resolves in every browser.
+const RUBBER_COLOR = "var(--color-canvas-preview)";
+const VALID_COLOR = "var(--color-canvas-valid)";
+const INVALID_COLOR = "var(--color-canvas-invalid)";
 // Slightly forgiving hit radius so a click near a node border still finishes on it.
 const HIT_PAD = 6;
 
@@ -100,7 +101,7 @@ export function ArcDrawLayer({
           <path
             d={rubberPath}
             fill="none"
-            stroke={RUBBER_COLOR}
+            style={{ stroke: RUBBER_COLOR }}
             strokeWidth={1.5}
             strokeDasharray="6 4"
           />
