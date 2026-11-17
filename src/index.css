@@ -201,6 +201,12 @@
     background-color: var(--color-surface);
   }
 
+  /* The "React Flow" label in the canvas corner, in both themes: React Flow's own background for
+     it is a neutral grey that does not match the canvas. */
+  .react-flow {
+    --xy-attribution-background-color: color-mix(in srgb, var(--color-canvas) 80%, transparent);
+  }
+
   /* React Flow's own dark defaults are neutral greys. Point the ones we can see at our tokens:
      the canvas behind the grid, the zoom buttons, the minimap and the selection box. The light
      theme keeps React Flow's defaults, as before. */
@@ -216,6 +222,13 @@
     --xy-selection-background-color: rgb(129 140 248 / 0.12);
     --xy-selection-border: 1px dotted var(--color-canvas-handle);
   }
+}
+
+/* The label's link has a fixed #999 in React Flow's CSS (2.8:1 on white, grey on the dark canvas).
+   This rule stays outside the layers: React Flow's own CSS is not in a layer, so it would win over
+   any rule inside one. */
+.react-flow .react-flow__attribution a {
+  color: var(--color-fg-subtle);
 }
 
 /* Dynamic viewport height with a static fallback: browsers without `dvh` keep 100vh; modern mobile
