@@ -1,12 +1,14 @@
-# Petri Net Editor & Simulator
+# PetriNet Editor
 
-A browser-based editor and simulator for classic **place/transition (P/T) Petri nets**. Drag places
-and transitions onto an infinite-grid canvas, wire them together with arcs, then switch to Simulate
-mode to fire transitions and watch tokens flow. Import and export the `.npn` JSON format with
-**byte-level fidelity**.
+A free Petri net editor and simulator that runs in your browser. Draw a classic place/transition
+net, fire its transitions, and check its properties in the Analysis panel.
 
-Client-only: no backend, no database, no accounts. Your work stays in the browser
-(in-memory + `localStorage`).
+Open the editor at [petrinet.anikiej.com](https://petrinet.anikiej.com). New to Petri nets? The
+[guide](https://petrinet.anikiej.com/guide) explains the basics and every part of the editor.
+
+The app runs entirely in your browser. There is no account and nothing to install. The editor
+saves your net and your view in the browser as you work. The app sends nothing you draw to a
+server.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg?logo=typescript&logoColor=white)
@@ -14,26 +16,70 @@ Client-only: no backend, no database, no accounts. Your work stays in the browse
 ![Vite](https://img.shields.io/badge/Vite-build-646CFF.svg?logo=vite&logoColor=white)
 ![Bun](https://img.shields.io/badge/Bun-runtime-000000.svg?logo=bun&logoColor=white)
 
-> **Status: active development.** The pure core is implemented and unit-tested: the normalized net
-> model, the framework-free firing engine, and the byte-faithful `.npn` codec. The canvas, editing
-> UI, and simulation controls are being built on top of it. Expect rapid change.
+![The editor with a sample net on the canvas and the Analysis panel open on the Invariants tab](public/guide/analytics-panel.png)
 
 ## Features
 
-- **Visual editor**: drag-and-drop places and transitions onto an infinite, pannable and zoomable
-  grid canvas.
-- **Faithful arcs**: weighted arcs with multi-point waypoints, magnetic or free endpoints, and
-  movable weight labels.
-- **Build / Simulate split**: a hard separation between editing and running; Simulate mode locks the
-  structure so you can fire transitions safely.
-- **Classic P/T semantics**: strict weighted place/transition nets, driven by a pure, framework-free
-  firing engine that is unit-testable in isolation (and ready for a future auto-runner and analysis
-  tools).
-- **Byte-faithful `.npn` I/O**: round-tripping an unedited file reproduces it byte-for-byte (UTF-8
-  BOM, minified JSON, preserved key order). Import is lenient and **forward-compatible**: unknown
-  fields are preserved so files from future versions survive a round-trip.
-- **Undo / redo**: full history while building, with continuous drags coalesced into single steps.
-- **Autosave**: your net and viewport persist to `localStorage`.
+### Build
+
+- Put places and transitions on an infinite grid. Pan and zoom freely.
+- Draw arcs between them. The editor never joins two places or two transitions.
+- Bend an arc around other shapes. Click empty canvas while you draw it to add a corner. On a
+  selected arc, drag a corner to move it, or double-click it to remove it.
+- Give an arc a weight. A weight above 1 shows on the arc.
+- Set the starting tokens with the Token tool or in the Properties panel.
+- Rename shapes, rotate transitions, and delete anything you select.
+- Copy and paste, undo and redo.
+- Shapes snap to the grid, and guides appear when a shape lines up with its neighbours. The
+  magnet button turns snapping off.
+
+### Simulate
+
+- Simulate mode locks the structure of the net, so you cannot change it by accident.
+- Click an enabled transition to fire it.
+- Step fires one enabled transition. Play fires them one after another, at 1, 2, 5 or 10 per
+  second, until no transition can fire. When several transitions are enabled, the app picks one
+  at random.
+- The history lists every firing. Click a row to jump back to that state. Reset returns to the
+  starting tokens.
+- Click a place to add a token during a run. Shift-click removes one.
+
+### Analysis
+
+The Analysis panel checks the net and explains each result. It has five tabs:
+
+- Properties: bounded, safe, conservative, live, reversible and deadlock-free, each with its
+  reason. It also shows the largest token count that each place reaches.
+- Classification: ordinary, state machine, marked graph and free choice.
+- Invariants: place invariants, transition invariants and the incidence matrix. You can copy the
+  matrix as text or as LaTeX.
+- Structure: loops, and facts such as the source and sink places.
+- Reachability: ask whether a given marking is reachable. After the full analysis, a table shows
+  the reachable markings and the firings between them. You can copy the table.
+
+Some results update as you edit. The full analysis explores up to 10,000 markings, and it runs
+when you click Analyse. Click a result to light up its places, transitions or arcs on the canvas.
+Each result has a help card behind its question mark. The card explains the term, says what the
+result tells you, and gives an example. Copy results puts the whole analysis on the clipboard as
+plain text, ready for a report.
+
+### Import and export
+
+- Import opens a `.npn` or PNML file. You can also drop a file anywhere on the editor.
+- The editor refuses a PNML file with inhibitor or other special arcs, with place capacities, or
+  with a net type other than place/transition. The message says why.
+- Export saves the net as a file that you can import again: a `.npn` file, or PNML for other
+  Petri net tools. The file always holds the starting tokens.
+- Image saves a picture of the net: PNG image, SVG image or LaTeX (TikZ). Copy to clipboard puts
+  a PNG picture on the clipboard.
+- A picture shows the tokens that are on screen, so you can capture a net in the middle of a run.
+  Pictures always have a light background, also in dark mode.
+
+### Theme and phone
+
+- Choose System, Light or Dark. System follows the setting of your computer. The canvas turns
+  dark too.
+- On a phone, the editor switches to a layout for small screens.
 
 ## Tech stack
 
@@ -62,12 +108,13 @@ bun run dev      # start the dev server -> http://localhost:5173
 
 ```sh
 bun run dev         # Vite dev server
-bun run build       # typecheck + production build -> dist/
+bun run build       # typecheck + production build + pre-built guide page -> dist/
 bun run preview     # serve the production build locally
 bun run typecheck   # tsc --noEmit
 bun run lint        # biome check
 bun run format      # biome format --write
 bun run test        # run the unit tests (Vitest)
+bun run test:watch  # run the unit tests in watch mode
 ```
 
 ### Docker
@@ -85,8 +132,8 @@ The editor reads and writes `.npn`, a single-line minified JSON document (UTF-8 
 net's `places`, `transitions`, and `arcs`. Two properties make the codec careful:
 
 - **Byte-faithful export**: keys are written in a fixed canonical order and serialized with no
-  spacing, so exporting an unedited file reproduces the original bytes exactly. There is a unit test
-  that enforces this round-trip.
+  spacing, so exporting an unedited file reproduces the original bytes exactly. Unit tests check
+  this round trip on small sample nets.
 - **Lenient, forward-compatible import**: structure is validated (malformed input fails with a
   clear, specific error, never a silent partial load), optional fields default sensibly, and unknown
   per-element fields are preserved so a file produced by a newer version survives a round-trip
@@ -99,38 +146,16 @@ the React Flow nodes and edges are derived from it, and interactions map back in
 engine is **pure and framework-free** (no React, no DOM) and exposes `enabledTransitions()` and
 `fire()` with the firing policy decoupled, so it stays unit-testable and reusable.
 
-## Roadmap
+The analysis code in `src/domain/analysis` follows the same rule. It is plain TypeScript classes
+with no React and no DOM, and unit tests cover it.
 
-Planned improvements beyond the current version:
+The build pre-renders the guide into its own HTML page, so the guide text is in the page before
+any script runs. The Bun server in `server.ts` serves that page at `/guide`.
 
-**Semantics**
+## Feedback
 
-- Extended Petri semantics: inhibitor arcs, read/test arcs, place capacities, colored tokens.
-- Evolve the `.npn` format once extended semantics land.
-
-**Simulation**
-
-- Auto-run transport (play / pause / step) with adjustable speed and a conflict-resolution policy.
-- Maximal-step firing mode (fire a maximal non-conflicting set of transitions per tick).
-- Token-flow animation along arc polylines on fire.
-- Deadlock / enabled-count indicator.
-- Step-back / firing history during simulation.
-
-**Export & interop**
-
-- Image export (PNG / SVG snapshot of the canvas).
-- Mid-simulation state snapshot export (write the live marking instead of the initial one).
-- PNML import/export (ISO interchange) alongside `.npn`.
-
-**Editor**
-
-- Validation warnings: disconnected nodes, dangling/duplicate arcs, unnamed elements.
-- Multiple nets: tabs / recent files, each autosaved.
-- Node/label repositioning during Simulate (presentation mode) without unlocking topology.
-
-**Infrastructure**
-
-- CI (lint + typecheck + test) and pre-commit hooks.
+Found a bug, or have an idea? [Open an issue](https://github.com/AnakinM/petrinet/issues) on
+GitHub.
 
 ## License
 
