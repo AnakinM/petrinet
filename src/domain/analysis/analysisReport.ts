@@ -104,7 +104,7 @@ export class AnalysisReport {
   /** One line for the panel's bar state: not run, net changed since the last run, or up to date. */
   static status(result: AnalysisResult, stale: boolean): string {
     if (stale)
-      return "The net changed after the last full analysis. The results may be out of date.";
+      return "The net changed after the last full analysis. Analyse again to update the results.";
     if (result.placeBounds === null) return "Some results need the full analysis.";
     return AnalysisReport.upToDate(result);
   }

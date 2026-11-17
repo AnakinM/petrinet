@@ -46,8 +46,8 @@ export function spotlightKey(s: Spotlight): string {
  * `{ open, width, activeTab }` survive in `localStorage`.
  *
  * Two recompute cadences mirror the engine's two layers:
- *   - the **algebraic** slice is instant and stays live. It is refreshed on open and on every
- *     structural net edit, which also drops the results of the full analysis;
+ *   - the **algebraic** slice is instant and stays live while the panel is open. It is refreshed
+ *     on every structural net edit, which also drops the results of the full analysis;
  *   - the **full analysis** (the reachability pass) is heavier and runs only when the visitor asks,
  *     through the Analyse button ({@link AnalyticsState.reanalyze}). It never runs by itself.
  */
@@ -55,11 +55,16 @@ export interface AnalyticsState {
   open: boolean;
   width: number;
   activeTab: AnalyticsTab;
-  /** Latest analysis from M0: the algebraic slice, plus the full analysis once it has run. */
+  /**
+   * Latest analysis from M0: the algebraic slice, plus the full analysis once it has run. Closing
+   * the panel keeps it while the net is unchanged. A structural edit made while the panel is closed
+   * clears it (null), and opening the panel computes the algebraic slice again.
+   */
   result: AnalysisResult | null;
   /**
-   * The net changed after a full analysis, so its results were dropped. False before the first full
-   * analysis, so the Analyse bar can tell "never run" from "net changed".
+   * The net changed after a full analysis, so its results were dropped (whether the panel was open
+   * or closed at the time). False before the first full analysis, so the Analyse bar can tell
+   * "never run" from "net changed".
    */
   stale: boolean;
   /** A full analysis is in flight (for the Web-Worker upgrade; synchronous today). */
@@ -162,10 +167,11 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
 
     toggle: () => {
       const open = !get().open;
+      // Opening keeps a result that is still current (closing keeps it, and a structural edit made
+      // while closed cleared it) and `stale` stays as it is, so full results survive a close and open.
       set({
         open,
-        result: open ? algebraicResult() : get().result,
-        stale: false,
+        result: open ? (get().result ?? algebraicResult()) : get().result,
         highlight: NO_SPOTLIGHT,
         highlightKey: null,
         preview: NO_SPOTLIGHT,
@@ -212,10 +218,12 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
   };
 });
 
-// Keep the instant algebraic slice live while the panel is open. A structural edit drops the full
-// analysis (its verdicts and witnesses belong to the old net), and marks the results stale when a
-// full analysis had run, so the Analyse bar says the net changed. The net reference only changes in
-// Build (Simulate edits a separate working copy), so results never go stale in Simulate.
+// Keep the results in step with the net. A structural edit drops the full analysis (its verdicts and
+// witnesses belong to the old net), and marks the results stale when a full analysis had run, so the
+// Analyse bar says the net changed. While the panel is open the algebraic slice is refreshed at once.
+// While it is closed the result is cleared instead, and opening the panel computes it again. The net
+// reference only changes in Build (Simulate edits a separate working copy), so results never go
+// stale in Simulate.
 //
 // A position/label/rotation nudge mints a new net reference but cannot change any verdict, so it is
 // filtered out by comparing structural signatures. Otherwise dragging a node would discard valid
@@ -223,13 +231,12 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
 useNetStore.subscribe((state, prev) => {
   if (state.net === prev.net) return;
   const { open, result, stale } = useAnalyticsStore.getState();
-  if (!open) return;
   if (NetAnalysis.signature(state.net) === NetAnalysis.signature(prev.net)) return;
   // A structural edit can delete a lit element or invalidate the result that lit it, so drop the
   // highlight along with refreshing the algebraic slice. A cosmetic nudge (same signature) is
   // filtered above, so the spotlight follows a dragged/renamed node unchanged.
   useAnalyticsStore.setState({
-    result: algebraicResult(),
+    result: open ? algebraicResult() : null,
     stale: stale || result?.placeBounds != null,
     highlight: NO_SPOTLIGHT,
     highlightKey: null,
