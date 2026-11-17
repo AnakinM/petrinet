@@ -212,6 +212,8 @@ describe("PnmlCodec.parse", () => {
     const a = back.arcs[0];
     expect([a.id, a.source, a.target, a.multiplicity]).toEqual(["a1", "P1", "t1", 2]);
     expect(a.points[1]).toEqual({ x: 100, y: 80 });
+    // The `.npn` key order flag is set only by NpnCodec, never by a PNML import.
+    expect(a._labelBeforePoints).toBeUndefined();
   });
 });
 
