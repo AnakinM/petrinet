@@ -167,6 +167,8 @@ export function Menu({
     <div ref={rootRef} className="relative">
       {children(trigger, open)}
       {open && (
+        // The menu may run down to just above the bottom of the screen and scrolls inside when it
+        // is longer, as the phone menu is on a short screen. `dvh` follows a phone's URL bar.
         <div
           ref={menuRef}
           id={menuId}
@@ -174,7 +176,7 @@ export function Menu({
           aria-labelledby={triggerId}
           tabIndex={-1}
           onKeyDown={onMenuKeyDown}
-          className={`absolute top-full z-30 mt-1 flex max-h-[70vh] w-max min-w-48 max-w-[calc(100vw-1rem)] flex-col overflow-auto overscroll-contain rounded border border-line-strong bg-surface-raised py-1 shadow-lg outline-none ${
+          className={`absolute top-full z-30 mt-1 flex max-h-[calc(100vh-4rem)] w-max supports-[height:100dvh]:max-h-[calc(100dvh-4rem)] min-w-48 max-w-[calc(100vw-1rem)] flex-col overflow-auto overscroll-contain rounded border border-line-strong bg-surface-raised py-1 shadow-lg outline-none ${
             align === "end" ? "right-0" : "left-0"
           }`}
         >
