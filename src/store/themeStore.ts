@@ -81,7 +81,10 @@ export class ThemeEnvironment {
       ?.setAttribute("content", THEME_COLORS[theme]);
   }
 
-  /** Load the stored choice into `store`, and follow the system setting while it is on System. */
+  /**
+   * Load the stored choice into `store`, and follow the system setting while it is on System.
+   * The store lives as long as the page, so the change listener is never removed.
+   */
   static attach(store: StoreApi<ThemeState>): void {
     const preference = ThemeEnvironment.readPreference();
     const resolved = ThemeEnvironment.resolve(preference);
