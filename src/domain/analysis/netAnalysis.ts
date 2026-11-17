@@ -19,6 +19,13 @@ export const STATE_CAP_LABEL = ReachabilityGraph.STATE_CAP.toLocaleString("en-US
 /** Why a behavioural verdict is indeterminate after the reachability pass overran the cap. */
 export const STATE_CAP_EXCEEDED = `The state space exceeded the ${STATE_CAP_LABEL}-marking cap.`;
 
+/**
+ * Said with the place bounds when the full analysis proved the net unbounded: the search does not
+ * follow a branch past that proof, so a place that is not named unbounded may still grow.
+ */
+export const UNBOUNDED_STOP =
+  "The analysis stopped when it proved the net unbounded. Other places may grow without limit too.";
+
 /** A verdict's explanation without the verdict: a lead sentence plus optional bullets. */
 export type VerdictDetail = Omit<PropertyResult, "verdict">;
 
@@ -184,6 +191,16 @@ export class NetAnalysis {
       };
     }
     return { detail: NetAnalysis.unsettledDetail(result) };
+  }
+
+  /**
+   * The extra caveat for the place bounds, or null: {@link UNBOUNDED_STOP} once some place is proven
+   * unbounded while another place still has a number, which is then only "at least".
+   */
+  static placeBoundsCaveat(result: AnalysisResult): string | null {
+    const bounds = result.placeBounds;
+    if (bounds === null || bounds.unbounded.length === 0) return null;
+    return Object.keys(bounds.max).length > bounds.unbounded.length ? UNBOUNDED_STOP : null;
   }
 
   /** Why a verdict is unknown: the cap was hit, or the full analysis has not run. */

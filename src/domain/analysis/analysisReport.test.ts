@@ -82,6 +82,17 @@ describe("AnalysisReport", () => {
     });
     expect(text).toContain("P1: no bound (unbounded)");
     expect(text).toContain("The net is unbounded, so its reachability graph is infinite.");
+    // A lone unbounded place leaves no other place whose number could be too low.
+    expect(text).not.toContain("Other places may grow");
+    const withSecond: PetriNet = { ...pump, places: [place("P1"), place("P2", 1)] };
+    const second = AnalysisReport.build(
+      withSecond,
+      NetAnalysis.analyze(withSecond, { behavioral: true }),
+      { stale: false },
+    );
+    expect(second).toContain(
+      "The analysis stopped when it proved the net unbounded. Other places may grow without limit too.",
+    );
     const full = NetAnalysis.analyze(net, { behavioral: true });
     const missing = { ...full, placeBounds: { max: {}, exact: true, unbounded: [] } };
     expect(AnalysisReport.build(net, missing, { stale: false })).toContain("P1: unknown");
