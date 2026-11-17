@@ -40,7 +40,7 @@ export function ReachabilityQuery({ net }: { net: PetriNet }): JSX.Element {
                   [p.id]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
                 }))
               }
-              className="w-16 rounded border border-slate-300 px-1.5 py-0.5 text-base"
+              className="w-16 rounded border border-line-strong px-1.5 py-0.5 text-base"
             />
           </label>
         ))}
@@ -48,7 +48,7 @@ export function ReachabilityQuery({ net }: { net: PetriNet }): JSX.Element {
       <button
         type="button"
         onClick={() => setResult(NetAnalysis.reachable(net, target))}
-        className="self-start rounded border border-slate-300 bg-white px-2.5 py-1 font-medium text-slate-700 text-sm hover:bg-slate-100"
+        className="self-start rounded border border-line-strong bg-surface-raised px-2.5 py-1 font-medium text-fg-soft text-sm hover:bg-surface-muted"
       >
         Check reachable
       </button>
