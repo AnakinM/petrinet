@@ -189,13 +189,48 @@ describe("AnalyticsPanel", () => {
 
       act(() => useNetStore.getState().setTokens("P1", 2));
       expect(
-        screen.getByText("The net changed. The results may be out of date."),
+        screen.getByText("The net changed. Analyse again to update the results."),
       ).toBeInTheDocument();
       // The old results belong to the old net, so the cards wait for the new run.
       expect(within(card("Live")).getByText("Needs the full analysis")).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("button", { name: "Analyse again" }));
       expect(screen.getByText(/^Analysis is up to date/)).toBeInTheDocument();
+    });
+
+    it("uses the yellow warning colours both before the first run and after the net changed", async () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      const bar = (): HTMLElement | null =>
+        screen.getByText(/^Some results need|^The net changed/).parentElement;
+      expect(bar()).toHaveClass("bg-warning-soft", "border-warning-line");
+      expect(bar()).not.toHaveClass("bg-info-soft");
+
+      await analyse();
+      act(() => useNetStore.getState().setTokens("P1", 2));
+      expect(bar()).toHaveClass("bg-warning-soft", "border-warning-line");
+    });
+
+    it("keeps the full results when the panel is closed and opened with the net unchanged", async () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+      act(() => useAnalyticsStore.getState().toggle());
+      act(() => useAnalyticsStore.getState().toggle());
+      expect(screen.getByText(/^Analysis is up to date/)).toBeInTheDocument();
+    });
+
+    it("shows the net changed bar on reopen after a structural edit made while closed", async () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+      act(() => useAnalyticsStore.getState().toggle());
+      act(() => useNetStore.getState().setTokens("P1", 2));
+      act(() => useAnalyticsStore.getState().toggle());
+      expect(
+        screen.getByText("The net changed. Analyse again to update the results."),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Analyse again" })).toBeInTheDocument();
     });
 
     it("stays on Analyse after an edit when the full analysis never ran", () => {
@@ -499,7 +534,7 @@ describe("AnalyticsPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Copy results" }));
     const [[text]] = writeText.mock.calls as [[string]];
     expect(text.startsWith("Analysis\n")).toBe(true);
-    expect(text).toContain("The results may be out of date.");
+    expect(text).toContain("Analyse again to update the results.");
     expect(useNoticeStore.getState().message).toBe("Analysis results copied to the clipboard.");
   });
 

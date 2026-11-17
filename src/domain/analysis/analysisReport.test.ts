@@ -55,7 +55,7 @@ describe("AnalysisReport", () => {
   it("says when the results are out of date", () => {
     const text = AnalysisReport.build(net, NetAnalysis.analyze(net), { stale: true });
     expect(text).toContain(
-      "The net changed after the last full analysis. The results may be out of date.",
+      "The net changed after the last full analysis. Analyse again to update the results.",
     );
     expect(text).not.toContain("Some results need the full analysis.");
   });
