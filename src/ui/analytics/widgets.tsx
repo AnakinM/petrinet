@@ -23,9 +23,9 @@ const VERDICT_META: Record<
   Verdict,
   { label: string; tone: string; Icon: (p: { className?: string }) => JSX.Element }
 > = {
-  yes: { label: "Yes", tone: "bg-success", Icon: CheckIcon },
-  no: { label: "No", tone: "bg-danger", Icon: CrossIcon },
-  indeterminate: { label: "Unknown", tone: "bg-warning", Icon: QuestionIcon },
+  yes: { label: "Yes", tone: "bg-success text-on-status", Icon: CheckIcon },
+  no: { label: "No", tone: "bg-danger text-on-status", Icon: CrossIcon },
+  indeterminate: { label: "Unknown", tone: "bg-warning text-on-warning", Icon: QuestionIcon },
 };
 
 /** A labelled status pill for a verdict: coloured icon + word (Yes / No / Unknown). */
@@ -33,7 +33,7 @@ export function VerdictBadge({ verdict }: { verdict: Verdict }): JSX.Element {
   const { label, tone, Icon } = VERDICT_META[verdict];
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold text-sm text-on-status ${tone}`}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold text-sm ${tone}`}
     >
       <Icon className="h-3.5 w-3.5" />
       {label}
