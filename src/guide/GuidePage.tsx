@@ -50,7 +50,7 @@ export function GuidePage(): JSX.Element {
           aria-label="Contents"
           className="mb-12 rounded-lg border border-slate-200 bg-white p-5"
         >
-          <h2 className="mb-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">
+          <h2 className="mb-3 font-semibold text-slate-500 text-sm uppercase tracking-wide">
             On this page
           </h2>
           <ol className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
@@ -466,37 +466,60 @@ function AnalyticsSection(): JSX.Element {
   return (
     <Section id="analytics" title="Analysing a net">
       <p>
-        Open the Analytics panel from the button in the top bar. It reads your net and reports on it
-        without changing anything, so you can open it at any time. The panel is organised into tabs.
+        Open the Analysis panel with the Analysis button in the top bar. On a phone, it is in the
+        menu. The panel reads your net and reports on it without changing anything, so you can open
+        it at any time.
       </p>
+      <p>
+        Some results come at once and follow every edit. Others need the full analysis, which
+        explores every marking the net can reach, up to 10,000 of them. It runs only when you ask.
+        The bar at the top of the panel shows its state. Press Analyse to run it. After you change
+        the net, the bar turns amber and the button says Analyse again. When the results are up to
+        date, the bar tells you how many markings were explored. Until the full analysis has run, a
+        result that depends on it says &quot;Needs the full analysis&quot;. An amber Unknown means
+        that the analysis ran but could not decide, for example because the net is unbounded.
+      </p>
+      <p>The panel has five tabs.</p>
       <dl className="my-6 space-y-4">
         <Term name="Properties">
-          Checks behavioural properties of the net, such as whether it is bounded and whether it can
-          reach a deadlock. Each result comes with the reasons behind it.
-        </Term>
-        <Term name="Invariants">
-          Lists the place and transition invariants of the net. These are combinations that stay
-          constant as the net runs, and they are a standard tool for reasoning about correctness.
-        </Term>
-        <Term name="Structure">
-          Describes the shape of the net, including its strongly connected components and cycles. It
-          also lets you ask whether a particular marking can be reached.
+          Bounded, safe, conservative, live, reversible and deadlock-free, each with its reasons.
+          The Bounded card also lists the bound of every place. The Live card names the transitions
+          that never fire. The Deadlock-free card shows every stuck marking it found, with a firing
+          sequence that leads to it.
         </Term>
         <Term name="Classification">
-          Tells you which well known family the net belongs to, such as a state machine, a marked
-          graph, a free choice net, or an ordinary net, and points out the elements that break each
-          rule.
+          Whether the net is ordinary, a state machine, a marked graph or a free-choice net. As in
+          most textbooks, the last three require every arc to have weight 1. A card that answers no
+          lists the places, transitions and arcs that break its rule.
+        </Term>
+        <Term name="Invariants">
+          The place and transition invariants of the net, and the incidence matrix they are computed
+          from. You can copy the matrix as a table or as LaTeX.
+        </Term>
+        <Term name="Structure">
+          The loops of the net, and basic facts about its shape: whether it is connected, and its
+          source, sink and isolated elements.
+        </Term>
+        <Term name="Reachability">
+          Ask whether one exact marking can be reached. After the full analysis, the state table
+          lists every reachable marking with the firings that leave it, and marks the deadlocks.
+          Copy table puts all of its rows on the clipboard.
         </Term>
       </dl>
       <p>
-        Many results can be shown on the canvas. Clicking a finding highlights the places or
-        transitions it refers to and brings them into view, which makes it easy to connect an
-        analysis result back to the diagram.
+        Each result has a question mark beside its name. Point at it, tap it or move the keyboard
+        focus to it, and a card explains what the result means, what it tells you and gives an
+        example.
+      </p>
+      <p>
+        Many results can be shown on the canvas. Point at one and the elements it refers to light
+        up. Click it and they stay lit, and the canvas moves them into view. Copy results, at the
+        top of the panel, puts the whole analysis on the clipboard as text for a report.
       </p>
       <Screenshot
         src="/guide/analytics-panel.png"
-        alt="The Analytics panel open beside the canvas, with several places highlighted on the net."
-        caption="The Analytics panel open beside the canvas. Clicking a result highlights the elements it refers to and brings them into view."
+        alt="The Analysis panel open beside the canvas, with several places highlighted on the net."
+        caption="The Analysis panel open beside the canvas. Clicking a result highlights the elements it refers to and brings them into view."
       />
     </Section>
   );

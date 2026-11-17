@@ -13,11 +13,21 @@ import { NetNames } from "@/domain/netNames";
 import type { Marking, PetriNet } from "@/domain/types";
 
 /** Behavioural verdict shown until the on-demand reachability pass has run for the current net. */
-export const NOT_COMPUTED = "Not yet computed. Run Re-analyze.";
+export const NOT_COMPUTED = "Needs the full analysis.";
 /** The state cap rendered for humans (`"10,000"`), derived from the single source of truth. */
 export const STATE_CAP_LABEL = ReachabilityGraph.STATE_CAP.toLocaleString("en-US");
 /** Why a behavioural verdict is indeterminate after the reachability pass overran the cap. */
 export const STATE_CAP_EXCEEDED = `The state space exceeded the ${STATE_CAP_LABEL}-marking cap.`;
+
+/**
+ * Said with the place bounds when the full analysis proved the net unbounded: the search does not
+ * follow a branch past that proof, so a place that is not named unbounded may still grow.
+ */
+export const UNBOUNDED_STOP =
+  "The analysis stopped when it proved the net unbounded. Other places may grow without limit too.";
+
+/** A verdict's explanation without the verdict: a lead sentence plus optional bullets. */
+export type VerdictDetail = Omit<PropertyResult, "verdict">;
 
 /** Optional second argument to {@link NetAnalysis.analyze}. */
 interface AnalyzeOptions {
@@ -79,6 +89,8 @@ export class NetAnalysis {
       stateSpaceExceeded: false,
       stateSpaceComplete: false,
       exploredStates: 0,
+      placeBounds: null,
+      stateTable: null,
     };
   }
 
@@ -109,6 +121,8 @@ export class NetAnalysis {
       stateSpaceExceeded: rg.exceeded,
       stateSpaceComplete: rg.complete,
       exploredStates: rg.states,
+      placeBounds: rg.placeBounds(),
+      stateTable: rg.stateTable(),
     };
   }
 
@@ -140,6 +154,58 @@ export class NetAnalysis {
         ? "Unknown: the net is unbounded, so the editor cannot list all its reachable markings."
         : STATE_CAP_EXCEEDED,
     };
+  }
+
+  /** The Bounded card's explanation: a lead sentence plus optional bullets. */
+  static boundedDetail(result: AnalysisResult): VerdictDetail {
+    const { boundedness } = result;
+    if (boundedness.source === "structural") {
+      return boundedness.bound !== null
+        ? {
+            detail: "Structurally bounded:",
+            items: ["A P-invariant covers every place.", `Bound k = ${boundedness.bound}.`],
+          }
+        : { detail: "A P-invariant covers every place." };
+    }
+    if (boundedness.bounded === "no") {
+      return { detail: "A firing sequence pumps a place without limit, so the net is unbounded." };
+    }
+    if (boundedness.bounded === "yes") {
+      return {
+        detail: boundedness.bound !== null ? `Bound k = ${boundedness.bound}.` : "Bounded.",
+      };
+    }
+    return { detail: NetAnalysis.unsettledDetail(result) };
+  }
+
+  /** The Safe card's explanation. */
+  static safeDetail(result: AnalysisResult): VerdictDetail {
+    const { boundedness } = result;
+    if (boundedness.safe === "yes") return { detail: "Every place holds at most one token." };
+    if (boundedness.safe === "no") {
+      return {
+        detail:
+          boundedness.bound !== null
+            ? `A place reaches ${boundedness.bound} tokens, so the net is not safe.`
+            : "A place holds more than one token, so the net is not safe.",
+      };
+    }
+    return { detail: NetAnalysis.unsettledDetail(result) };
+  }
+
+  /**
+   * The extra caveat for the place bounds, or null: {@link UNBOUNDED_STOP} once some place is proven
+   * unbounded while another place still has a number, which is then only "at least".
+   */
+  static placeBoundsCaveat(result: AnalysisResult): string | null {
+    const bounds = result.placeBounds;
+    if (bounds === null || bounds.unbounded.length === 0) return null;
+    return Object.keys(bounds.max).length > bounds.unbounded.length ? UNBOUNDED_STOP : null;
+  }
+
+  /** Why a verdict is unknown: the cap was hit, or the full analysis has not run. */
+  static unsettledDetail(result: AnalysisResult): string {
+    return result.stateSpaceExceeded ? STATE_CAP_EXCEEDED : NOT_COMPUTED;
   }
 
   /**
