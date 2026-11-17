@@ -1,5 +1,218 @@
 @import "tailwindcss";
 
+/* Dark mode is the class `dark` on <html>. The inline script in index.html sets it before the first
+   paint, and the theme store (src/store/themeStore.ts) keeps it up to date. `dark:` classes follow
+   it, but components should use the colour tokens below instead: a token changes in one place. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Semantic colour tokens. Each one becomes Tailwind utilities (`bg-surface`, `text-fg-muted`,
+   `border-line`, `ring-focus`, `fill-canvas-place` ...) and a CSS variable (`var(--color-surface)`)
+   for inline styles and SVG. The values here are the light theme, exactly the colours the app used
+   before tokens: Tailwind's own palette values (named in the comments) where a class set the colour,
+   and the old hex value where the code had one. `.dark` below redefines them. `static` keeps every variable in the output, also
+   the ones that only code reads through `var()`. The full mapping from the old classes is in
+   local/sprint-2-work/piece-6/token-map.md. */
+@theme static {
+  /* Surfaces. `surface`: bars, panels, page cards. `surface-subtle`: the sidebar, the guide page
+     background, table header cells. `surface-raised`: things that float or can be pressed: buttons,
+     inputs, menus, popovers. `surface-hover`: hover on a raised control. `surface-muted`: hover on
+     a menu entry or link, and quiet chips. */
+  --color-surface: #fff; /* white */
+  --color-surface-subtle: oklch(98.4% 0.003 247.858); /* slate-50 */
+  --color-surface-raised: #fff; /* white */
+  --color-surface-hover: oklch(98.4% 0.003 247.858); /* slate-50 */
+  --color-surface-muted: oklch(96.8% 0.007 247.896); /* slate-100 */
+
+  /* Borders, dividers and separators. */
+  --color-line-subtle: oklch(96.8% 0.007 247.896); /* slate-100 */
+  --color-line: oklch(92.9% 0.013 255.508); /* slate-200 */
+  --color-line-strong: oklch(86.9% 0.022 252.894); /* slate-300 */
+
+  /* Text, from the strongest to the faintest. */
+  --color-fg-strong: oklch(20.8% 0.042 265.755); /* slate-900 */
+  --color-fg: oklch(27.9% 0.041 260.031); /* slate-800 */
+  --color-fg-soft: oklch(37.2% 0.044 257.287); /* slate-700 */
+  --color-fg-muted: oklch(44.6% 0.043 257.281); /* slate-600 */
+  --color-fg-subtle: oklch(55.4% 0.046 257.417); /* slate-500 */
+  --color-fg-faint: oklch(70.4% 0.04 256.788); /* slate-400 */
+  --color-link: oklch(48.8% 0.243 264.376); /* blue-700 */
+
+  /* The pressed or chosen control (active toggle, chosen tool, primary button), and its text. */
+  --color-accent: oklch(37.2% 0.044 257.287); /* slate-700 */
+  --color-accent-hover: oklch(27.9% 0.041 260.031); /* slate-800 */
+  --color-on-accent: #fff; /* white */
+
+  /* The opposite of the page: tooltips, the notice, the drop overlay label. */
+  --color-inverse: oklch(27.9% 0.041 260.031); /* slate-800 */
+  --color-on-inverse: #fff; /* white */
+
+  /* Keyboard focus, and the drag handle of the Analysis panel. */
+  --color-focus: oklch(62.3% 0.214 259.815); /* blue-500 */
+  --color-focus-soft: oklch(80.9% 0.105 251.813); /* blue-300 */
+
+  /* Solid status colours (verdict badges, the Analyse button) and the text on them. */
+  --color-success: oklch(62.7% 0.194 149.214); /* green-600 */
+  --color-danger: oklch(57.7% 0.245 27.325); /* red-600 */
+  --color-warning: oklch(76.9% 0.188 70.08); /* amber-500 */
+  --color-info: oklch(54.6% 0.245 262.881); /* blue-600 */
+  --color-info-hover: oklch(48.8% 0.243 264.376); /* blue-700 */
+  --color-on-status: #fff; /* white */
+
+  /* Danger: errors, the delete button, a dead state. */
+  --color-danger-fg: oklch(57.7% 0.245 27.325); /* red-600 */
+  --color-danger-fg-strong: oklch(44.4% 0.177 26.899); /* red-800 */
+  --color-danger-soft: oklch(97.1% 0.013 17.38); /* red-50 */
+  --color-danger-tint: oklch(93.6% 0.032 17.717); /* red-100 */
+  --color-danger-line: oklch(70.4% 0.191 22.216); /* red-400 */
+  --color-danger-line-soft: oklch(88.5% 0.062 18.334); /* red-200 */
+
+  /* Warning: notes and caveats, the out-of-date Analyse bar. */
+  --color-warning-fg: oklch(47.3% 0.137 46.201); /* amber-800 */
+  --color-warning-soft: oklch(98.7% 0.022 95.277); /* amber-50 */
+  --color-warning-line: oklch(87.9% 0.169 91.605); /* amber-300 */
+
+  /* Info: the Analyse bar. */
+  --color-info-soft: oklch(97% 0.014 254.604); /* blue-50 */
+  --color-info-line: oklch(88.2% 0.059 254.128); /* blue-200 */
+
+  /* Highlight: an Analysis result that is pressed or hovered, and what it lights. */
+  --color-highlight-fg: oklch(41.4% 0.112 45.904); /* amber-900 */
+  --color-highlight-soft: oklch(98.7% 0.022 95.277); /* amber-50 */
+  --color-highlight-tint: oklch(92.4% 0.12 95.746); /* amber-200 */
+  --color-highlight-line: oklch(82.8% 0.189 84.429); /* amber-400 */
+  --color-highlight-line-soft: oklch(87.9% 0.169 91.605); /* amber-300 */
+
+  /* Shadows of the bars and sheets, and the dim layer behind the drop overlay. */
+  --color-shadow: rgb(15 23 42 / 0.15);
+  --color-scrim: oklch(20.8% 0.042 265.755 / 0.4); /* slate-900/40 */
+
+  /* The canvas. SVG and React Flow props take them as `var(--color-canvas-...)` strings. */
+  --color-canvas: #fff; /* white */
+  --color-canvas-grid: #e2e8f0;
+  --color-canvas-node: oklch(37.2% 0.044 257.287); /* slate-700 */
+  --color-canvas-place: #fff; /* white */
+  --color-canvas-transition: oklch(37.2% 0.044 257.287); /* slate-700 */
+  --color-canvas-token: oklch(20.8% 0.042 265.755); /* slate-900 */
+  --color-canvas-arc: #334155;
+  --color-canvas-label: oklch(37.2% 0.044 257.287); /* slate-700 */
+  --color-canvas-chip: #fff; /* white */
+  --color-canvas-chip-line: oklch(86.9% 0.022 252.894); /* slate-300 */
+  --color-canvas-chip-fg: oklch(37.2% 0.044 257.287); /* slate-700 */
+  --color-canvas-hover-ring: oklch(86.9% 0.022 252.894); /* slate-300 */
+  --color-canvas-handle: oklch(58.5% 0.233 277.117); /* indigo-500 */
+  --color-canvas-handle-soft: oklch(67.3% 0.182 276.935); /* indigo-400 */
+  --color-canvas-handle-fill: #fff; /* white */
+  --color-canvas-preview: #6366f1;
+  --color-canvas-valid: #10b981;
+  --color-canvas-invalid: #ef4444;
+  --color-canvas-guide: #f43f5e;
+  --color-canvas-enabled: oklch(59.6% 0.145 163.225); /* emerald-600 */
+  --color-canvas-enabled-ring: oklch(76.5% 0.177 163.223); /* emerald-400 */
+  --color-canvas-enabled-glow: rgb(16 185 129 / 0.7);
+  --color-canvas-flash: oklch(84.5% 0.143 164.978); /* emerald-300 */
+  --color-canvas-flash-glow: rgb(16 185 129 / 0.9);
+  --color-canvas-highlight: #f59e0b;
+  --color-canvas-highlight-glow: rgb(245 158 11 / 0.45);
+}
+
+@layer base {
+  /* The dark theme. Text contrast is at least 4.5:1 on every surface (faint text 3.6:1), and the
+     canvas marks at least 3:1 on the canvas. The ratios are listed in token-map.md. */
+  .dark {
+    --color-surface: #0f172a;
+    --color-surface-subtle: #020617;
+    --color-surface-raised: #1e293b;
+    --color-surface-hover: #334155;
+    --color-surface-muted: #334155;
+
+    --color-line-subtle: #1e293b;
+    --color-line: #334155;
+    --color-line-strong: #475569;
+
+    --color-fg-strong: #f8fafc;
+    --color-fg: #f1f5f9;
+    --color-fg-soft: #e2e8f0;
+    --color-fg-muted: #cbd5e1;
+    --color-fg-subtle: #a0aec0;
+    --color-fg-faint: #718096;
+    --color-link: #93c5fd;
+
+    --color-accent: #cbd5e1;
+    --color-accent-hover: #e2e8f0;
+    --color-on-accent: #0f172a;
+
+    --color-inverse: #e2e8f0;
+    --color-on-inverse: #0f172a;
+
+    --color-focus: #60a5fa;
+    --color-focus-soft: #2563eb;
+
+    --color-danger-fg: #f87171;
+    --color-danger-fg-strong: #fecaca;
+    --color-danger-soft: #2c1519;
+    --color-danger-tint: #7f1d1d;
+    --color-danger-line-soft: #7f1d1d;
+
+    --color-warning-fg: #fbbf24;
+    --color-warning-soft: #2a2112;
+    --color-warning-line: #92400e;
+
+    --color-info-soft: #172554;
+    --color-info-line: #1e40af;
+
+    --color-highlight-fg: #fde68a;
+    --color-highlight-soft: #3a2c10;
+    --color-highlight-tint: #78350f;
+    --color-highlight-line: #f59e0b;
+    --color-highlight-line-soft: #b45309;
+
+    --color-shadow: rgb(0 0 0 / 0.5);
+    --color-scrim: rgb(2 6 23 / 0.7);
+
+    --color-canvas: #0f172a;
+    --color-canvas-grid: #1e293b;
+    --color-canvas-node: #cbd5e1;
+    --color-canvas-place: #1e293b;
+    --color-canvas-transition: #cbd5e1;
+    --color-canvas-token: #f8fafc;
+    --color-canvas-arc: #94a3b8;
+    --color-canvas-label: #cbd5e1;
+    --color-canvas-chip: #1e293b;
+    --color-canvas-chip-line: #475569;
+    --color-canvas-chip-fg: #e2e8f0;
+    --color-canvas-hover-ring: #64748b;
+    --color-canvas-handle: #818cf8;
+    --color-canvas-handle-soft: #6366f1;
+    --color-canvas-handle-fill: #0f172a;
+    --color-canvas-preview: #818cf8;
+    --color-canvas-valid: #34d399;
+    --color-canvas-invalid: #f87171;
+    --color-canvas-guide: #fb7185;
+    --color-canvas-highlight: #fbbf24;
+    --color-canvas-highlight-glow: rgb(251 191 36 / 0.4);
+  }
+
+  html {
+    background-color: var(--color-surface);
+  }
+
+  /* React Flow's own dark defaults are neutral greys. Point the ones we can see at our tokens:
+     the canvas behind the grid, the zoom buttons, the minimap and the selection box. The light
+     theme keeps React Flow's defaults, as before. */
+  .dark .react-flow {
+    --xy-background-color: var(--color-canvas);
+    --xy-controls-button-background-color: var(--color-surface-raised);
+    --xy-controls-button-background-color-hover: var(--color-surface-hover);
+    --xy-controls-button-color: var(--color-fg-soft);
+    --xy-controls-button-color-hover: var(--color-fg-strong);
+    --xy-controls-button-border-color: var(--color-line);
+    --xy-minimap-background-color: var(--color-surface-raised);
+    --xy-minimap-mask-background-color: rgb(2 6 23 / 0.6);
+    --xy-selection-background-color: rgb(129 140 248 / 0.12);
+    --xy-selection-border: 1px dotted var(--color-canvas-handle);
+  }
+}
+
 /* Dynamic viewport height with a static fallback: browsers without `dvh` keep 100vh; modern mobile
    browsers use 100dvh so the bottom tool dock clears the retracting URL bar. */
 .app-h-dynamic {
