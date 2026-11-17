@@ -137,6 +137,7 @@ export function enterSimulate(): void {
   const store = useNetStore.getState();
   if (store.mode === "simulate") return;
   useBuildStore.getState().setTool("idle");
+  // Canvas clears React Flow's own selected flags when the canvas locks, so both stay in step.
   store.select({ nodes: [], edges: [] });
   store.setMode("simulate");
   useSimStore.getState().start(store.net);
