@@ -1,4 +1,5 @@
 import { create, type StoreApi } from "zustand";
+import { SafeStorage } from "@/lib/safeStorage";
 
 /** The visitor's choice. `system` follows the computer's light or dark setting. */
 export type ThemePreference = "system" | "light" | "dark";
@@ -41,22 +42,14 @@ export interface ThemeState {
 export class ThemeEnvironment {
   /** The stored choice, or `system` when nothing usable is stored. */
   static readPreference(): ThemePreference {
-    try {
-      const stored = globalThis.localStorage?.getItem(THEME_STORAGE_KEY);
-      return stored === "light" || stored === "dark" ? stored : "system";
-    } catch {
-      return "system";
-    }
+    const stored = SafeStorage.get(THEME_STORAGE_KEY);
+    return stored === "light" || stored === "dark" ? stored : "system";
   }
 
   /** Remember Light or Dark; for System remove the key. */
   static writePreference(preference: ThemePreference): void {
-    try {
-      if (preference === "system") globalThis.localStorage?.removeItem(THEME_STORAGE_KEY);
-      else globalThis.localStorage?.setItem(THEME_STORAGE_KEY, preference);
-    } catch {
-      // Storage is blocked or full: the choice holds for this visit only.
-    }
+    if (preference === "system") SafeStorage.remove(THEME_STORAGE_KEY);
+    else SafeStorage.set(THEME_STORAGE_KEY, preference);
   }
 
   /** The system setting as a live query, or `null` where there is no `matchMedia`. */

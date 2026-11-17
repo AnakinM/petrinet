@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { NetAnalysis } from "@/domain/analysis/netAnalysis";
 import type { AnalysisResult } from "@/domain/analysis/types";
 import { Analytics } from "@/lib/analytics";
+import { SafeStorage } from "@/lib/safeStorage";
 import { useNetStore } from "@/store/netStore";
 
 /** Which Analysis panel tab is showing. */
@@ -119,8 +120,7 @@ function clampWidth(width: number): number {
 
 function loadPersisted(): Persisted {
   const fallback: Persisted = { open: false, width: DEFAULT_WIDTH, activeTab: DEFAULT_TAB };
-  if (typeof localStorage === "undefined") return fallback;
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = SafeStorage.get(STORAGE_KEY);
   if (!raw) return fallback;
   try {
     const data = JSON.parse(raw) as Record<string, unknown> | null;
@@ -140,9 +140,8 @@ function loadPersisted(): Persisted {
 }
 
 function persist(state: AnalyticsState): void {
-  if (typeof localStorage === "undefined") return;
   const data: Persisted = { open: state.open, width: state.width, activeTab: state.activeTab };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  SafeStorage.set(STORAGE_KEY, JSON.stringify(data));
 }
 
 /** Instant slice: invariants, conservativeness, structural boundedness and net-graph diagnostics. */

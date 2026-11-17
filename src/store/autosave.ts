@@ -1,5 +1,6 @@
 import type { StoreApi } from "zustand";
 import type { PetriNet } from "@/domain/types";
+import { SafeStorage } from "@/lib/safeStorage";
 import type { NetState, Viewport } from "@/store/netStore";
 
 interface Saved {
@@ -19,8 +20,7 @@ export class Autosave {
 
   /** Read the saved net + viewport, or `null` if absent/unparseable/structurally invalid. */
   static load(): Saved | null {
-    if (typeof localStorage === "undefined") return null;
-    const raw = localStorage.getItem(Autosave.KEY);
+    const raw = SafeStorage.get(Autosave.KEY);
     if (!raw) return null;
     try {
       const data = JSON.parse(raw) as Saved;
@@ -41,13 +41,12 @@ export class Autosave {
 
   /** Begin saving on every store change (debounced). Returns an unsubscribe function. */
   static attach(store: StoreApi<NetState>): () => void {
-    if (typeof localStorage === "undefined") return () => {};
     let timer: ReturnType<typeof setTimeout> | undefined;
     return store.subscribe(() => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         const { net, viewport } = store.getState();
-        localStorage.setItem(Autosave.KEY, JSON.stringify({ net, viewport }));
+        SafeStorage.set(Autosave.KEY, JSON.stringify({ net, viewport }));
       }, Autosave.DEBOUNCE_MS);
     });
   }

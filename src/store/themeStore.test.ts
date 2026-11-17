@@ -158,6 +158,22 @@ describe("Theme store on load", () => {
     expect(page().dark).toBe(false);
   });
 
+  it("follows the system when the methods of localStorage throw", async () => {
+    const denied = (): never => {
+      throw new DOMException("The operation is insecure.", "SecurityError");
+    };
+    vi.stubGlobal("localStorage", { getItem: denied, setItem: denied, removeItem: denied });
+    const { theme } = await load(true);
+    expect(theme.useThemeStore.getState()).toMatchObject({
+      preference: "system",
+      resolved: "dark",
+    });
+
+    theme.useThemeStore.getState().setPreference("light");
+    theme.useThemeStore.getState().setPreference("system");
+    expect(theme.useThemeStore.getState().resolved).toBe("dark");
+  });
+
   it("shows light where there is no matchMedia", async () => {
     vi.stubGlobal("matchMedia", undefined);
     vi.resetModules();
