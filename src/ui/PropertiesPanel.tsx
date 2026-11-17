@@ -13,8 +13,8 @@ export function PropertiesPanel(): JSX.Element {
   const count = selection.nodes.length + selection.edges.length;
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-slate-200 border-t p-3">
-      <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">
+    <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto border-line border-t p-3">
+      <h2 className="font-semibold text-fg-subtle text-sm uppercase tracking-wide">
         {simulating ? "History" : "Properties"}
       </h2>
       {simulating ? <HistoryList /> : renderBody(net, selection, count)}
@@ -155,7 +155,7 @@ function NameField({ id, name, kind }: { id: string; name: string; kind: NodeKin
           useNetStore.getState().rename(id, trimmed);
         }}
       />
-      {error && <span className="mt-1 block text-red-600 text-sm">{error}</span>}
+      {error && <span className="mt-1 block text-danger-fg text-sm">{error}</span>}
     </div>
   );
 }
@@ -191,8 +191,8 @@ function CommitField({
           e.currentTarget.blur();
         }
       }}
-      className={`w-full rounded border px-2 py-1 text-slate-800 text-sm ${
-        invalid ? "border-red-400" : "border-slate-300"
+      className={`w-full rounded border bg-surface-raised px-2 py-1 text-fg text-sm ${
+        invalid ? "border-danger-line" : "border-line-strong"
       }`}
     />
   );
@@ -203,7 +203,7 @@ function DeleteButton({ id }: { id: string }): JSX.Element {
     <button
       type="button"
       onClick={() => useNetStore.getState().remove([id])}
-      className="mt-1 w-1/2 self-center rounded border border-red-200 bg-white px-2.5 py-1 text-red-600 text-sm shadow-sm hover:bg-red-50"
+      className="mt-1 w-1/2 self-center rounded border border-danger-line-soft bg-surface-raised px-2.5 py-1 text-danger-fg text-sm shadow-sm hover:bg-danger-soft"
     >
       Delete
     </button>
@@ -215,7 +215,7 @@ function StepButton({ label, onClick }: { label: string; onClick: () => void }):
     <button
       type="button"
       onClick={onClick}
-      className="h-7 w-7 shrink-0 rounded border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+      className="h-7 w-7 shrink-0 rounded border border-line-strong bg-surface-raised text-fg-soft shadow-sm hover:bg-surface-hover"
     >
       {label}
     </button>
@@ -223,15 +223,15 @@ function StepButton({ label, onClick }: { label: string; onClick: () => void }):
 }
 
 function FieldLabel({ children }: { children: string }): JSX.Element {
-  return <span className="mb-1 block text-slate-500 text-sm">{children}</span>;
+  return <span className="mb-1 block text-fg-subtle text-sm">{children}</span>;
 }
 
 function Kind({ children }: { children: string }): JSX.Element {
-  return <span className="font-semibold text-slate-800 text-sm">{children}</span>;
+  return <span className="font-semibold text-fg text-sm">{children}</span>;
 }
 
 function Hint({ children }: { children: string | (string | number)[] }): JSX.Element {
-  return <p className="text-slate-400 text-sm">{children}</p>;
+  return <p className="text-fg-faint text-sm">{children}</p>;
 }
 
 // --- helpers ----------------------------------------------------------------

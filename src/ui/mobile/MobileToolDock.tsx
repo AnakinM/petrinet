@@ -20,7 +20,7 @@ const DOCK_TOOLS = TOOLS.filter((t) => t.id !== "select");
 export function MobileToolDock(): JSX.Element {
   const simulating = useNetStore((s) => s.mode === "simulate");
   return (
-    <div className="pointer-events-auto border-slate-300 border-t-[3px] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_8px_-4px_rgba(15,23,42,0.15)] backdrop-blur">
+    <div className="pointer-events-auto border-line-strong border-t-[3px] bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_8px_-4px_var(--color-shadow)] backdrop-blur">
       <div className="flex items-stretch gap-1 px-2 py-2">
         {simulating ? <SimDock /> : <BuildDock />}
       </div>
@@ -76,13 +76,13 @@ function SimDock(): JSX.Element {
       <DockButton label="Reset" onClick={() => useSimStore.getState().reset()}>
         <ResetSwatch />
       </DockButton>
-      <label className="flex shrink-0 flex-col items-center justify-center gap-0.5 px-1 font-medium text-[10px] text-slate-500">
+      <label className="flex shrink-0 flex-col items-center justify-center gap-0.5 px-1 font-medium text-[10px] text-fg-subtle">
         Speed
         <select
           value={speed}
           onChange={(e) => useSimStore.getState().setSpeed(Number(e.target.value))}
           aria-label="Auto-run speed"
-          className="rounded border border-slate-300 bg-white px-1 py-1 text-slate-700 text-sm"
+          className="rounded border border-line-strong bg-surface-raised px-1 py-1 text-fg-soft text-sm"
         >
           {AUTO_RUN_SPEEDS.map((s) => (
             <option key={s} value={s}>
@@ -128,7 +128,7 @@ function DockButton({
       aria-pressed={active}
       title={label}
       className={`flex min-w-0 flex-1 touch-manipulation flex-col items-center gap-1 rounded px-1 py-1.5 font-medium text-[10px] disabled:cursor-not-allowed disabled:opacity-40 ${
-        active ? "bg-slate-700 text-white" : "text-slate-700 hover:bg-slate-100"
+        active ? "bg-accent text-on-accent" : "text-fg-soft hover:bg-surface-muted"
       }`}
     >
       <span className="flex h-6 items-center justify-center">{children}</span>

@@ -79,7 +79,7 @@ function DesktopShell(): JSX.Element {
       <Toolbar />
       <ReactFlowProvider>
         <div className="flex min-h-0 flex-1">
-          <aside className="relative z-10 flex w-52 shrink-0 flex-col border-slate-300 border-r-[3px] bg-slate-50 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.15)]">
+          <aside className="relative z-10 flex w-52 shrink-0 flex-col border-line-strong border-r-[3px] bg-surface-subtle shadow-[4px_0_8px_-4px_var(--color-shadow)]">
             {buildMode ? <Palette /> : <SimControls />}
             <PropertiesPanel />
             <SidebarFooter />

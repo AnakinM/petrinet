@@ -14,7 +14,7 @@ export function Palette(): JSX.Element {
 
   return (
     <section className="flex flex-col gap-3 p-3">
-      <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">Palette</h2>
+      <h2 className="font-semibold text-fg-subtle text-sm uppercase tracking-wide">Palette</h2>
       {TOOLS.map((t) => (
         <ToolButton key={t.id} active={tool === t.id} onClick={() => toggleTool(t.id)}>
           {t.swatch}
@@ -42,8 +42,8 @@ function ToolButton({
       aria-pressed={active}
       className={
         active
-          ? "flex items-center gap-2 rounded border border-slate-700 bg-slate-700 px-3 py-2 text-sm text-white shadow-sm"
-          : "flex items-center gap-2 rounded border border-slate-300 bg-white px-3 py-2 text-slate-700 text-sm shadow-sm hover:bg-slate-50"
+          ? "flex items-center gap-2 rounded border border-accent bg-accent px-3 py-2 text-sm text-on-accent shadow-sm"
+          : "flex items-center gap-2 rounded border border-line-strong bg-surface-raised px-3 py-2 text-fg-soft text-sm shadow-sm hover:bg-surface-hover"
       }
     >
       {children}

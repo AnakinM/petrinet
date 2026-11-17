@@ -137,7 +137,7 @@ export function Tooltip({
               top: placement?.top ?? 0,
               visibility: placement ? "visible" : "hidden",
             }}
-            className="pointer-events-none z-50 max-w-xs rounded bg-slate-800 px-2 py-1 text-sm text-white shadow-md"
+            className="pointer-events-none z-50 max-w-xs rounded bg-inverse px-2 py-1 text-sm text-on-inverse shadow-md"
           >
             {label}
           </div>,

@@ -66,8 +66,8 @@ export function DropImport(): JSX.Element | null {
 
   if (!over) return null;
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="rounded-lg border-2 border-white border-dashed bg-slate-800/90 px-8 py-6 font-semibold text-lg text-white shadow-lg">
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4">
+      <div className="rounded-lg border-2 border-on-inverse border-dashed bg-inverse/90 px-8 py-6 font-semibold text-lg text-on-inverse shadow-lg">
         Drop to import
       </div>
     </div>
