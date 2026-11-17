@@ -143,6 +143,16 @@ describe("NpnCodec", () => {
     });
   });
 
+  describe("transition key order", () => {
+    it("round-trips rotated transitions with and without a label, as the course tool writes them", () => {
+      // The course tool rebuilds every transition as id, name, position, labelPosition, gui when
+      // it opens a file, so a label moved there always lands before gui.
+      const input =
+        '{"places":[],"transitions":[{"id":"t","name":"T","position":{"x":0,"y":0},"gui":{"rotation":85}},{"id":"u","name":"U","position":{"x":40,"y":0},"labelPosition":{"x":55,"y":70},"gui":{"rotation":305}}],"arcs":{}}';
+      expect(NpnCodec.serialize(NpnCodec.parse(input))).toBe(input);
+    });
+  });
+
   describe("error handling", () => {
     it("throws NpnParseError on invalid JSON", () => {
       expect(() => NpnCodec.parse("{not json")).toThrow(NpnParseError);
