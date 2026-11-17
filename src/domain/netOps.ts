@@ -64,8 +64,9 @@ export class NetOps {
    * Paste `clip` into `net`, translated by `offset`. Each node gets a fresh id and the next free
    * sequential name (allocated against the growing net so a multi-node paste can't self-collide);
    * node positions and arc polylines shift by `offset`; arc endpoints remap to the new node ids.
-   * Tokens, rotation, magnetic flags, multiplicity, label offsets, and unknown `_extra` carry
-   * verbatim. Returns the new net and the inserted ids so the caller can select the paste.
+   * Tokens, rotation, magnetic flags, multiplicity, label offsets, unknown `_extra`, and an
+   * arc's `.npn` key order (`_labelBeforePoints`) carry verbatim. Returns the new net and the
+   * inserted ids so the caller can select the paste.
    */
   static paste(net: PetriNet, clip: PetriNet, offset: Vec2): PasteResult {
     const idMap = new Map<string, string>();

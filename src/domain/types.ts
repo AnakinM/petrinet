@@ -50,6 +50,12 @@ export interface Arc {
   /** Reserved hook for future arc kinds; v1 treats every arc as "normal" and never serializes this. */
   type?: "normal";
   _extra?: Record<string, unknown>;
+  /**
+   * `.npn` key order, kept for byte-faithful round-tripping: true when the imported file wrote
+   * `labelPosition` before `points`, as the course tool does for an arc it drew itself. When unset
+   * (arcs made in this editor, and imported arcs with the other order), it goes after `points`.
+   */
+  _labelBeforePoints?: boolean;
 }
 
 export interface PetriNet {
