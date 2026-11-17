@@ -231,10 +231,13 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
 useNetStore.subscribe((state, prev) => {
   if (state.net === prev.net) return;
   const { open, result, stale } = useAnalyticsStore.getState();
+  // Closed with no results kept: nothing to refresh or invalidate, so skip the signature work.
+  if (!open && result === null) return;
   if (NetAnalysis.signature(state.net) === NetAnalysis.signature(prev.net)) return;
   // A structural edit can delete a lit element or invalidate the result that lit it, so drop the
-  // highlight along with refreshing the algebraic slice. A cosmetic nudge (same signature) is
-  // filtered above, so the spotlight follows a dragged/renamed node unchanged.
+  // highlight along with the old results (refreshed when open, cleared when closed). A cosmetic
+  // nudge (same signature) is filtered above, so the spotlight follows a dragged/renamed node
+  // unchanged.
   useAnalyticsStore.setState({
     result: open ? algebraicResult() : null,
     stale: stale || result?.placeBounds != null,

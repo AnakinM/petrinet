@@ -161,8 +161,9 @@ function TabButton({
 
 /**
  * The bar across the top of every tab. Before the full analysis has run for this net it asks for
- * it; after an edit it says the net changed (both asks are yellow); once the results are current it turns into a quiet line
- * with the number of explored markings. The full analysis never runs by itself.
+ * it; after an edit it says the net changed (both asks are yellow); once the results are current
+ * it turns into a quiet line with the number of explored markings. The full analysis never runs by
+ * itself.
  */
 function AnalyseBar({ result }: { result: AnalysisResult }): JSX.Element {
   const stale = useAnalyticsStore((s) => s.stale);
