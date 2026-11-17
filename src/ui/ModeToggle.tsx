@@ -5,7 +5,7 @@ import { enterBuild, enterSimulate } from "@/ui/toolbarActions";
 /** The Build ↔ Simulate segmented toggle, shared by the desktop toolbar and the mobile top bar. */
 export function ModeToggle({ mode }: { mode: Mode }): JSX.Element {
   return (
-    <div className="flex overflow-hidden rounded border border-slate-300 text-sm">
+    <div className="flex overflow-hidden rounded border border-line-strong text-sm">
       <ModeTab active={mode === "build"} onClick={enterBuild}>
         Build
       </ModeTab>
@@ -32,8 +32,8 @@ function ModeTab({
       aria-pressed={active}
       className={
         active
-          ? "bg-slate-700 px-3 py-1 text-white"
-          : "bg-white px-3 py-1 text-slate-700 hover:bg-slate-50"
+          ? "bg-accent px-3 py-1 text-on-accent"
+          : "bg-surface-raised px-3 py-1 text-fg-soft hover:bg-surface-hover"
       }
     >
       {children}
