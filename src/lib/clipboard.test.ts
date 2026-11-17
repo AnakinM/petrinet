@@ -48,6 +48,18 @@ describe("TextClipboard.write", () => {
     expect(writeText).toHaveBeenCalledWith("a\tb");
   });
 
+  it("turns a write that throws at once into a rejection", async () => {
+    vi.stubGlobal("ClipboardItem", undefined);
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText: () => {
+          throw new Error("Document is not focused.");
+        },
+      },
+    });
+    await expect(TextClipboard.write("text")).rejects.toThrow("not focused");
+  });
+
   it("rejects when the page has no clipboard access", async () => {
     vi.stubGlobal("navigator", {});
     await expect(TextClipboard.write("text")).rejects.toThrow("not available");
