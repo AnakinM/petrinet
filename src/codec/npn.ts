@@ -14,6 +14,8 @@ export class NpnParseError extends Error {
  * Export reproduces the source byte-for-byte: keys are inserted in canonical order and
  * `JSON.stringify` (no spacing) preserves that order, so an unedited round-trip of a
  * `.npn` file is byte-identical once the {@link NpnCodec.BOM} is prepended on write.
+ * The one key the course tool writes in two places is an arc's `labelPosition`, before or
+ * after `points`; import records which in `Arc._labelBeforePoints` and export follows it.
  *
  * Import is lenient and forward-compatible: required fields are validated (malformed input
  * throws {@link NpnParseError}, never a silent partial load), optional fields default, and
@@ -127,6 +129,8 @@ export class NpnCodec {
     };
     if (o.labelPosition !== undefined) {
       arc.labelPosition = NpnCodec.vec(o.labelPosition, `${path}.labelPosition`);
+      const keys = Object.keys(o);
+      if (keys.indexOf("labelPosition") < keys.indexOf("points")) arc._labelBeforePoints = true;
     }
     const extra = NpnCodec.extractExtra(o, NpnCodec.ARC_KEYS);
     if (extra) arc._extra = extra;
@@ -187,9 +191,11 @@ export class NpnCodec {
         srcMagnetic: a.srcMagnetic,
         destMagnetic: a.destMagnetic,
         multiplicity: a.multiplicity,
-        points: a.points.map((pt) => NpnCodec.vecOut(pt)),
       };
-      if (a.labelPosition) o.labelPosition = NpnCodec.vecOut(a.labelPosition);
+      const label = a.labelPosition && NpnCodec.vecOut(a.labelPosition);
+      if (label && a._labelBeforePoints) o.labelPosition = label;
+      o.points = a.points.map((pt) => NpnCodec.vecOut(pt));
+      if (label && !a._labelBeforePoints) o.labelPosition = label;
       if (a._extra) Object.assign(o, a._extra);
       inner[a.target] = o;
     }
