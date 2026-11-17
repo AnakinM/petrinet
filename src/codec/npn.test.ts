@@ -1,17 +1,16 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NpnCodec, NpnParseError } from "@/codec/npn";
 
-// The reference sample is gitignored (kept local, never committed). Tests that need
-// it skip cleanly when it is absent, e.g. a fresh checkout without the local file.
-const FIXTURE = new URL("../../export-12.npn", import.meta.url);
-const hasFixture = existsSync(FIXTURE);
+// A made-up net drawn and exported in the course tool, committed exactly as the browser
+// downloaded it. Never re-save it through an editor: these tests compare raw bytes.
+const FIXTURE = new URL("./fixtures/npn/class-tool-sample.npn", import.meta.url);
 const fixtureBytes = (): Uint8Array => new Uint8Array(readFileSync(FIXTURE));
 const fixtureText = (): string => new TextDecoder().decode(fixtureBytes());
 
 describe("NpnCodec", () => {
-  describe.skipIf(!hasFixture)("round-trip fidelity (local export-12.npn)", () => {
-    it("re-serializes export-12.npn byte-identically", () => {
+  describe("round-trip fidelity (course tool sample)", () => {
+    it("re-serializes the course tool sample byte-identically", () => {
       const raw = fixtureBytes();
       const out = new TextEncoder().encode(
         NpnCodec.BOM + NpnCodec.serialize(NpnCodec.parse(fixtureText())),
@@ -31,13 +30,13 @@ describe("NpnCodec", () => {
 
     it("parses the expected element counts", () => {
       const net = NpnCodec.parse(fixtureText());
-      expect(net.places).toHaveLength(45);
-      expect(net.transitions).toHaveLength(65);
-      expect(net.arcs).toHaveLength(170);
+      expect(net.places).toHaveLength(4);
+      expect(net.transitions).toHaveLength(2);
+      expect(net.arcs).toHaveLength(7);
     });
   });
 
-  describe.skipIf(!hasFixture)("byte format (local export-12.npn)", () => {
+  describe("byte format (course tool sample)", () => {
     it("fixture starts with a UTF-8 BOM and has no trailing newline", () => {
       const raw = fixtureBytes();
       expect([raw[0], raw[1], raw[2]]).toEqual([0xef, 0xbb, 0xbf]);

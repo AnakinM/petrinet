@@ -1,12 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NpnCodec } from "@/codec/npn";
 import { FlowProjection } from "@/flow/projection";
 import { SAMPLE_NET } from "@/flow/sampleNet";
 
-// The reference sample is gitignored (kept local); tests needing it skip when absent.
-const FIXTURE = new URL("../../export-12.npn", import.meta.url);
-const hasFixture = existsSync(FIXTURE);
+// A made-up net drawn and exported in the course tool, committed next to the codec tests.
+const FIXTURE = new URL("../codec/fixtures/npn/class-tool-sample.npn", import.meta.url);
 const fixtureText = (): string => new TextDecoder().decode(readFileSync(FIXTURE));
 
 describe("FlowProjection.toNodes", () => {
@@ -37,12 +36,12 @@ describe("FlowProjection.toNodes", () => {
     }
   });
 
-  describe.skipIf(!hasFixture)("against the local export-12.npn", () => {
-    it("projects every element to a node (45 places + 65 transitions)", () => {
+  describe("against the course tool sample", () => {
+    it("projects every element to a node (4 places + 2 transitions)", () => {
       const nodes = FlowProjection.toNodes(NpnCodec.parse(fixtureText()));
-      expect(nodes).toHaveLength(110);
-      expect(nodes.filter((n) => n.type === "place")).toHaveLength(45);
-      expect(nodes.filter((n) => n.type === "transition")).toHaveLength(65);
+      expect(nodes).toHaveLength(6);
+      expect(nodes.filter((n) => n.type === "place")).toHaveLength(4);
+      expect(nodes.filter((n) => n.type === "transition")).toHaveLength(2);
     });
 
     it("gives every node a finite position", () => {
@@ -76,9 +75,9 @@ describe("FlowProjection.toEdges", () => {
     expect(edge.markerEnd).toMatchObject({ type: "arrowclosed" });
   });
 
-  describe.skipIf(!hasFixture)("against the local export-12.npn", () => {
-    it("projects every arc to an edge (170 arcs)", () => {
-      expect(FlowProjection.toEdges(NpnCodec.parse(fixtureText()))).toHaveLength(170);
+  describe("against the course tool sample", () => {
+    it("projects every arc to an edge (7 arcs)", () => {
+      expect(FlowProjection.toEdges(NpnCodec.parse(fixtureText()))).toHaveLength(7);
     });
   });
 });
