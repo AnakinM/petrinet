@@ -39,6 +39,23 @@ describe("NetSvg", () => {
     expect(svg.endsWith("</svg>")).toBe(true);
   });
 
+  it("stays light in every theme: fixed colours, never a theme variable", () => {
+    // Pictures go into reports on white pages, so the export must not follow the canvas tokens.
+    const net: PetriNet = {
+      places: [place("P1", { x: 0, y: 0 }, 2), place("P2", { x: 200, y: 0 })],
+      transitions: [transition("T1", { x: 100, y: 0 })],
+      arcs: [
+        arc(2, [
+          { x: 20, y: 0 },
+          { x: 92.5, y: 0 },
+        ]),
+      ],
+    };
+    const svg = NetSvg.serialize(net);
+    expect(svg).not.toContain("var(");
+    expect(svg).toContain('stroke="#334155"');
+  });
+
   it("draws a place as a circle with its name label", () => {
     const net: PetriNet = {
       places: [place("P1", { x: 100, y: 100 }, 0, "Start")],
