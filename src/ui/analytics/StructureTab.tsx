@@ -57,7 +57,7 @@ export function StructureTab({ result }: { result: AnalysisResult }): JSX.Elemen
       <Card title="Net facts" help="Net facts">
         <dl className="flex flex-col gap-2">
           <div className="flex justify-between gap-2">
-            <dt className="text-slate-600">Connected</dt>
+            <dt className="text-fg-muted">Connected</dt>
             <dd>{d.connected ? "Yes" : "No"}</dd>
           </div>
           <FactChips label="Source places" ids={d.sourcePlaces} />
@@ -76,7 +76,7 @@ function FactChips({ label, ids }: { label: string; ids: string[] }): JSX.Elemen
   const { nodeName, kindOf } = useNetNames();
   return (
     <div className="flex items-start justify-between gap-2">
-      <dt className="shrink-0 pt-0.5 text-slate-600">{label}</dt>
+      <dt className="shrink-0 pt-0.5 text-fg-muted">{label}</dt>
       {ids.length === 0 ? (
         <dd>none</dd>
       ) : (

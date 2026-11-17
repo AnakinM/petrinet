@@ -53,19 +53,19 @@ export function AnalyticsPanel(): JSX.Element | null {
       style={isMobile ? undefined : { width }}
       className={
         isMobile
-          ? "absolute inset-0 z-50 flex flex-col bg-white"
-          : "absolute inset-y-0 right-0 z-10 flex flex-col border-slate-300 border-l-[3px] bg-white shadow-lg"
+          ? "absolute inset-0 z-50 flex flex-col bg-surface"
+          : "absolute inset-y-0 right-0 z-10 flex flex-col border-line-strong border-l-[3px] bg-surface shadow-lg"
       }
     >
       {/* Desktop floats a resizable right rail; mobile takes over the canvas area full-screen. */}
       {!isMobile && <ResizeHandle />}
       <PanelHeader activeTab={activeTab} canCopy={ready} />
       {ready && <AnalyseBar result={result} />}
-      <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-50/60 p-4">
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-surface-subtle/60 p-4">
         {ready ? (
           <TabBody tab={activeTab} result={result} />
         ) : (
-          <p className="text-base text-slate-500">
+          <p className="text-base text-fg-subtle">
             Nothing to analyse. Add places and transitions.
           </p>
         )}
@@ -100,15 +100,15 @@ function PanelHeader({
   canCopy: boolean;
 }): JSX.Element {
   return (
-    <div className="shrink-0 border-slate-200 border-b">
+    <div className="shrink-0 border-line border-b">
       <div className="flex items-center gap-2 px-4 py-2">
-        <h2 className="font-semibold text-base text-slate-900">Analysis</h2>
+        <h2 className="font-semibold text-base text-fg-strong">Analysis</h2>
         <div className="ml-auto flex items-center gap-1">
           {canCopy && (
             <button
               type="button"
               onClick={copyResults}
-              className="rounded border border-slate-300 bg-white px-2.5 py-1 font-medium text-slate-700 text-sm hover:bg-slate-100"
+              className="rounded border border-line-strong bg-surface-raised px-2.5 py-1 font-medium text-fg-soft text-sm hover:bg-surface-muted"
             >
               Copy results
             </button>
@@ -117,7 +117,7 @@ function PanelHeader({
             type="button"
             onClick={() => useAnalyticsStore.getState().close()}
             aria-label="Close analysis"
-            className="rounded px-1.5 text-2xl text-slate-500 leading-none hover:bg-slate-100 hover:text-slate-800"
+            className="rounded px-1.5 text-2xl text-fg-subtle leading-none hover:bg-surface-muted hover:text-fg"
           >
             ×
           </button>
@@ -150,8 +150,8 @@ function TabButton({
       aria-pressed={active}
       className={
         active
-          ? "rounded bg-slate-700 px-2.5 py-1 font-medium text-sm text-white"
-          : "rounded px-2.5 py-1 font-medium text-slate-700 text-sm hover:bg-slate-100"
+          ? "rounded bg-accent px-2.5 py-1 font-medium text-sm text-on-accent"
+          : "rounded px-2.5 py-1 font-medium text-fg-soft text-sm hover:bg-surface-muted"
       }
     >
       {children}
@@ -168,7 +168,7 @@ function AnalyseBar({ result }: { result: AnalysisResult }): JSX.Element {
   const stale = useAnalyticsStore((s) => s.stale);
   if (!stale && result.placeBounds !== null) {
     return (
-      <p className="shrink-0 border-slate-200 border-b px-4 py-2 text-slate-600 text-sm">
+      <p className="shrink-0 border-line border-b px-4 py-2 text-fg-muted text-sm">
         {AnalysisReport.upToDate(result)}
       </p>
     );
@@ -176,11 +176,11 @@ function AnalyseBar({ result }: { result: AnalysisResult }): JSX.Element {
   return (
     <div
       className={`flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3 ${
-        stale ? "border-amber-300 bg-amber-50" : "border-blue-200 bg-blue-50"
+        stale ? "border-warning-line bg-warning-soft" : "border-info-line bg-info-soft"
       }`}
     >
       {/* The text keeps at least 12rem, so in a narrow panel the button wraps under it. */}
-      <p className="min-w-0 shrink grow basis-48 text-base text-slate-900">
+      <p className="min-w-0 shrink grow basis-48 text-base text-fg-strong">
         {stale
           ? "The net changed. The results may be out of date."
           : "Some results need the full analysis."}
@@ -188,7 +188,7 @@ function AnalyseBar({ result }: { result: AnalysisResult }): JSX.Element {
       <button
         type="button"
         onClick={() => useAnalyticsStore.getState().reanalyze()}
-        className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-base text-white shadow-sm hover:bg-blue-700"
+        className="rounded-md bg-info px-4 py-2 font-semibold text-base text-on-status shadow-sm hover:bg-info-hover"
       >
         {stale ? "Analyse again" : "Analyse"}
       </button>
@@ -212,17 +212,17 @@ function ResizeHandle(): JSX.Element {
       }}
       title="Drag to resize"
       className={`absolute inset-y-0 left-0 z-10 flex w-[9px] cursor-col-resize items-center justify-center ${
-        dragging ? "bg-blue-300" : "hover:bg-blue-300"
+        dragging ? "bg-focus-soft" : "hover:bg-focus-soft"
       }`}
     >
       <span className="-translate-x-1/2 absolute inset-y-0 left-1/2 flex gap-[5px]">
-        <span className="w-px bg-slate-300" />
-        <span className="w-px bg-slate-300" />
+        <span className="w-px bg-line-strong" />
+        <span className="w-px bg-line-strong" />
       </span>
-      <span className="relative flex flex-col gap-[3px] rounded-sm bg-white p-[2px]">
-        <span className="h-[2px] w-[2px] rounded-full bg-slate-400" />
-        <span className="h-[2px] w-[2px] rounded-full bg-slate-400" />
-        <span className="h-[2px] w-[2px] rounded-full bg-slate-400" />
+      <span className="relative flex flex-col gap-[3px] rounded-sm bg-surface p-[2px]">
+        <span className="h-[2px] w-[2px] rounded-full bg-fg-faint" />
+        <span className="h-[2px] w-[2px] rounded-full bg-fg-faint" />
+        <span className="h-[2px] w-[2px] rounded-full bg-fg-faint" />
       </span>
     </div>
   );
