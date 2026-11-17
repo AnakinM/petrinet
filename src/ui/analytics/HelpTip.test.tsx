@@ -60,11 +60,15 @@ describe("HelpTip", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
-  it("closes on Escape", () => {
+  it("closes on Escape and keeps that Escape from the window's listeners", () => {
+    const onWindowKey = vi.fn();
+    window.addEventListener("keydown", onWindowKey);
     const icon = renderIcon();
     keyboardFocus(icon);
     fireEvent.keyDown(document, { key: "Escape" });
+    window.removeEventListener("keydown", onWindowKey);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(onWindowKey).not.toHaveBeenCalled();
   });
 
   it("toggles on a touch tap and ignores the touch pointer leaving", () => {
