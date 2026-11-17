@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from "react";
+import { type JSX, type PointerEvent, type ReactNode, useEffect, useRef } from "react";
 import type { Verdict } from "@/domain/analysis/types";
 import {
   NO_SPOTLIGHT,
@@ -113,15 +113,24 @@ export function VerdictCard({
   items?: string[];
   children?: ReactNode;
 }): JSX.Element {
+  const lead = !pending && detail ? <p>{detail}</p> : null;
+  const bullets = !pending && items && items.length > 0 ? <Bullets items={items} /> : null;
+  // A pending card with no part of its own has no body at all, so no empty gap under its title.
+  const body =
+    lead || bullets || children ? (
+      <>
+        {lead}
+        {bullets}
+        {children}
+      </>
+    ) : undefined;
   return (
     <Card
       title={title}
       help={help}
       mark={pending ? <PendingBadge /> : <VerdictBadge verdict={verdict} />}
     >
-      {!pending && detail && <p>{detail}</p>}
-      {!pending && items && items.length > 0 && <Bullets items={items} />}
-      {children}
+      {body}
     </Card>
   );
 }
@@ -186,6 +195,39 @@ export function ChipList({ children }: { children: ReactNode }): JSX.Element {
   return <div className="flex flex-wrap gap-1">{children}</div>;
 }
 
+/** The pointer handlers of a result that lights `target` on the canvas while the mouse rests on it. */
+export interface HoverPreview {
+  onPointerEnter: (e: PointerEvent<HTMLElement>) => void;
+  onPointerLeave: () => void;
+}
+
+/**
+ * Light `target` while the mouse rests on the element that spreads these handlers, and clear it on
+ * leave. A finger never previews: its tap goes straight to the click. If the element disappears
+ * while hovered (a tab switch, a new analysis), the preview is cleared with it.
+ */
+export function useHoverPreview(target: Spotlight): HoverPreview {
+  const hovering = useRef(false);
+  useEffect(
+    () => () => {
+      if (hovering.current) useAnalyticsStore.getState().setPreview(NO_SPOTLIGHT);
+    },
+    [],
+  );
+  return {
+    onPointerEnter: (e) => {
+      if (e.pointerType === "touch") return;
+      hovering.current = true;
+      useAnalyticsStore.getState().setPreview(target);
+    },
+    onPointerLeave: () => {
+      if (!hovering.current) return;
+      hovering.current = false;
+      useAnalyticsStore.getState().setPreview(NO_SPOTLIGHT);
+    },
+  };
+}
+
 /**
  * The single click-to-spotlight control shared by every tab: a button that names elements of the
  * net. Resting the mouse on it lights `target` on the canvas at once, and leaving clears that; a
@@ -193,20 +235,25 @@ export function ChipList({ children }: { children: ReactNode }): JSX.Element {
  * With nothing to light it renders a plain element, so an empty witness (a deadlock at the all-zero
  * marking) never looks clickable. `kind` adds the mark of a single element's kind; `layout="row"`
  * makes a full-width block for a multi-line entry (an invariant, a loop, a deadlock marking).
+ * `highlightKey` names the result when another result could light the same elements (two deadlock
+ * markings with the same marked places), so only the clicked one reads as pressed.
  */
 export function HighlightChip({
   target,
+  highlightKey,
   kind,
   layout = "chip",
   children,
 }: {
   target: Spotlight;
+  highlightKey?: string;
   kind?: ElementKind;
   layout?: "chip" | "row";
   children: ReactNode;
 }): JSX.Element {
-  const key = spotlightKey(target);
-  const active = useAnalyticsStore((s) => spotlightKey(s.highlight) === key);
+  const key = highlightKey ?? spotlightKey(target);
+  const active = useAnalyticsStore((s) => s.highlightKey === key);
+  const hover = useHoverPreview(target);
   const shape =
     layout === "chip"
       ? "inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 text-sm"
@@ -220,15 +267,11 @@ export function HighlightChip({
   if (target.nodes.length === 0 && target.arcs.length === 0) {
     return <div className={`${shape} border-slate-200 bg-slate-50 text-slate-800`}>{content}</div>;
   }
-  const store = useAnalyticsStore.getState;
   return (
     <button
       type="button"
-      onClick={() => store().toggleHighlight(target)}
-      onPointerEnter={(e) => {
-        if (e.pointerType !== "touch") store().setPreview(target);
-      }}
-      onPointerLeave={() => store().setPreview(NO_SPOTLIGHT)}
+      onClick={() => useAnalyticsStore.getState().toggleHighlight(target, key)}
+      {...hover}
       aria-pressed={active}
       className={`${shape} transition-colors ${
         active

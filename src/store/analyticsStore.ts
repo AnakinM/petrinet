@@ -69,6 +69,12 @@ export interface AnalyticsState {
    * survives Simulate (where selection is off), and never edits the net. Only this one pans the canvas.
    */
   highlight: Spotlight;
+  /**
+   * Which result keeps {@link highlight} lit, or null when nothing is kept. Two results can light
+   * the same elements (two markings with the same marked places), so a result knows it is the
+   * pressed one by this key, not by the elements.
+   */
+  highlightKey: string | null;
   /** What the canvas lights while the pointer rests on a result. Transient, and it never pans. */
   preview: Spotlight;
 
@@ -83,8 +89,11 @@ export interface AnalyticsState {
   analyze: () => void;
   /** Run the full analysis (the reachability pass) for the current net and clear the stale flag. */
   reanalyze: () => void;
-  /** Keep these elements lit on the canvas; passing the already-lit set turns the highlight off. */
-  toggleHighlight: (target: Spotlight) => void;
+  /**
+   * Keep these elements lit on the canvas for the result named `key` (by default, the elements
+   * themselves). Toggling the result that already keeps the highlight turns it off.
+   */
+  toggleHighlight: (target: Spotlight, key?: string) => void;
   /** Light these elements while the pointer rests on them; {@link NO_SPOTLIGHT} clears it. */
   setPreview: (target: Spotlight) => void;
 }
@@ -149,6 +158,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
     stale: false,
     running: false,
     highlight: NO_SPOTLIGHT,
+    highlightKey: null,
     preview: NO_SPOTLIGHT,
 
     toggle: () => {
@@ -158,6 +168,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
         result: open ? algebraicResult() : get().result,
         stale: false,
         highlight: NO_SPOTLIGHT,
+        highlightKey: null,
         preview: NO_SPOTLIGHT,
       });
       persist(get());
@@ -165,7 +176,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
       if (open) Analytics.track("Open Analysis panel");
     },
     close: () => {
-      set({ open: false, highlight: NO_SPOTLIGHT, preview: NO_SPOTLIGHT });
+      set({ open: false, highlight: NO_SPOTLIGHT, highlightKey: null, preview: NO_SPOTLIGHT });
       persist(get());
     },
     // Persisting on every pointermove would thrash localStorage during a drag; commitWidth saves once.
@@ -173,12 +184,16 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => {
     commitWidth: () => persist(get()),
     setActiveTab: (activeTab) => {
       // A highlight belongs to the result that lit it; leaving its tab drops it.
-      set({ activeTab, highlight: NO_SPOTLIGHT, preview: NO_SPOTLIGHT });
+      set({ activeTab, highlight: NO_SPOTLIGHT, highlightKey: null, preview: NO_SPOTLIGHT });
       persist(get());
     },
-    toggleHighlight: (target) => {
-      const same = spotlightKey(target) === spotlightKey(get().highlight);
-      set({ highlight: same ? NO_SPOTLIGHT : target });
+    toggleHighlight: (target, key = spotlightKey(target)) => {
+      const same = key === get().highlightKey;
+      set(
+        same
+          ? { highlight: NO_SPOTLIGHT, highlightKey: null }
+          : { highlight: target, highlightKey: key },
+      );
     },
     setPreview: (preview) => set({ preview }),
     analyze: () => set({ result: algebraicResult(), stale: false }),
@@ -218,6 +233,7 @@ useNetStore.subscribe((state, prev) => {
     result: algebraicResult(),
     stale: stale || result?.placeBounds != null,
     highlight: NO_SPOTLIGHT,
+    highlightKey: null,
     preview: NO_SPOTLIGHT,
   });
 });

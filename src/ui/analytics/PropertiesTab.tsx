@@ -92,12 +92,13 @@ export function PropertiesTab({ result }: { result: AnalysisResult }): JSX.Eleme
 function PlaceBoundsPart({ result }: { result: AnalysisResult }): JSX.Element {
   const { net, placeName } = useNetNames();
   const bounds = result.placeBounds;
+  const caveat = NetAnalysis.placeBoundsCaveat(result);
   const places = net.places.slice(0, DISPLAY_CAP);
   return (
     <div className="flex flex-col gap-1.5 border-slate-100 border-t pt-2">
       <SubHeading title="Place bounds" help="Place bounds" />
       {bounds === null ? (
-        <Note>{PENDING_LABEL}.</Note>
+        <Note>{PENDING_LABEL}</Note>
       ) : net.places.length === 0 ? (
         <p>none</p>
       ) : (
@@ -108,6 +109,7 @@ function PlaceBoundsPart({ result }: { result: AnalysisResult }): JSX.Element {
               marking.
             </p>
           )}
+          {caveat !== null && <p className="text-amber-800">{caveat}</p>}
           <dl className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
             {places.map((p) => {
               const max = bounds.max[p.id] ?? 0;
@@ -214,7 +216,11 @@ function DeadlockRow({
   // All-zero dead markings have nothing to spotlight; HighlightChip then renders non-interactive.
   const marked = places.filter((p) => (deadlock.marking[p.id] ?? 0) > 0).map((p) => p.id);
   return (
-    <HighlightChip target={{ nodes: marked, arcs: [] }} layout="row">
+    <HighlightChip
+      target={{ nodes: marked, arcs: [] }}
+      highlightKey={`deadlock:${deadlockKey(deadlock)}`}
+      layout="row"
+    >
       <span className="font-mono">{NetNames.formatMarking(deadlock.marking, places)}</span>
       {deadlock.path.length > 0 && (
         <span className="text-[13px] text-slate-500">
