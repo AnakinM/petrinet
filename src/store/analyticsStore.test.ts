@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
+import { NetAnalysis } from "@/domain/analysis/netAnalysis";
 import type { Analytics } from "@/lib/analytics";
 import type { useAnalyticsStore } from "@/store/analyticsStore";
 
@@ -175,8 +176,15 @@ describe("analyticsStore results across closing and opening", () => {
   it("shows the quick results of the current net after the net is replaced while closed", async () => {
     const { store, net } = await analysed();
     store.getState().toggle();
-    net.getState().setNet({ places: [], transitions: [], arcs: [] });
+    net.getState().setNet({
+      places: [{ id: "Q1", name: "Q1", tokens: 2, position: { x: 0, y: 0 } }],
+      transitions: [{ id: "u1", name: "u1", position: { x: 80, y: 0 } }],
+      arcs: [],
+    });
     store.getState().toggle();
+    expect(store.getState().result).toEqual(
+      NetAnalysis.analyze(net.getState().net, { behavioral: false }),
+    );
     expect(store.getState().result?.placeBounds).toBeNull();
     expect(store.getState().stale).toBe(true);
   });
