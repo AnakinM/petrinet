@@ -59,9 +59,9 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
 
 - Export is **byte-faithful**: UTF-8 **BOM**, single-line **minified** JSON, **preserved key
   order**, **no trailing newline**. Each arc's *current* geometry is serialized back into `points`.
-- Round-tripping `src/codec/fixtures/npn/class-tool-sample.npn` (a real file exported from the
-  course tool) with no edits must produce a **byte-identical** file. There is a Vitest test that
-  enforces this. Never regress it.
+- Round-tripping `src/codec/fixtures/npn/class-tool-sample.npn` and
+  `src/codec/fixtures/npn/class-tool-arc-label-first.npn` (real files exported from the course tool)
+  with no edits must produce **byte-identical** files. Vitest tests enforce this. Never regress them.
 - Import is **lenient and forward-compatible**: validate structure, default missing optional fields
   (e.g. absent `labelPosition`), and **preserve unknown/extra fields** per element so a future
   extended `.npn` survives a round-trip through this editor. Malformed input fails with a clear,
@@ -70,6 +70,8 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
   - place: `id, name, tokens, position, labelPosition?`
   - transition: `id, name, position, labelPosition?, gui?`
   - arc: `id, srcMagnetic, destMagnetic, multiplicity, points, labelPosition?`
+    An imported arc keeps its file's position of `labelPosition` relative to `points`: the course
+    tool writes it before `points` on arcs it drew itself (stored as the arc's `_labelBeforePoints`).
   - point/position/labelPosition object: `x, y`
 
 ## Architecture: load-bearing rules
@@ -118,8 +120,9 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
 
 - **Vitest.** Unit tests co-located as `*.test.ts(x)` next to the code they cover.
 - The **`.npn` codec and the firing engine must have unit tests**, including the byte-identical
-  round-trip test against `src/codec/fixtures/npn/class-tool-sample.npn` (a committed fixture,
-  exported from the course tool; never re-save it through an editor).
+  round-trip tests against `src/codec/fixtures/npn/class-tool-sample.npn` and
+  `src/codec/fixtures/npn/class-tool-arc-label-first.npn` (committed fixtures, exported from the
+  course tool; never re-save them through an editor).
 - Group tests in `describe` blocks. No loose top-level tests.
 - Testing pyramid: most coverage from pure-unit tests on `domain/` and `codec/`. Component tests cover
   each interactive surface's happy path plus an error path where one exists.
