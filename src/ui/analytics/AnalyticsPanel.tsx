@@ -161,8 +161,9 @@ function TabButton({
 
 /**
  * The bar across the top of every tab. Before the full analysis has run for this net it asks for
- * it; after an edit it says the net changed; once the results are current it turns into a quiet line
- * with the number of explored markings. The full analysis never runs by itself.
+ * it; after an edit it says the net changed (both asks are yellow); once the results are current
+ * it turns into a quiet line with the number of explored markings. The full analysis never runs by
+ * itself.
  */
 function AnalyseBar({ result }: { result: AnalysisResult }): JSX.Element {
   const stale = useAnalyticsStore((s) => s.stale);
@@ -174,15 +175,11 @@ function AnalyseBar({ result }: { result: AnalysisResult }): JSX.Element {
     );
   }
   return (
-    <div
-      className={`flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3 ${
-        stale ? "border-warning-line bg-warning-soft" : "border-info-line bg-info-soft"
-      }`}
-    >
+    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-warning-line border-b bg-warning-soft px-4 py-3">
       {/* The text keeps at least 12rem, so in a narrow panel the button wraps under it. */}
       <p className="min-w-0 shrink grow basis-48 text-base text-fg-strong">
         {stale
-          ? "The net changed. The results may be out of date."
+          ? "The net changed. Analyse again to update the results."
           : "Some results need the full analysis."}
       </p>
       <button

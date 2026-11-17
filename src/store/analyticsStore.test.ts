@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
+import { NetAnalysis } from "@/domain/analysis/netAnalysis";
 import type { Analytics } from "@/lib/analytics";
 import type { useAnalyticsStore } from "@/store/analyticsStore";
 
@@ -107,6 +108,95 @@ describe("analyticsStore stale flag", () => {
     expect(store.getState().result?.placeBounds).toBeNull();
 
     store.getState().reanalyze();
+    expect(store.getState().stale).toBe(false);
+  });
+});
+
+describe("analyticsStore results across closing and opening", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** A store with the panel open and the full analysis run. */
+  async function analysed(): Promise<{
+    store: typeof useAnalyticsStore;
+    net: typeof import("@/store/netStore").useNetStore;
+  }> {
+    const { store } = await load();
+    const { useNetStore } = await import("@/store/netStore");
+    store.getState().toggle();
+    store.getState().reanalyze();
+    return { store, net: useNetStore };
+  }
+
+  it("keeps the full results when the panel closes and opens with no edit", async () => {
+    const { store } = await analysed();
+    store.getState().toggle();
+    store.getState().toggle();
+    expect(store.getState().result?.placeBounds).not.toBeNull();
+    expect(store.getState().stale).toBe(false);
+  });
+
+  it("keeps the full results through close() too", async () => {
+    const { store } = await analysed();
+    store.getState().close();
+    store.getState().toggle();
+    expect(store.getState().result?.placeBounds).not.toBeNull();
+    expect(store.getState().stale).toBe(false);
+  });
+
+  it("keeps the full results after a cosmetic edit made while closed", async () => {
+    const { store, net } = await analysed();
+    store.getState().toggle();
+    const place = net.getState().net.places[0];
+    net
+      .getState()
+      .moveNodes([{ id: place.id, position: { x: place.position.x + 40, y: place.position.y } }]);
+    store.getState().toggle();
+    expect(store.getState().result?.placeBounds).not.toBeNull();
+    expect(store.getState().stale).toBe(false);
+  });
+
+  it("drops the full results and turns stale after a structural edit made while closed", async () => {
+    const { store, net } = await analysed();
+    store.getState().toggle();
+    const id = net.getState().net.places[0].id;
+    net.getState().setTokens(id, net.getState().net.places[0].tokens + 3);
+    store.getState().toggle();
+    expect(store.getState().result).not.toBeNull();
+    expect(store.getState().result?.placeBounds).toBeNull();
+    expect(store.getState().stale).toBe(true);
+  });
+
+  it("shows the quick results of the current net after the net is replaced while closed", async () => {
+    const { store, net } = await analysed();
+    store.getState().toggle();
+    net.getState().setNet({
+      places: [{ id: "Q1", name: "Q1", tokens: 2, position: { x: 0, y: 0 } }],
+      transitions: [{ id: "u1", name: "u1", position: { x: 80, y: 0 } }],
+      arcs: [],
+    });
+    store.getState().toggle();
+    expect(store.getState().result).toEqual(
+      NetAnalysis.analyze(net.getState().net, { behavioral: false }),
+    );
+    expect(store.getState().result?.placeBounds).toBeNull();
+    expect(store.getState().stale).toBe(true);
+  });
+
+  it("stays at not run when no full analysis ever ran", async () => {
+    const { store } = await load();
+    const { useNetStore } = await import("@/store/netStore");
+    store.getState().toggle();
+    store.getState().toggle();
+    useNetStore.getState().setTokens(useNetStore.getState().net.places[0].id, 9);
+    store.getState().toggle();
+    expect(store.getState().result?.placeBounds).toBeNull();
     expect(store.getState().stale).toBe(false);
   });
 });
