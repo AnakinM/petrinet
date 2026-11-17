@@ -3,9 +3,11 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { StrictMode } from "react";
 import { hydrateRoot } from "react-dom/client";
-import { renderToString } from "react-dom/server";
+import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GuidePage } from "@/guide/GuidePage";
+import { useThemeStore } from "@/store/themeStore";
+import { MoonIcon } from "@/ui/icons";
 
 describe("GuidePage", () => {
   afterEach(() => {
@@ -62,5 +64,28 @@ describe("GuidePage", () => {
     expect(document.title).toBe("What is a Petri net? Guide and examples | PetriNet Editor");
     act(() => root.unmount());
     container.remove();
+  });
+
+  it("hydrates with a stored Dark choice and then shows the moon icon", async () => {
+    const page = (
+      <StrictMode>
+        <GuidePage />
+      </StrictMode>
+    );
+    // The build renders with no stored choice; this visitor chose Dark on an earlier visit.
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(page);
+    document.body.appendChild(container);
+    useThemeStore.getState().setPreference("dark");
+    const error = vi.spyOn(console, "error");
+
+    const root = await act(async () => hydrateRoot(container, page));
+
+    expect(error).not.toHaveBeenCalled();
+    const theme = container.querySelector('button[aria-label="Theme"]');
+    expect(theme?.innerHTML).toBe(renderToStaticMarkup(<MoonIcon />));
+    act(() => root.unmount());
+    container.remove();
+    useThemeStore.getState().setPreference("system");
   });
 });

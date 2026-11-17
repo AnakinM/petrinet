@@ -3,6 +3,8 @@ import { GuideNets } from "@/guide/exampleNets";
 import { GuideDiagram } from "@/guide/GuideDiagram";
 import { GUIDE_TITLE } from "@/guide/guideDocument";
 import { BugIcon, GitHubIcon } from "@/ui/icons";
+import { THEME_LABEL, ThemeIcon, ThemeMenu } from "@/ui/ThemeMenu";
+import { Tooltip } from "@/ui/Tooltip";
 
 const REPO_URL = "https://github.com/AnakinM/petrinet";
 const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
@@ -113,14 +115,44 @@ function TopBar(): JSX.Element {
           </span>
         </a>
         <span className="text-slate-400 text-sm">Guide</span>
-        <a
-          href="/"
-          className="ml-auto inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-slate-700 text-sm shadow-sm hover:bg-slate-50"
-        >
-          Open the editor
-        </a>
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeSwitch />
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-slate-700 text-sm shadow-sm hover:bg-slate-50"
+          >
+            Open the editor
+          </a>
+        </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * The theme switch of the editor's top bar, styled like the button beside it. The guide is
+ * pre-rendered, and the theme store gives React its neutral first state while it hydrates, so the
+ * monitor icon of the build's HTML always matches; the stored choice shows right after.
+ */
+function ThemeSwitch(): JSX.Element {
+  return (
+    <ThemeMenu>
+      {(menu, open) => (
+        <Tooltip label={THEME_LABEL} suppressed={open}>
+          {(tip) => (
+            <button
+              type="button"
+              {...tip}
+              {...menu}
+              aria-label={THEME_LABEL}
+              className="inline-flex items-center rounded-md border border-line-strong bg-surface-raised p-2 text-fg-soft shadow-sm hover:bg-surface-hover"
+            >
+              <ThemeIcon />
+            </button>
+          )}
+        </Tooltip>
+      )}
+    </ThemeMenu>
   );
 }
 

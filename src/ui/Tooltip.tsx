@@ -16,6 +16,12 @@ import { type Box, FloatingPlacement, type Placement } from "@/ui/floatingPlacem
 export const TOOLTIP_DELAY_MS = 300;
 
 /**
+ * `useLayoutEffect` in the browser. The build renders the guide to HTML where there is no document
+ * and no layout; React warns about a layout effect there, and the label never shows there anyway.
+ */
+const useBrowserLayoutEffect = typeof document === "undefined" ? useEffect : useLayoutEffect;
+
+/**
  * The props a {@link Tooltip} trigger spreads onto its own focusable element. They use
  * `onClickCapture`, so the trigger keeps its own `onClick` untouched.
  */
@@ -79,7 +85,7 @@ export function Tooltip({
   }, [anchor]);
 
   // Measure the rendered label, then place it next to the anchor.
-  useLayoutEffect(() => {
+  useBrowserLayoutEffect(() => {
     if (!anchor || suppressed || !labelRef.current) return;
     const { width, height } = labelRef.current.getBoundingClientRect();
     const viewport = { width: window.innerWidth, height: window.innerHeight };
