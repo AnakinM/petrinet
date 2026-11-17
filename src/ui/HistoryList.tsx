@@ -58,10 +58,10 @@ function HistoryRow({
 }): JSX.Element {
   const tone =
     state === "current"
-      ? "bg-slate-700 text-white"
+      ? "bg-accent text-on-accent"
       : state === "future"
-        ? "text-slate-400 hover:bg-slate-100"
-        : "text-slate-700 hover:bg-slate-100";
+        ? "text-fg-faint hover:bg-surface-muted"
+        : "text-fg-soft hover:bg-surface-muted";
   return (
     <button
       type="button"
