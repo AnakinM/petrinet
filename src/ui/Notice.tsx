@@ -27,7 +27,7 @@ export function Notice(): JSX.Element {
       {message !== null && (
         <div
           key={serial}
-          className="max-w-md rounded bg-slate-800 px-3 py-2 text-center text-sm text-white shadow-lg"
+          className="max-w-md rounded bg-inverse px-3 py-2 text-center text-sm text-on-inverse shadow-lg"
         >
           {message}
         </div>
