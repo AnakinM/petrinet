@@ -5,21 +5,27 @@ on:
     branches:
       - main
 
+# The jobs only read the code. They never write to the repository.
+permissions:
+  contents: read
+
 # Never let two deploys race over the same container; queue them instead.
 concurrency:
   group: deploy-main
   cancel-in-progress: false
 
+# Every third-party action is pinned to an exact commit. The comment names the version it had
+# when it was pinned. A version label alone can be moved to different code later.
 jobs:
   test:
     name: Checks & Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
 
@@ -41,73 +47,86 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2
 
       - name: Build Docker Image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@0a97817b6ade9f46837855d676c4cca3a2471fc9 # v4
         with:
           context: .
           load: true
           tags: petrinet:latest
           platforms: linux/amd64
 
+      # docker-pussh v0.1.0, fetched at its exact commit. The checksum stops the deploy when
+      # the download is not the expected file.
       - name: Install docker-pussh
+        env:
+          PUSSH_COMMIT: 47fa2bcc17651c37c872a6a80974ba8d0c876f2c
+          PUSSH_SHA256: b602dbb15ff9160fd737dc79e2fdddc76d4306e0ca04abec24df257b5183c3c5
         run: |
           mkdir -p ~/.docker/cli-plugins
-          curl -sSL https://raw.githubusercontent.com/psviderski/unregistry/v0.1.0/docker-pussh \
+          curl -sSL "https://raw.githubusercontent.com/psviderski/unregistry/${PUSSH_COMMIT}/docker-pussh" \
             -o ~/.docker/cli-plugins/docker-pussh
+          echo "${PUSSH_SHA256}  ${HOME}/.docker/cli-plugins/docker-pussh" | sha256sum --check --quiet
           chmod +x ~/.docker/cli-plugins/docker-pussh
 
-      - name: Push image to VPS
+      # known_hosts pins the server's host key, so SSH refuses to talk to any other machine.
+      - name: Configure SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST_KEY: ${{ secrets.VPS_HOST_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          printf '* %s\n' "$VPS_HOST_KEY" > ~/.ssh/known_hosts
           cat <<EOF > ~/.ssh/config
           Host vps
-              HostName ${{ secrets.VPS_HOST }}
-              User ${{ secrets.VPS_USER }}
+              HostName $VPS_HOST
+              User $VPS_USER
+              Port 2212
               IdentityFile ~/.ssh/id_ed25519
-              StrictHostKeyChecking no
-              UserKnownHostsFile /dev/null
+              StrictHostKeyChecking yes
           EOF
-          docker pussh petrinet:latest vps:2212
 
+      - name: Push image to VPS
+        run: docker pussh petrinet:latest vps:2212
+
+      # The script stops at the first failing command, so a container that does not start
+      # fails the deploy.
       - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          port: 2212
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            APP_CONTAINER_NAME="petrinet"
-            APP_IMAGE="petrinet:latest"
+        run: |
+          ssh vps 'bash -se' <<'EOF'
+          APP_CONTAINER_NAME="petrinet"
+          APP_IMAGE="petrinet:latest"
 
-            echo "Stopping and removing old container ${APP_CONTAINER_NAME} (if any)..."
-            docker stop ${APP_CONTAINER_NAME} || true
-            docker rm ${APP_CONTAINER_NAME} || true
+          echo "Stopping and removing old container ${APP_CONTAINER_NAME} (if any)..."
+          docker stop ${APP_CONTAINER_NAME} || true
+          docker rm ${APP_CONTAINER_NAME} || true
 
-            echo "Running new container ${APP_CONTAINER_NAME}..."
+          echo "Running new container ${APP_CONTAINER_NAME}..."
 
-            LABELS=""
-            LABELS="${LABELS} -l traefik.enable=true"
-            LABELS="${LABELS} -l traefik.http.routers.petrinet.rule=Host(\`petrinet.anikiej.com\`)"
-            LABELS="${LABELS} -l traefik.http.routers.petrinet.entrypoints=websecure"
-            LABELS="${LABELS} -l traefik.http.routers.petrinet.tls.certresolver=ovh"
-            LABELS="${LABELS} -l traefik.http.services.petrinet.loadbalancer.server.port=3000"
+          LABELS=""
+          LABELS="${LABELS} -l traefik.enable=true"
+          LABELS="${LABELS} -l traefik.http.routers.petrinet.rule=Host(\`petrinet.anikiej.com\`)"
+          LABELS="${LABELS} -l traefik.http.routers.petrinet.entrypoints=websecure"
+          LABELS="${LABELS} -l traefik.http.routers.petrinet.tls.certresolver=ovh"
+          LABELS="${LABELS} -l traefik.http.services.petrinet.loadbalancer.server.port=3000"
 
-            docker run -d \
-              --name ${APP_CONTAINER_NAME} \
-              --restart always \
-              --network traefik-public \
-              ${LABELS} \
-              ${APP_IMAGE}
+          docker run -d \
+            --name ${APP_CONTAINER_NAME} \
+            --restart always \
+            --network traefik-public \
+            ${LABELS} \
+            ${APP_IMAGE}
 
-            echo "Deployment of ${APP_CONTAINER_NAME} complete."
+          echo "Deployment of ${APP_CONTAINER_NAME} complete."
 
-            echo "Removing dangling images..."
-            docker image prune -f --filter "dangling=true"
+          echo "Removing dangling images..."
+          docker image prune -f --filter "dangling=true"
+          EOF
