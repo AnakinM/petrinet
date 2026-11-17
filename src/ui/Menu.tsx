@@ -172,7 +172,7 @@ export function Menu({
           aria-labelledby={triggerId}
           tabIndex={-1}
           onKeyDown={onMenuKeyDown}
-          className={`absolute top-full z-30 mt-1 flex max-h-[70vh] w-max min-w-48 max-w-[calc(100vw-1rem)] flex-col overflow-auto overscroll-contain rounded border border-slate-300 bg-white py-1 shadow-lg outline-none ${
+          className={`absolute top-full z-30 mt-1 flex max-h-[70vh] w-max min-w-48 max-w-[calc(100vw-1rem)] flex-col overflow-auto overscroll-contain rounded border border-line-strong bg-surface-raised py-1 shadow-lg outline-none ${
             align === "end" ? "right-0" : "left-0"
           }`}
         >
@@ -209,14 +209,14 @@ function Section({
   ));
   return (
     <>
-      {separated && <hr className="my-1 shrink-0 border-slate-200" />}
+      {separated && <hr className="my-1 shrink-0 border-line" />}
       {section.label ? (
         // biome-ignore lint/a11y/useSemanticElements: inside a menu a labelled group is the ARIA pattern; a fieldset belongs to forms.
         <div role="group" aria-labelledby={headingId} className="flex flex-col">
           <div
             id={headingId}
             role="presentation"
-            className="px-3 pt-1.5 pb-1 font-semibold text-slate-500 text-sm uppercase tracking-wide"
+            className="px-3 pt-1.5 pb-1 font-semibold text-fg-subtle text-sm uppercase tracking-wide"
           >
             {section.label}
           </div>
@@ -230,7 +230,7 @@ function Section({
 }
 
 const ITEM_CLASS =
-  "flex w-full items-start gap-2 px-3 py-2 text-left text-slate-700 text-sm outline-none hover:bg-slate-100 focus-visible:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 md:py-1.5";
+  "flex w-full items-start gap-2 px-3 py-2 text-left text-fg-soft text-sm outline-none hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 md:py-1.5";
 
 function Item({
   entry,
@@ -261,7 +261,7 @@ function Item({
       <span className="flex flex-col">
         <span>{entry.label}</span>
         {entry.hint && (
-          <span id={hintId} className="text-slate-500 text-sm">
+          <span id={hintId} className="text-fg-subtle text-sm">
             {entry.hint}
           </span>
         )}
