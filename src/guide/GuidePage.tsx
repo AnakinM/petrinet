@@ -50,7 +50,7 @@ export function GuidePage(): JSX.Element {
           aria-label="Contents"
           className="mb-12 rounded-lg border border-slate-200 bg-white p-5"
         >
-          <h2 className="mb-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">
+          <h2 className="mb-3 font-semibold text-slate-500 text-sm uppercase tracking-wide">
             On this page
           </h2>
           <ol className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
