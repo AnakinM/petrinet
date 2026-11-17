@@ -1,14 +1,12 @@
 import { create, type StoreApi } from "zustand";
 import { SafeStorage } from "@/lib/safeStorage";
 
-/** The visitor's choice. `system` follows the computer's light or dark setting. */
-export type ThemePreference = "system" | "light" | "dark";
-
-/** The look that is on screen. */
+/** The look that is on screen, and the two looks a visitor can choose. */
 export type ResolvedTheme = "light" | "dark";
 
 /**
- * The `localStorage` key of a Light or Dark choice. System is stored as no key at all. The inline
+ * The `localStorage` key of the visitor's choice. No key means no choice yet, and the app follows
+ * the system. An old value `system`, saved by an earlier version, counts as no choice. The inline
  * script in `index.html` reads the same key before the first paint, and a test keeps them equal.
  */
 export const THEME_STORAGE_KEY = "petrinet:theme";
@@ -26,11 +24,12 @@ export const THEME_COLORS: Readonly<Record<ResolvedTheme, string>> = {
 };
 
 export interface ThemeState {
-  preference: ThemePreference;
+  /** The look the visitor chose by clicking the theme button, or `null` to follow the system. */
+  choice: ResolvedTheme | null;
   resolved: ResolvedTheme;
 
-  /** Choose a look. Light and Dark are remembered for later visits; System forgets the choice. */
-  setPreference: (preference: ThemePreference) => void;
+  /** Switch to the other look and remember it for later visits. */
+  toggle: () => void;
 }
 
 /**
@@ -40,16 +39,14 @@ export interface ThemeState {
  * blocked site data). Without storage the app follows the system and nothing breaks.
  */
 export class ThemeEnvironment {
-  /** The stored choice, or `system` when nothing usable is stored. */
-  static readPreference(): ThemePreference {
+  /** The stored choice, or `null` when nothing usable is stored. */
+  static readChoice(): ResolvedTheme | null {
     const stored = SafeStorage.get(THEME_STORAGE_KEY);
-    return stored === "light" || stored === "dark" ? stored : "system";
+    return stored === "light" || stored === "dark" ? stored : null;
   }
 
-  /** Remember Light or Dark; for System remove the key. */
-  static writePreference(preference: ThemePreference): void {
-    if (preference === "system") SafeStorage.remove(THEME_STORAGE_KEY);
-    else SafeStorage.set(THEME_STORAGE_KEY, preference);
+  static writeChoice(choice: ResolvedTheme): void {
+    SafeStorage.set(THEME_STORAGE_KEY, choice);
   }
 
   /** The system setting as a live query, or `null` where there is no `matchMedia`. */
@@ -58,8 +55,9 @@ export class ThemeEnvironment {
     return window.matchMedia(DARK_QUERY);
   }
 
-  static resolve(preference: ThemePreference): ResolvedTheme {
-    if (preference !== "system") return preference;
+  /** The look for `choice`; with no choice, the system setting. */
+  static resolve(choice: ResolvedTheme | null): ResolvedTheme {
+    if (choice !== null) return choice;
     return ThemeEnvironment.darkQuery()?.matches === true ? "dark" : "light";
   }
 
@@ -75,17 +73,17 @@ export class ThemeEnvironment {
   }
 
   /**
-   * Load the stored choice into `store`, and follow the system setting while it is on System.
+   * Load the stored choice into `store`, and follow the system setting while there is no choice.
    * The store lives as long as the page, so the change listener is never removed.
    */
   static attach(store: StoreApi<ThemeState>): void {
-    const preference = ThemeEnvironment.readPreference();
-    const resolved = ThemeEnvironment.resolve(preference);
+    const choice = ThemeEnvironment.readChoice();
+    const resolved = ThemeEnvironment.resolve(choice);
     ThemeEnvironment.apply(resolved);
-    store.setState({ preference, resolved });
+    store.setState({ choice, resolved });
 
     ThemeEnvironment.darkQuery()?.addEventListener("change", (e) => {
-      if (store.getState().preference !== "system") return;
+      if (store.getState().choice !== null) return;
       const changed: ResolvedTheme = e.matches ? "dark" : "light";
       ThemeEnvironment.apply(changed);
       store.setState({ resolved: changed });
@@ -94,22 +92,22 @@ export class ThemeEnvironment {
 }
 
 /**
- * The theme: the visitor's {@link ThemePreference} and the {@link ResolvedTheme} on screen.
+ * The theme: the visitor's choice and the {@link ResolvedTheme} on screen.
  *
- * The store is created with the neutral state that the build's pre-render sees (System, Light),
+ * The store is created with the neutral state that the build's pre-render sees (no choice, light),
  * and the stored choice is set right after. Zustand hands that first state to React as the server
  * snapshot, so the hydration of the pre-built guide matches its HTML; React then re-renders with
  * the real state. The page colours themselves never wait for React: the inline script in
  * `index.html` set the class before the first paint.
  */
-export const useThemeStore = create<ThemeState>()((set) => ({
-  preference: "system",
+export const useThemeStore = create<ThemeState>()((set, get) => ({
+  choice: null,
   resolved: "light",
-  setPreference: (preference) => {
-    ThemeEnvironment.writePreference(preference);
-    const resolved = ThemeEnvironment.resolve(preference);
-    ThemeEnvironment.apply(resolved);
-    set({ preference, resolved });
+  toggle: () => {
+    const choice: ResolvedTheme = get().resolved === "dark" ? "light" : "dark";
+    ThemeEnvironment.writeChoice(choice);
+    ThemeEnvironment.apply(choice);
+    set({ choice, resolved: choice });
   },
 }));
 

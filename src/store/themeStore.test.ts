@@ -92,7 +92,7 @@ describe("Theme store on load", () => {
   it("follows the system when nothing is stored", async () => {
     const { theme } = await load(true);
     expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "system",
+      choice: null,
       resolved: "dark",
     });
     expect(page()).toEqual({ dark: true, colorScheme: "dark", themeColor: "#0f172a" });
@@ -101,7 +101,7 @@ describe("Theme store on load", () => {
   it("shows the light look on a light system", async () => {
     const { theme } = await load(false);
     expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "system",
+      choice: null,
       resolved: "light",
     });
     expect(page()).toEqual({ dark: false, colorScheme: "light", themeColor: "#ffffff" });
@@ -110,7 +110,7 @@ describe("Theme store on load", () => {
   it("uses a stored Dark choice on a light system", async () => {
     STORAGE.setItem(KEY, "dark");
     const { theme } = await load(false);
-    expect(theme.useThemeStore.getState()).toMatchObject({ preference: "dark", resolved: "dark" });
+    expect(theme.useThemeStore.getState()).toMatchObject({ choice: "dark", resolved: "dark" });
     expect(page().dark).toBe(true);
   });
 
@@ -118,17 +118,26 @@ describe("Theme store on load", () => {
     STORAGE.setItem(KEY, "light");
     const { theme } = await load(true);
     expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "light",
+      choice: "light",
       resolved: "light",
     });
     expect(page().dark).toBe(false);
+  });
+
+  it("treats a stored System value of an older version as no choice", async () => {
+    STORAGE.setItem(KEY, "system");
+    const { theme, system } = await load(true);
+    expect(theme.useThemeStore.getState()).toMatchObject({ choice: null, resolved: "dark" });
+
+    system.change(false);
+    expect(theme.useThemeStore.getState().resolved).toBe("light");
   });
 
   it("ignores a stored value it does not know", async () => {
     STORAGE.setItem(KEY, "sepia");
     const { theme } = await load(true);
     expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "system",
+      choice: null,
       resolved: "dark",
     });
   });
@@ -137,11 +146,11 @@ describe("Theme store on load", () => {
     vi.stubGlobal("localStorage", undefined);
     const { theme } = await load(true);
     expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "system",
+      choice: null,
       resolved: "dark",
     });
 
-    theme.useThemeStore.getState().setPreference("light");
+    theme.useThemeStore.getState().toggle();
     expect(theme.useThemeStore.getState().resolved).toBe("light");
   });
 
@@ -149,11 +158,11 @@ describe("Theme store on load", () => {
     blockStorage();
     const { theme } = await load(true);
     expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "system",
+      choice: null,
       resolved: "dark",
     });
 
-    theme.useThemeStore.getState().setPreference("light");
+    theme.useThemeStore.getState().toggle();
     expect(theme.useThemeStore.getState().resolved).toBe("light");
     expect(page().dark).toBe(false);
   });
@@ -165,13 +174,12 @@ describe("Theme store on load", () => {
     vi.stubGlobal("localStorage", { getItem: denied, setItem: denied, removeItem: denied });
     const { theme } = await load(true);
     expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "system",
+      choice: null,
       resolved: "dark",
     });
 
-    theme.useThemeStore.getState().setPreference("light");
-    theme.useThemeStore.getState().setPreference("system");
-    expect(theme.useThemeStore.getState().resolved).toBe("dark");
+    theme.useThemeStore.getState().toggle();
+    expect(theme.useThemeStore.getState().resolved).toBe("light");
   });
 
   it("shows light where there is no matchMedia", async () => {
@@ -179,7 +187,7 @@ describe("Theme store on load", () => {
     vi.resetModules();
     const theme = await import("@/store/themeStore");
     expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "system",
+      choice: null,
       resolved: "light",
     });
   });
@@ -189,35 +197,35 @@ describe("Theme store on load", () => {
     STORAGE.setItem(KEY, "dark");
     const { theme } = await load(true);
     expect(theme.useThemeStore.getInitialState()).toMatchObject({
-      preference: "system",
+      choice: null,
       resolved: "light",
     });
   });
 });
 
 describe("Theme store choices", () => {
-  it("stores Light and Dark, and removes the key for System", async () => {
+  it("switches to the opposite look on each toggle and stores it", async () => {
     const { theme } = await load(false);
-    const { setPreference } = theme.useThemeStore.getState();
+    const { toggle } = theme.useThemeStore.getState();
 
-    setPreference("dark");
+    toggle();
     expect(STORAGE.getItem(KEY)).toBe("dark");
-    expect(theme.useThemeStore.getState()).toMatchObject({ preference: "dark", resolved: "dark" });
+    expect(theme.useThemeStore.getState()).toMatchObject({ choice: "dark", resolved: "dark" });
     expect(page()).toEqual({ dark: true, colorScheme: "dark", themeColor: "#0f172a" });
 
-    setPreference("light");
+    toggle();
     expect(STORAGE.getItem(KEY)).toBe("light");
+    expect(theme.useThemeStore.getState()).toMatchObject({ choice: "light", resolved: "light" });
     expect(page()).toEqual({ dark: false, colorScheme: "light", themeColor: "#ffffff" });
-
-    setPreference("system");
-    expect(STORAGE.getItem(KEY)).toBeNull();
-    expect(theme.useThemeStore.getState()).toMatchObject({
-      preference: "system",
-      resolved: "light",
-    });
   });
 
-  it("follows a change of the system setting while on System", async () => {
+  it("toggles to the opposite of what the system shows", async () => {
+    const { theme } = await load(true);
+    theme.useThemeStore.getState().toggle();
+    expect(theme.useThemeStore.getState()).toMatchObject({ choice: "light", resolved: "light" });
+  });
+
+  it("follows a change of the system setting while there is no choice", async () => {
     const { theme, system } = await load(false);
 
     system.change(true);
@@ -229,17 +237,27 @@ describe("Theme store choices", () => {
     expect(page().dark).toBe(false);
   });
 
-  it("keeps a Light or Dark choice when the system setting changes", async () => {
+  it("keeps the choice when the system setting changes", async () => {
     const { theme, system } = await load(false);
-    theme.useThemeStore.getState().setPreference("light");
+    theme.useThemeStore.getState().toggle();
 
+    system.change(false);
     system.change(true);
-    expect(theme.useThemeStore.getState().resolved).toBe("light");
-    expect(page().dark).toBe(false);
-
-    // Back on System, the current system setting counts at once.
-    theme.useThemeStore.getState().setPreference("system");
     expect(theme.useThemeStore.getState().resolved).toBe("dark");
+
+    theme.useThemeStore.getState().toggle();
+    system.change(true);
+    expect(theme.useThemeStore.getState()).toMatchObject({ choice: "light", resolved: "light" });
+    expect(page().dark).toBe(false);
+  });
+
+  it("uses the saved choice over the system after a reload", async () => {
+    const first = await load(false);
+    first.theme.useThemeStore.getState().toggle();
+
+    const { theme } = await load(false);
+    expect(theme.useThemeStore.getState()).toMatchObject({ choice: "dark", resolved: "dark" });
+    expect(page().dark).toBe(true);
   });
 });
 

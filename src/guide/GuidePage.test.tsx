@@ -7,7 +7,7 @@ import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GuidePage } from "@/guide/GuidePage";
 import { useThemeStore } from "@/store/themeStore";
-import { MoonIcon } from "@/ui/icons";
+import { SunIcon } from "@/ui/icons";
 
 describe("GuidePage", () => {
   afterEach(() => {
@@ -66,7 +66,7 @@ describe("GuidePage", () => {
     container.remove();
   });
 
-  it("hydrates with a stored Dark choice and then shows the moon icon", async () => {
+  it("hydrates with a stored Dark choice and then shows the sun icon", async () => {
     const page = (
       <StrictMode>
         <GuidePage />
@@ -76,16 +76,18 @@ describe("GuidePage", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToString(page);
     document.body.appendChild(container);
-    useThemeStore.getState().setPreference("dark");
+    useThemeStore.getState().toggle();
     const error = vi.spyOn(console, "error");
 
     const root = await act(async () => hydrateRoot(container, page));
 
     expect(error).not.toHaveBeenCalled();
-    const theme = container.querySelector('button[aria-label="Theme"]');
-    expect(theme?.innerHTML).toBe(renderToStaticMarkup(<MoonIcon />));
+    const theme = container.querySelector('button[aria-label="Switch to light theme"]');
+    expect(theme?.innerHTML).toBe(renderToStaticMarkup(<SunIcon />));
     act(() => root.unmount());
     container.remove();
-    useThemeStore.getState().setPreference("system");
+    localStorage.clear();
+    useThemeStore.setState({ choice: null, resolved: "light" });
+    document.documentElement.classList.remove("dark");
   });
 });

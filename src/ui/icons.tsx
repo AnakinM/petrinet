@@ -175,16 +175,6 @@ export function MoonIcon(): JSX.Element {
   );
 }
 
-/** A computer screen: the theme follows the system setting. */
-export function MonitorIcon(): JSX.Element {
-  return (
-    <ToolbarIcon>
-      <rect x="2" y="3" width="20" height="14" rx="2" />
-      <path d="M8 21h8M12 17v4" />
-    </ToolbarIcon>
-  );
-}
-
 /**
  * The GitHub "Octocat" mark: solid/fill-based (unlike the stroke toolbar glyphs), 16px.
  * Used in the left-sidebar footer link row.
