@@ -72,6 +72,7 @@ docker run --rm -p 3000:3000 petrinet      # app at http://localhost:3000
   - arc: `id, srcMagnetic, destMagnetic, multiplicity, points, labelPosition?`
     An imported arc keeps its file's position of `labelPosition` relative to `points`: the course
     tool writes it before `points` on arcs it drew itself (stored as the arc's `_labelBeforePoints`).
+    Place and transition order never varies: the course tool rebuilds them in the order above on load.
   - point/position/labelPosition object: `x, y`
 
 ## Architecture: load-bearing rules
