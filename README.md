@@ -77,8 +77,8 @@ plain text, ready for a report.
 
 ### Theme and phone
 
-- Choose System, Light or Dark. System follows the setting of your computer. The canvas turns
-  dark too.
+- The app starts in the light or dark theme of your computer. The theme button switches between
+  them, and the app remembers your choice. The canvas turns dark too.
 - On a phone, the editor switches to a layout for small screens.
 
 ## Tech stack

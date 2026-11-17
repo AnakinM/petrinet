@@ -5,12 +5,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Analytics } from "@/lib/analytics";
 import { ImageFile } from "@/lib/download";
 import { useThemeStore } from "@/store/themeStore";
+import { ThemeTestHelpers } from "@/store/themeTestHelpers";
 import { MobileTopBar } from "@/ui/mobile/MobileTopBar";
 
 describe("MobileTopBar usage events", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    ThemeTestHelpers.reset();
   });
 
   it.each([
@@ -56,19 +58,15 @@ describe("MobileTopBar menu", () => {
     expect(track).toHaveBeenCalledExactlyOnceWith("Export", { format: "tikz" });
   });
 
-  it("shows the three theme choices in one row and applies the tapped one", () => {
+  it("has one theme entry that names the switch and toggles the look", () => {
     render(<MobileTopBar />);
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
-    const choices = within(screen.getByRole("group", { name: "Theme" })).getAllByRole(
-      "menuitemradio",
-    );
-    expect(choices.map((c) => c.getAttribute("aria-label"))).toEqual(["System", "Light", "Dark"]);
-    // One row: the three entries share one parent.
-    expect(new Set(choices.map((c) => c.parentElement)).size).toBe(1);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Switch to dark theme" }));
+    expect(useThemeStore.getState()).toMatchObject({ choice: "dark", resolved: "dark" });
 
-    fireEvent.click(choices[2] as HTMLElement);
-    expect(useThemeStore.getState().preference).toBe("dark");
-    useThemeStore.getState().setPreference("system");
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    expect(screen.getByRole("menuitem", { name: "Switch to light theme" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Theme" })).not.toBeInTheDocument();
   });
 });
 

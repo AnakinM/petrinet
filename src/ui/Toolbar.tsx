@@ -13,9 +13,9 @@ import {
 } from "@/ui/icons";
 import { Menu, type MenuEntry, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
-import { THEME_LABEL, ThemeIcon, ThemeMenu } from "@/ui/ThemeMenu";
 import { Tooltip, type TooltipTriggerProps } from "@/ui/Tooltip";
 import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
+import { useThemeToggle } from "@/ui/useThemeToggle";
 
 const SNAP_ON_TIP = "Snap to grid: on. Click to turn off.";
 const SNAP_OFF_TIP = "Snap to grid: off. Click to turn on.";
@@ -33,6 +33,7 @@ export function Toolbar(): JSX.Element {
   const snap = useBuildStore((s) => s.snap);
   const canUndo = useTemporal((t) => t.pastStates.length > 0);
   const canRedo = useTemporal((t) => t.futureStates.length > 0);
+  const theme = useThemeToggle();
 
   return (
     <header className="relative z-20 flex items-center gap-2 border-line-strong border-b-[3px] bg-surface px-3 py-2 shadow-[0_4px_8px_-4px_var(--color-shadow)]">
@@ -89,19 +90,9 @@ export function Toolbar(): JSX.Element {
         </>
       )}
       <div className="ml-auto flex items-center gap-2">
-        <ThemeMenu>
-          {(trigger, open) => (
-            <ToolbarButton
-              menu={trigger}
-              active={open}
-              ariaLabel={THEME_LABEL}
-              tooltip={THEME_LABEL}
-              tooltipSuppressed={open}
-            >
-              <ThemeIcon />
-            </ToolbarButton>
-          )}
-        </ThemeMenu>
+        <ToolbarButton onClick={theme.toggle} ariaLabel={theme.label} tooltip={theme.label}>
+          {theme.icon}
+        </ToolbarButton>
         <ToolbarButton onClick={() => useAnalyticsStore.getState().toggle()} active={analyticsOpen}>
           Analysis
         </ToolbarButton>
@@ -136,6 +127,9 @@ function ToolbarMenu({
  * A top bar button. A `tooltip` shows as a quick {@link Tooltip} under it; `tooltipSuppressed`
  * keeps it hidden while the button's own menu is open there. `menu` makes it the trigger of a
  * {@link Menu}: the menu then handles the click, and `active` only styles the open state.
+ *
+ * `min-h-7.5` (1.875rem) is the height of a button with a text label (`text-sm`, `py-1`, a border),
+ * so icon-only buttons are as tall. If that padding changes, change `min-h-7.5` with it.
  */
 function ToolbarButton({
   onClick,
@@ -167,8 +161,8 @@ function ToolbarButton({
       aria-label={ariaLabel}
       className={
         active
-          ? "inline-flex items-center gap-1.5 rounded border border-accent bg-accent px-2.5 py-1 text-on-accent text-sm shadow-sm"
-          : "inline-flex items-center gap-1.5 rounded border border-line-strong bg-surface-raised px-2.5 py-1 text-fg-soft text-sm shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+          ? "inline-flex min-h-7.5 items-center gap-1.5 rounded border border-accent bg-accent px-2.5 py-1 text-on-accent text-sm shadow-sm"
+          : "inline-flex min-h-7.5 items-center gap-1.5 rounded border border-line-strong bg-surface-raised px-2.5 py-1 text-fg-soft text-sm shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
       }
     >
       {children}

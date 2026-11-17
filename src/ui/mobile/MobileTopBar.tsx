@@ -5,8 +5,8 @@ import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { MenuIcon, RedoIcon, UndoIcon } from "@/ui/icons";
 import { Menu, type MenuSection, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
-import { THEME_LABEL, useThemeEntries } from "@/ui/ThemeMenu";
 import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
+import { useThemeToggle } from "@/ui/useThemeToggle";
 
 const GUIDE_URL = "/guide";
 const REPO_URL = "https://github.com/AnakinM/petrinet";
@@ -15,8 +15,8 @@ const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
 /**
  * Condensed top bar for the mobile shell: icon-only Undo/Redo (Build only), the Build↔Simulate
  * {@link ModeToggle}, and a hamburger menu holding the secondary actions that live in the desktop
- * toolbar and sidebar footer (the Export and Image groups, the Analysis toggle, the theme choices
- * in one row, and the Guide/GitHub links). All actions come from the shared
+ * toolbar and sidebar footer (the Export and Image groups, the Analysis toggle, the theme toggle,
+ * and the Guide/GitHub links). All actions come from the shared
  * {@link EXPORT_ENTRIES} et al., so they match the desktop.
  */
 export function MobileTopBar(): JSX.Element {
@@ -60,7 +60,7 @@ export function MobileTopBar(): JSX.Element {
 /** The hamburger {@link Menu}: the desktop top bar's actions in groups, then the links. */
 function HamburgerMenu({ simulating }: { simulating: boolean }): JSX.Element {
   const analyticsOpen = useAnalyticsStore((s) => s.open);
-  const themeEntries = useThemeEntries();
+  const theme = useThemeToggle();
   const sections: MenuSection[] = [
     {
       entries: [
@@ -78,7 +78,7 @@ function HamburgerMenu({ simulating }: { simulating: boolean }): JSX.Element {
         },
       ],
     },
-    { label: THEME_LABEL, entries: themeEntries, row: true },
+    { entries: [{ label: theme.label, onSelect: theme.toggle }] },
     {
       entries: [
         { label: "Guide", href: GUIDE_URL },

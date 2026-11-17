@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { CheckIcon } from "@/ui/icons";
 
 /** One entry of a {@link Menu}: an action, or a link when `href` is set. */
 export interface MenuEntry {
@@ -23,19 +22,12 @@ export interface MenuEntry {
   /** Turns the entry into a link that opens in a new tab. */
   href?: string;
   disabled?: boolean;
-  /**
-   * Set on every entry of a choice, such as a theme switch. `true` shows a check mark and tells
-   * screen readers that this entry is the current choice.
-   */
-  selected?: boolean;
 }
 
 /** A run of entries, with an optional visible heading. A line separates it from the run above. */
 export interface MenuSection {
   label?: string;
   entries: MenuEntry[];
-  /** Lays the entries out side by side, for a short choice such as the theme on a phone. */
-  row?: boolean;
 }
 
 /** The props a {@link Menu} trigger spreads onto its own `<button>`. */
@@ -208,10 +200,9 @@ function Section({
   onActivate: (entry: MenuEntry) => void;
 }): JSX.Element {
   const headingId = useId();
-  const entries = section.entries.map((entry) => (
-    <Item key={entry.label} entry={entry} inRow={section.row === true} onActivate={onActivate} />
+  const items = section.entries.map((entry) => (
+    <Item key={entry.label} entry={entry} onActivate={onActivate} />
   ));
-  const items = section.row ? <div className="flex">{entries}</div> : entries;
   return (
     <>
       {separated && <hr className="my-1 shrink-0 border-line" />}
@@ -236,37 +227,26 @@ function Section({
 
 const ITEM_CLASS =
   "flex items-start gap-2 py-2 text-left text-fg-soft text-sm outline-none hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 md:py-1.5";
-/** One entry under the other, or, in a {@link MenuSection} `row`, side by side in equal parts. */
-const ITEM_LAYOUT = { column: "w-full px-3", row: "flex-1 justify-center px-2" };
 
 function Item({
   entry,
-  inRow,
   onActivate,
 }: {
   entry: MenuEntry;
-  inRow: boolean;
   onActivate: (entry: MenuEntry) => void;
 }): JSX.Element {
   const hintId = useId();
-  const choice = entry.selected !== undefined;
   const common = {
-    role: choice ? "menuitemradio" : "menuitem",
-    "aria-checked": choice ? entry.selected : undefined,
+    role: "menuitem",
     // The name is the label alone; the hint is read as the description.
     "aria-label": entry.label,
     "aria-describedby": entry.hint ? hintId : undefined,
     tabIndex: -1,
-    className: `${ITEM_CLASS} ${inRow ? ITEM_LAYOUT.row : ITEM_LAYOUT.column}`,
+    className: `${ITEM_CLASS} w-full px-3`,
     onClick: () => onActivate(entry),
   };
   const content = (
     <>
-      {choice && (
-        <span className="mt-0.5 flex h-4 w-4 shrink-0">
-          {entry.selected && <CheckIcon className="h-4 w-4" />}
-        </span>
-      )}
       <span className="flex flex-col">
         <span>{entry.label}</span>
         {entry.hint && (

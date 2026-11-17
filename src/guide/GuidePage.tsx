@@ -3,8 +3,8 @@ import { GuideNets } from "@/guide/exampleNets";
 import { GuideDiagram } from "@/guide/GuideDiagram";
 import { GUIDE_TITLE } from "@/guide/guideDocument";
 import { BugIcon, GitHubIcon } from "@/ui/icons";
-import { THEME_LABEL, ThemeIcon, ThemeMenu } from "@/ui/ThemeMenu";
 import { Tooltip } from "@/ui/Tooltip";
+import { useThemeToggle } from "@/ui/useThemeToggle";
 
 const REPO_URL = "https://github.com/AnakinM/petrinet";
 const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
@@ -127,29 +127,26 @@ function TopBar(): JSX.Element {
 }
 
 /**
- * The theme switch of the editor's top bar, styled like the button beside it. The guide is
+ * The theme button of the editor's top bar, styled like the button beside it. The guide is
  * pre-rendered, and the theme store gives React its neutral first state while it hydrates, so the
- * monitor icon of the build's HTML always matches; the stored choice shows right after.
+ * moon icon of the build's HTML always matches; the real look shows right after.
  */
 function ThemeSwitch(): JSX.Element {
+  const theme = useThemeToggle();
   return (
-    <ThemeMenu>
-      {(menu, open) => (
-        <Tooltip label={THEME_LABEL} suppressed={open}>
-          {(tip) => (
-            <button
-              type="button"
-              {...tip}
-              {...menu}
-              aria-label={THEME_LABEL}
-              className="inline-flex items-center rounded-md border border-line-strong bg-surface-raised p-2 text-fg-soft shadow-sm hover:bg-surface-hover"
-            >
-              <ThemeIcon />
-            </button>
-          )}
-        </Tooltip>
+    <Tooltip label={theme.label}>
+      {(tip) => (
+        <button
+          type="button"
+          {...tip}
+          onClick={theme.toggle}
+          aria-label={theme.label}
+          className="inline-flex items-center rounded-md border border-line-strong bg-surface-raised p-2 text-fg-soft shadow-sm hover:bg-surface-hover"
+        >
+          {theme.icon}
+        </button>
       )}
-    </ThemeMenu>
+    </Tooltip>
   );
 }
 
