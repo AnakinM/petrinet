@@ -95,7 +95,7 @@ function PlaceBoundsPart({ result }: { result: AnalysisResult }): JSX.Element {
   const caveat = NetAnalysis.placeBoundsCaveat(result);
   const places = net.places.slice(0, DISPLAY_CAP);
   return (
-    <div className="flex flex-col gap-1.5 border-slate-100 border-t pt-2">
+    <div className="flex flex-col gap-1.5 border-line-subtle border-t pt-2">
       <SubHeading title="Place bounds" help="Place bounds" />
       {bounds === null ? (
         <Note>{PENDING_LABEL}</Note>
@@ -104,12 +104,12 @@ function PlaceBoundsPart({ result }: { result: AnalysisResult }): JSX.Element {
       ) : (
         <>
           {!bounds.exact && (
-            <p className="text-amber-800">
+            <p className="text-warning-fg">
               These numbers are only lower limits, because the full analysis could not explore every
               marking.
             </p>
           )}
-          {caveat !== null && <p className="text-amber-800">{caveat}</p>}
+          {caveat !== null && <p className="text-warning-fg">{caveat}</p>}
           <dl className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
             {places.map((p) => {
               const max = bounds.max[p.id] ?? 0;
@@ -144,7 +144,7 @@ function NeverFiresPart({ result }: { result: AnalysisResult }): JSX.Element {
   const { quasiLive, stateSpaceComplete } = result;
   const dead = result.diagnostics.deadTransitions;
   return (
-    <div className="flex flex-col gap-1.5 border-slate-100 border-t pt-2">
+    <div className="flex flex-col gap-1.5 border-line-subtle border-t pt-2">
       <p>
         Quasi-live: {VERDICT_WORDS[quasiLive.verdict]}.
         {quasiLive.verdict === "indeterminate" && ` ${quasiLive.detail}`}
@@ -223,7 +223,7 @@ function DeadlockRow({
     >
       <span className="font-mono">{NetNames.formatMarking(deadlock.marking, places)}</span>
       {deadlock.path.length > 0 && (
-        <span className="text-[13px] text-slate-500">
+        <span className="text-[13px] text-fg-subtle">
           via {deadlock.path.map(transitionName).join(" → ")}
         </span>
       )}
