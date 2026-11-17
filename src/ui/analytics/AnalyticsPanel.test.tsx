@@ -8,6 +8,7 @@ import { type AnalyticsTab, NO_SPOTLIGHT, useAnalyticsStore } from "@/store/anal
 import { useNetStore } from "@/store/netStore";
 import { useNoticeStore } from "@/store/noticeStore";
 import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
+import { COPY_FAILED } from "@/ui/analytics/copyActions";
 
 const place = (id: string, tokens = 0): Place => ({
   id,
@@ -104,6 +105,7 @@ describe("AnalyticsPanel", () => {
       stale: false,
       running: false,
       highlight: NO_SPOTLIGHT,
+      highlightKey: null,
       preview: NO_SPOTLIGHT,
     });
   });
@@ -243,11 +245,36 @@ describe("AnalyticsPanel", () => {
     it("shows the exact place bounds in the Bounded card after the full analysis", async () => {
       openWith(DEADLOCK, "properties");
       render(<AnalyticsPanel />);
-      expect(within(card("Bounded")).getByText("Needs the full analysis.")).toBeInTheDocument();
+      // The place bounds wait with the same words as a pending card, without a full stop.
+      expect(within(card("Bounded")).getByText("Needs the full analysis")).toBeInTheDocument();
       await analyse();
       const bounded = card("Bounded");
       expect(within(bounded).queryByText(/lower limits/)).not.toBeInTheDocument();
       expect(within(bounded).getAllByText("1")).toHaveLength(3);
+    });
+
+    it("warns that other places may grow when the analysis stopped at an unbounded place", async () => {
+      const PUMP_AND_STORE: PetriNet = {
+        places: [place("P1", 0), place("P2", 1)],
+        transitions: [transition("t1")],
+        arcs: [arc("t1", "P1")],
+      };
+      openWith(PUMP_AND_STORE, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+      expect(
+        within(card("Bounded")).getByText(
+          "The analysis stopped when it proved the net unbounded. Other places may grow without limit too.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("gives a pending card no empty body", () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      const live = card("Live");
+      // The header row only: no body under the title.
+      expect(live.children).toHaveLength(1);
     });
 
     it("lights a transition that never fires from the Live card, and clears it on a second click", async () => {
@@ -291,6 +318,17 @@ describe("AnalyticsPanel", () => {
       expect(useAnalyticsStore.getState().preview).toEqual({ nodes: ["P1", "P2"], arcs: [] });
       expect(useAnalyticsStore.getState().highlight).toEqual(NO_SPOTLIGHT);
       fireEvent.pointerLeave(chip, { pointerType: "mouse" });
+      expect(useAnalyticsStore.getState().preview).toEqual(NO_SPOTLIGHT);
+    });
+
+    it("clears the preview when a hovered chip disappears", () => {
+      openWith(CYCLE, "invariants");
+      const { unmount } = render(<AnalyticsPanel />);
+      fireEvent.pointerEnter(screen.getByRole("button", { name: /P1 \+ P2/ }), {
+        pointerType: "mouse",
+      });
+      expect(useAnalyticsStore.getState().preview.nodes).toEqual(["P1", "P2"]);
+      unmount();
       expect(useAnalyticsStore.getState().preview).toEqual(NO_SPOTLIGHT);
     });
 
@@ -406,6 +444,38 @@ describe("AnalyticsPanel", () => {
       expect(useAnalyticsStore.getState().highlight).toEqual({ nodes: ["P3"], arcs: [] });
     });
 
+    it("keeps two markings with the same marked places apart: only the clicked one is pressed", async () => {
+      // 3 tokens move from P to Q: M1 (2, 1) and M2 (1, 2) both mark P and Q.
+      const MOVE: PetriNet = {
+        places: [place("P", 3), place("Q", 0)],
+        transitions: [transition("t")],
+        arcs: [arc("P", "t"), arc("t", "Q")],
+      };
+      openWith(MOVE, "reachability");
+      render(<AnalyticsPanel />);
+      await analyse();
+      const table = card("State table");
+      const m1 = within(table).getByRole("button", { name: "M1" });
+      const m2 = within(table).getByRole("button", { name: "M2" });
+      await userEvent.click(m1);
+      await userEvent.click(m2);
+      expect(useAnalyticsStore.getState().highlight).toEqual({ nodes: ["P", "Q"], arcs: [] });
+      expect(m1).toHaveAttribute("aria-pressed", "false");
+      expect(m2).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("separates the firings of a marking with semicolons, as Copy table does", async () => {
+      const CHOICE: PetriNet = {
+        places: [place("P1", 1), place("P2", 0), place("P3", 0)],
+        transitions: [transition("t1"), transition("t2")],
+        arcs: [arc("P1", "t1"), arc("t1", "P2"), arc("P1", "t2"), arc("t2", "P3")],
+      };
+      openWith(CHOICE, "reachability");
+      render(<AnalyticsPanel />);
+      await analyse();
+      expect(within(card("State table")).getByText("t1 to M1; t2 to M2")).toBeInTheDocument();
+    });
+
     it("shows at most 200 rows and states the total", async () => {
       openWith(LONG, "reachability");
       render(<AnalyticsPanel />);
@@ -431,5 +501,15 @@ describe("AnalyticsPanel", () => {
     expect(text.startsWith("Analysis\n")).toBe(true);
     expect(text).toContain("The results may be out of date.");
     expect(useNoticeStore.getState().message).toBe("Analysis results copied to the clipboard.");
+  });
+
+  it("says so in the notice when the browser refuses the copy", async () => {
+    vi.stubGlobal("navigator", {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error("Not allowed")) },
+    });
+    openWith(CYCLE, "properties");
+    render(<AnalyticsPanel />);
+    await userEvent.click(screen.getByRole("button", { name: "Copy results" }));
+    expect(useNoticeStore.getState().message).toBe(COPY_FAILED);
   });
 });

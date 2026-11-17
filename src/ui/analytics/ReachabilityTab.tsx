@@ -2,16 +2,18 @@ import type { JSX } from "react";
 import { UNBOUNDED_NOTE } from "@/domain/analysis/analysisReport";
 import { STATE_CAP_EXCEEDED } from "@/domain/analysis/netAnalysis";
 import type { AnalysisResult, StateRow, StateTable } from "@/domain/analysis/types";
-import {
-  NO_SPOTLIGHT,
-  type Spotlight,
-  spotlightKey,
-  useAnalyticsStore,
-} from "@/store/analyticsStore";
+import { type Spotlight, useAnalyticsStore } from "@/store/analyticsStore";
 import { copyStateTable } from "@/ui/analytics/copyActions";
 import { ReachabilityQuery } from "@/ui/analytics/ReachabilityQuery";
 import { useNetNames } from "@/ui/analytics/useNetNames";
-import { Card, CopyButton, CountMark, Note, PendingBadge } from "@/ui/analytics/widgets";
+import {
+  Card,
+  CopyButton,
+  CountMark,
+  Note,
+  PendingBadge,
+  useHoverPreview,
+} from "@/ui/analytics/widgets";
 
 /** The most state table rows the panel draws. "Copy table" still copies every row. */
 export const STATE_ROWS_SHOWN = 200;
@@ -74,8 +76,8 @@ function StateTableCard({ result }: { result: AnalysisResult }): JSX.Element {
 }
 
 function StateRows({ table }: { table: StateTable }): JSX.Element {
-  const { placeName } = useNetNames();
-  const litKey = useAnalyticsStore((s) => spotlightKey(s.highlight));
+  const { placeName, transitionName } = useNetNames();
+  const litKey = useAnalyticsStore((s) => s.highlightKey);
   return (
     <div className="max-h-96 overflow-auto rounded border border-slate-200">
       <table className="w-full border-separate border-spacing-0 text-sm">
@@ -92,7 +94,13 @@ function StateRows({ table }: { table: StateTable }): JSX.Element {
         </thead>
         <tbody>
           {table.rows.slice(0, STATE_ROWS_SHOWN).map((row) => (
-            <StateRowView key={row.name} row={row} table={table} litKey={litKey} />
+            <StateRowView
+              key={row.name}
+              row={row}
+              table={table}
+              litKey={litKey}
+              transitionName={transitionName}
+            />
           ))}
         </tbody>
       </table>
@@ -122,34 +130,34 @@ function HeaderCell({
 
 /**
  * One marking. Resting the mouse on a row lights its marked places at once; a click keeps them lit
- * and pans the canvas there. The name cell is a button, so a keyboard reaches the row too.
+ * and pans the canvas there. The name cell is a button, so a keyboard reaches the row too. Each row
+ * owns its highlight, so two markings with the same marked places are pressed one at a time.
  */
 function StateRowView({
   row,
   table,
   litKey,
+  transitionName,
 }: {
   row: StateRow;
   table: StateTable;
-  litKey: string;
+  litKey: string | null;
+  transitionName: (id: string) => string;
 }): JSX.Element {
-  const { transitionName } = useNetNames();
   const marked = table.placeIds.filter((_, i) => row.tokens[i] > 0);
   const target: Spotlight = { nodes: marked, arcs: [] };
+  const key = `state:${row.name}`;
+  const hover = useHoverPreview(target);
   const clickable = marked.length > 0;
-  const active = clickable && spotlightKey(target) === litKey;
-  const store = useAnalyticsStore.getState;
+  const active = clickable && key === litKey;
   const cell = "border-slate-100 border-b px-2 py-1 align-top";
   return (
     <tr
       // The name cell holds a button whose click bubbles here, which gives the keyboard access.
-      onClick={clickable ? () => store().toggleHighlight(target) : undefined}
-      onPointerEnter={(e) => {
-        if (clickable && e.pointerType !== "touch") store().setPreview(target);
-      }}
-      onPointerLeave={() => {
-        if (clickable) store().setPreview(NO_SPOTLIGHT);
-      }}
+      onClick={
+        clickable ? () => useAnalyticsStore.getState().toggleHighlight(target, key) : undefined
+      }
+      {...(clickable ? hover : {})}
       className={`group ${clickable ? "cursor-pointer hover:bg-amber-50" : ""} ${active ? "bg-amber-50" : ""}`}
     >
       {/* The name stays in view while the table scrolls sideways to the firings. */}
@@ -186,7 +194,7 @@ function StateRowView({
         ) : (
           row.firings
             .map((f) => `${transitionName(f.transition)} to ${table.rows[f.to].name}`)
-            .join(", ")
+            .join("; ")
         )}
       </td>
     </tr>

@@ -1,4 +1,4 @@
-import { type JSX, type PointerEvent as ReactPointerEvent, useEffect, useState } from "react";
+import { type JSX, memo, type PointerEvent as ReactPointerEvent, useEffect, useState } from "react";
 import { AnalysisReport } from "@/domain/analysis/analysisReport";
 import type { AnalysisResult } from "@/domain/analysis/types";
 import { ANALYTICS_TABS, type AnalyticsTab, useAnalyticsStore } from "@/store/analyticsStore";
@@ -74,13 +74,23 @@ export function AnalyticsPanel(): JSX.Element | null {
   );
 }
 
-function TabBody({ tab, result }: { tab: AnalyticsTab; result: AnalysisResult }): JSX.Element {
+/**
+ * The active tab. Memoised, so a resize drag (which re-renders the panel on every pointer move)
+ * does not re-render the 200-row state table or the incidence matrix.
+ */
+const TabBody = memo(function TabBody({
+  tab,
+  result,
+}: {
+  tab: AnalyticsTab;
+  result: AnalysisResult;
+}): JSX.Element {
   if (tab === "properties") return <PropertiesTab result={result} />;
   if (tab === "classification") return <ClassificationTab />;
   if (tab === "invariants") return <InvariantsTab result={result} />;
   if (tab === "reachability") return <ReachabilityTab result={result} />;
   return <StructureTab result={result} />;
-}
+});
 
 function PanelHeader({
   activeTab,
