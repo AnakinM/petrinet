@@ -110,3 +110,27 @@ describe("analyticsStore stale flag", () => {
     expect(store.getState().stale).toBe(false);
   });
 });
+
+describe("analyticsStore with blocked storage", () => {
+  const storage = globalThis.localStorage;
+  const denied = (): never => {
+    throw new DOMException("The operation is insecure.", "SecurityError");
+  };
+
+  afterEach(() => {
+    vi.stubGlobal("localStorage", storage);
+    vi.restoreAllMocks();
+  });
+
+  it("starts with the defaults and keeps working when getItem and setItem throw", async () => {
+    vi.stubGlobal("localStorage", { getItem: denied, setItem: denied, removeItem: denied });
+    vi.resetModules();
+    const { store } = await load();
+    expect(store.getState()).toMatchObject({ open: false, width: 400, activeTab: "invariants" });
+
+    store.getState().toggle();
+    store.getState().setActiveTab("structure");
+    store.getState().commitWidth();
+    expect(store.getState()).toMatchObject({ open: true, activeTab: "structure" });
+  });
+});

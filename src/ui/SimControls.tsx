@@ -20,7 +20,7 @@ export function SimControls(): JSX.Element {
 
   return (
     <section className="flex flex-col gap-3 p-3">
-      <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">Simulation</h2>
+      <h2 className="font-semibold text-fg-subtle text-sm uppercase tracking-wide">Simulation</h2>
       <PrimaryButton
         onClick={() => (playing ? useSimStore.getState().pause() : useSimStore.getState().play())}
         disabled={!playing && !canFire}
@@ -46,13 +46,13 @@ export function SimControls(): JSX.Element {
         </SecondaryButton>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-500 text-sm">Speed</span>
+        <span className="text-fg-subtle text-sm">Speed</span>
         <select
           value={speed}
           onChange={(e) => useSimStore.getState().setSpeed(Number(e.target.value))}
           aria-label="Auto-run speed"
           title="Auto-run speed (transitions per second)"
-          className="rounded border border-slate-300 bg-white px-1.5 py-1 text-slate-700 text-sm"
+          className="rounded border border-line-strong bg-surface-raised px-1.5 py-1 text-fg-soft text-sm"
         >
           {AUTO_RUN_SPEEDS.map((s) => (
             <option key={s} value={s}>
@@ -83,7 +83,7 @@ function PrimaryButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="flex items-center justify-center gap-2 rounded border border-slate-700 bg-slate-700 px-3 py-2 text-sm text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-300"
+      className="flex items-center justify-center gap-2 rounded border border-accent bg-accent px-3 py-2 text-sm text-on-accent shadow-sm hover:bg-accent-hover disabled:cursor-not-allowed disabled:border-line-strong disabled:bg-line-strong"
     >
       {children}
     </button>
@@ -108,7 +108,7 @@ function SecondaryButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="flex items-center justify-center gap-1.5 rounded border border-slate-300 bg-white px-2.5 py-2 text-slate-700 text-sm shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex items-center justify-center gap-1.5 rounded border border-line-strong bg-surface-raised px-2.5 py-2 text-fg-soft text-sm shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>

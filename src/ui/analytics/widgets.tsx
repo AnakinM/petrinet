@@ -23,9 +23,9 @@ const VERDICT_META: Record<
   Verdict,
   { label: string; tone: string; Icon: (p: { className?: string }) => JSX.Element }
 > = {
-  yes: { label: "Yes", tone: "bg-green-600", Icon: CheckIcon },
-  no: { label: "No", tone: "bg-red-600", Icon: CrossIcon },
-  indeterminate: { label: "Unknown", tone: "bg-amber-500", Icon: QuestionIcon },
+  yes: { label: "Yes", tone: "bg-success text-on-status", Icon: CheckIcon },
+  no: { label: "No", tone: "bg-danger text-on-status", Icon: CrossIcon },
+  indeterminate: { label: "Unknown", tone: "bg-warning text-on-warning", Icon: QuestionIcon },
 };
 
 /** A labelled status pill for a verdict: coloured icon + word (Yes / No / Unknown). */
@@ -33,7 +33,7 @@ export function VerdictBadge({ verdict }: { verdict: Verdict }): JSX.Element {
   const { label, tone, Icon } = VERDICT_META[verdict];
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold text-sm text-white ${tone}`}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold text-sm ${tone}`}
     >
       <Icon className="h-3.5 w-3.5" />
       {label}
@@ -44,7 +44,7 @@ export function VerdictBadge({ verdict }: { verdict: Verdict }): JSX.Element {
 /** The grey mark of a card whose answer needs the full analysis, which has not run for this net. */
 export function PendingBadge(): JSX.Element {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300 bg-slate-50 px-2.5 py-0.5 font-medium text-slate-600 text-sm">
+    <span className="inline-flex shrink-0 items-center rounded-full border border-line-strong bg-surface-subtle px-2.5 py-0.5 font-medium text-fg-muted text-sm">
       {PENDING_LABEL}
     </span>
   );
@@ -53,7 +53,7 @@ export function PendingBadge(): JSX.Element {
 /** A quiet mark for a card that counts something ("3", "Acyclic", "14 markings"). */
 export function CountMark({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2.5 py-0.5 font-medium text-slate-700 text-sm">
+    <span className="inline-flex shrink-0 items-center rounded-full bg-surface-muted px-2.5 py-0.5 font-medium text-fg-soft text-sm">
       {children}
     </span>
   );
@@ -75,16 +75,16 @@ export function Card({
   children?: ReactNode;
 }): JSX.Element {
   return (
-    <section className="flex flex-col gap-2 rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+    <section className="flex flex-col gap-2 rounded-md border border-line bg-surface p-3 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-        <h3 className="flex items-center gap-1.5 font-medium text-base text-slate-900">
+        <h3 className="flex items-center gap-1.5 font-medium text-base text-fg-strong">
           {title}
           {help && <HelpTip topic={help} />}
         </h3>
         {mark}
       </div>
       {children !== undefined && (
-        <div className="flex flex-col gap-2 text-slate-700 text-sm">{children}</div>
+        <div className="flex flex-col gap-2 text-fg-soft text-sm">{children}</div>
       )}
     </section>
   );
@@ -140,7 +140,7 @@ export function Bullets({ items }: { items: string[] }): JSX.Element {
     <ul className="flex flex-col gap-0.5">
       {items.map((item) => (
         <li key={item} className="flex gap-1.5">
-          <span aria-hidden="true" className="select-none text-slate-400">
+          <span aria-hidden="true" className="select-none text-fg-faint">
             •
           </span>
           <span className="min-w-0">{item}</span>
@@ -153,7 +153,7 @@ export function Bullets({ items }: { items: string[] }): JSX.Element {
 /** A heading inside a card for one of its parts, such as "Place bounds" in the Bounded card. */
 export function SubHeading({ title, help }: { title: string; help?: HelpTopic }): JSX.Element {
   return (
-    <h4 className="flex items-center gap-1.5 font-medium text-slate-900 text-sm">
+    <h4 className="flex items-center gap-1.5 font-medium text-fg-strong text-sm">
       {title}
       {help && <HelpTip topic={help} />}
     </h4>
@@ -162,7 +162,7 @@ export function SubHeading({ title, help }: { title: string; help?: HelpTopic })
 
 /** A quieter line of text in a card: a caveat or a summary. */
 export function Note({ children }: { children: ReactNode }): JSX.Element {
-  return <p className="text-slate-500 text-sm">{children}</p>;
+  return <p className="text-fg-subtle text-sm">{children}</p>;
 }
 
 /** "Showing N of M" footer when a list is clipped to {@link DISPLAY_CAP}; renders nothing when it fits. */
@@ -265,7 +265,7 @@ export function HighlightChip({
     </>
   );
   if (target.nodes.length === 0 && target.arcs.length === 0) {
-    return <div className={`${shape} border-slate-200 bg-slate-50 text-slate-800`}>{content}</div>;
+    return <div className={`${shape} border-line bg-surface-subtle text-fg`}>{content}</div>;
   }
   return (
     <button
@@ -275,8 +275,8 @@ export function HighlightChip({
       aria-pressed={active}
       className={`${shape} transition-colors ${
         active
-          ? "border-amber-400 bg-amber-50 text-amber-900"
-          : "border-slate-200 bg-slate-50 text-slate-800 hover:border-amber-300 hover:bg-amber-50"
+          ? "border-highlight-line bg-highlight-soft text-highlight-fg"
+          : "border-line bg-surface-subtle text-fg hover:border-highlight-line-soft hover:bg-highlight-soft"
       }`}
     >
       {content}
@@ -313,7 +313,7 @@ export function CopyButton({
     <button
       type="button"
       onClick={onClick}
-      className="rounded border border-slate-300 bg-white px-2.5 py-1 font-medium text-slate-700 text-sm hover:bg-slate-100"
+      className="rounded border border-line-strong bg-surface-raised px-2.5 py-1 font-medium text-fg-soft text-sm hover:bg-surface-muted"
     >
       {children}
     </button>

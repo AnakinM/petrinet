@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Analytics } from "@/lib/analytics";
 import { ImageFile } from "@/lib/download";
+import { useThemeStore } from "@/store/themeStore";
 import { MobileTopBar } from "@/ui/mobile/MobileTopBar";
 
 describe("MobileTopBar usage events", () => {
@@ -53,6 +54,21 @@ describe("MobileTopBar menu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "LaTeX (TikZ)" }));
     expect(track).toHaveBeenCalledExactlyOnceWith("Export", { format: "tikz" });
+  });
+
+  it("shows the three theme choices in one row and applies the tapped one", () => {
+    render(<MobileTopBar />);
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    const choices = within(screen.getByRole("group", { name: "Theme" })).getAllByRole(
+      "menuitemradio",
+    );
+    expect(choices.map((c) => c.getAttribute("aria-label"))).toEqual(["System", "Light", "Dark"]);
+    // One row: the three entries share one parent.
+    expect(new Set(choices.map((c) => c.parentElement)).size).toBe(1);
+
+    fireEvent.click(choices[2] as HTMLElement);
+    expect(useThemeStore.getState().preference).toBe("dark");
+    useThemeStore.getState().setPreference("system");
   });
 });
 

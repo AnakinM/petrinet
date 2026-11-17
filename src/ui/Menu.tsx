@@ -34,6 +34,8 @@ export interface MenuEntry {
 export interface MenuSection {
   label?: string;
   entries: MenuEntry[];
+  /** Lays the entries out side by side, for a short choice such as the theme on a phone. */
+  row?: boolean;
 }
 
 /** The props a {@link Menu} trigger spreads onto its own `<button>`. */
@@ -165,6 +167,8 @@ export function Menu({
     <div ref={rootRef} className="relative">
       {children(trigger, open)}
       {open && (
+        // The menu may run down to just above the bottom of the screen and scrolls inside when it
+        // is longer, as the phone menu is on a short screen. `dvh` follows a phone's URL bar.
         <div
           ref={menuRef}
           id={menuId}
@@ -172,7 +176,7 @@ export function Menu({
           aria-labelledby={triggerId}
           tabIndex={-1}
           onKeyDown={onMenuKeyDown}
-          className={`absolute top-full z-30 mt-1 flex max-h-[70vh] w-max min-w-48 max-w-[calc(100vw-1rem)] flex-col overflow-auto overscroll-contain rounded border border-slate-300 bg-white py-1 shadow-lg outline-none ${
+          className={`absolute top-full z-30 mt-1 flex max-h-[calc(100vh-4rem)] w-max supports-[height:100dvh]:max-h-[calc(100dvh-4rem)] min-w-48 max-w-[calc(100vw-1rem)] flex-col overflow-auto overscroll-contain rounded border border-line-strong bg-surface-raised py-1 shadow-lg outline-none ${
             align === "end" ? "right-0" : "left-0"
           }`}
         >
@@ -204,19 +208,20 @@ function Section({
   onActivate: (entry: MenuEntry) => void;
 }): JSX.Element {
   const headingId = useId();
-  const items = section.entries.map((entry) => (
-    <Item key={entry.label} entry={entry} onActivate={onActivate} />
+  const entries = section.entries.map((entry) => (
+    <Item key={entry.label} entry={entry} inRow={section.row === true} onActivate={onActivate} />
   ));
+  const items = section.row ? <div className="flex">{entries}</div> : entries;
   return (
     <>
-      {separated && <hr className="my-1 shrink-0 border-slate-200" />}
+      {separated && <hr className="my-1 shrink-0 border-line" />}
       {section.label ? (
         // biome-ignore lint/a11y/useSemanticElements: inside a menu a labelled group is the ARIA pattern; a fieldset belongs to forms.
         <div role="group" aria-labelledby={headingId} className="flex flex-col">
           <div
             id={headingId}
             role="presentation"
-            className="px-3 pt-1.5 pb-1 font-semibold text-slate-500 text-sm uppercase tracking-wide"
+            className="px-3 pt-1.5 pb-1 font-semibold text-fg-subtle text-sm uppercase tracking-wide"
           >
             {section.label}
           </div>
@@ -230,13 +235,17 @@ function Section({
 }
 
 const ITEM_CLASS =
-  "flex w-full items-start gap-2 px-3 py-2 text-left text-slate-700 text-sm outline-none hover:bg-slate-100 focus-visible:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 md:py-1.5";
+  "flex items-start gap-2 py-2 text-left text-fg-soft text-sm outline-none hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 md:py-1.5";
+/** One entry under the other, or, in a {@link MenuSection} `row`, side by side in equal parts. */
+const ITEM_LAYOUT = { column: "w-full px-3", row: "flex-1 justify-center px-2" };
 
 function Item({
   entry,
+  inRow,
   onActivate,
 }: {
   entry: MenuEntry;
+  inRow: boolean;
   onActivate: (entry: MenuEntry) => void;
 }): JSX.Element {
   const hintId = useId();
@@ -248,7 +257,7 @@ function Item({
     "aria-label": entry.label,
     "aria-describedby": entry.hint ? hintId : undefined,
     tabIndex: -1,
-    className: ITEM_CLASS,
+    className: `${ITEM_CLASS} ${inRow ? ITEM_LAYOUT.row : ITEM_LAYOUT.column}`,
     onClick: () => onActivate(entry),
   };
   const content = (
@@ -261,7 +270,7 @@ function Item({
       <span className="flex flex-col">
         <span>{entry.label}</span>
         {entry.hint && (
-          <span id={hintId} className="text-slate-500 text-sm">
+          <span id={hintId} className="text-fg-subtle text-sm">
             {entry.hint}
           </span>
         )}

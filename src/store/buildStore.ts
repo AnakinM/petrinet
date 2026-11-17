@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Vec2 } from "@/domain/types";
+import { SafeStorage } from "@/lib/safeStorage";
 
 /**
  * An in-progress click-to-draw arc. `source` is the origin node; `bends` are the committed
@@ -25,11 +26,9 @@ export type BuildTool = "idle" | "place" | "transition" | "arc" | "select" | "to
 
 const SNAP_STORAGE_KEY = "petrinet:snap-to-grid";
 
-/** Snap-to-grid is ON by default; only an explicit opt-out persists as "false". Guards the
- *  non-browser case (the store is imported by node-env unit tests), as the autosave layer does. */
+/** Snap-to-grid is ON by default; only an explicit opt-out persists as "false". */
 function loadSnap(): boolean {
-  if (typeof localStorage === "undefined") return true;
-  return localStorage.getItem(SNAP_STORAGE_KEY) !== "false";
+  return SafeStorage.get(SNAP_STORAGE_KEY) !== "false";
 }
 
 /**
@@ -84,7 +83,7 @@ export const useBuildStore = create<BuildState>((set) => ({
   toggleSnap: () =>
     set((s) => {
       const snap = !s.snap;
-      localStorage.setItem(SNAP_STORAGE_KEY, String(snap));
+      SafeStorage.set(SNAP_STORAGE_KEY, String(snap));
       return { snap };
     }),
   requestNameFocus: () => set({ nameFocusRequested: true }),

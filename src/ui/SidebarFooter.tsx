@@ -13,7 +13,7 @@ const NEW_ISSUE_URL = "https://github.com/AnakinM/petrinet/issues/new";
  */
 export function SidebarFooter(): JSX.Element {
   return (
-    <footer className="shrink-0 border-slate-200 border-t px-3 py-2">
+    <footer className="shrink-0 border-line border-t px-3 py-2">
       <FooterLink href={GUIDE_URL} label="Guide">
         <BookIcon />
       </FooterLink>
@@ -52,7 +52,7 @@ function FooterLink({
       onClick={onClick}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 rounded px-1 py-1 text-slate-500 text-sm hover:bg-slate-100 hover:text-slate-700"
+      className="flex items-center gap-2 rounded px-1 py-1 text-fg-subtle text-sm hover:bg-surface-muted hover:text-fg-soft"
     >
       {children}
       {label}

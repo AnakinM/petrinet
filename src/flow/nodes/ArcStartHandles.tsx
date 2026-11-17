@@ -6,7 +6,7 @@ import { useIsMobile } from "@/ui/useIsMobile";
 // Small indigo circle straddling the node's left/right border. Hidden by default, it fades in
 // while the node is hovered (group-hover on the node wrapper) and stays while it is selected.
 const DOT =
-  "nodrag nopan pointer-events-auto absolute top-1/2 z-10 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border border-white bg-indigo-500 shadow transition-opacity";
+  "nodrag nopan pointer-events-auto absolute top-1/2 z-10 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border border-canvas-handle-fill bg-canvas-handle shadow transition-opacity";
 
 /**
  * The arc-start affordance: two circles on a node's left/right border. Pressing one begins a

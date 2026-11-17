@@ -94,11 +94,14 @@ export function PlacingLayer({ kind }: { kind: "place" | "transition" }): JSX.El
           >
             {kind === "place" ? (
               <div
-                className="rounded-full border-2 border-slate-700 bg-white"
+                className="rounded-full border-2 border-canvas-node bg-canvas-place"
                 style={{ width: DIAMETER, height: DIAMETER }}
               />
             ) : (
-              <div className="bg-slate-700" style={{ width: BAR_WIDTH, height: BAR_HEIGHT }} />
+              <div
+                className="bg-canvas-transition"
+                style={{ width: BAR_WIDTH, height: BAR_HEIGHT }}
+              />
             )}
           </div>
         </ViewportPortal>
