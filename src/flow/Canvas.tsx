@@ -153,6 +153,16 @@ export function Canvas(): JSX.Element {
     }
   }, [highlight, fitView]);
 
+  // Entering Simulate clears the domain selection (toolbarActions.enterSimulate) but React Flow keeps
+  // its own "selected" flags, because turning elementsSelectable off emits no change. On return to
+  // Build, a click on that still-flagged element would then change nothing in RF and so never reach
+  // onSelectionChange. Clear RF's flags while locked so both selections stay in step.
+  useEffect(() => {
+    if (editable) return;
+    setNodes(clearSelected);
+    setEdges(clearSelected);
+  }, [editable, setNodes, setEdges]);
+
   // In the marquee (select) tool, Esc clears the current selection (right-click clears it via the
   // A5 context-menu policy). Other tools own Esc themselves (exit placing / cancel an arc draw).
   useEffect(() => {
