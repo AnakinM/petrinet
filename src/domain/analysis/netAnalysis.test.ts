@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NetAnalysis } from "@/domain/analysis/netAnalysis";
+import { NetAnalysis, UNBOUNDED_STOP } from "@/domain/analysis/netAnalysis";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
 
 const place = (id: string, tokens = 0): Place => ({
@@ -301,5 +301,39 @@ describe("NetAnalysis place bounds and state table", () => {
     const result = NetAnalysis.analyze(net, { behavioral: true });
     expect(result.placeBounds).toEqual({ max: { p1: 1, p2: 1 }, exact: true, unbounded: [] });
     expect(result.stateTable?.rows.map((r) => r.name)).toEqual(["M0", "M1"]);
+  });
+});
+
+describe("NetAnalysis.placeBoundsCaveat", () => {
+  // T1 pumps P1 without limit; P2 sits apart with one token.
+  const pump: PetriNet = {
+    places: [place("P1"), place("P2", 1)],
+    transitions: [transition("T1")],
+    arcs: [arc("T1", "P1")],
+  };
+
+  it("warns that other places may grow when one place is proven unbounded", () => {
+    const result = NetAnalysis.analyze(pump, { behavioral: true });
+    expect(result.placeBounds?.unbounded).toEqual(["P1"]);
+    expect(NetAnalysis.placeBoundsCaveat(result)).toBe(UNBOUNDED_STOP);
+  });
+
+  it("says nothing when every place is proven unbounded, or before the full analysis", () => {
+    const alone: PetriNet = { ...pump, places: [place("P1")] };
+    expect(NetAnalysis.placeBoundsCaveat(NetAnalysis.analyze(alone, { behavioral: true }))).toBe(
+      null,
+    );
+    expect(NetAnalysis.placeBoundsCaveat(NetAnalysis.analyze(pump))).toBe(null);
+  });
+
+  it("says nothing for a bounded net", () => {
+    const cycle: PetriNet = {
+      places: [place("P1", 1), place("P2")],
+      transitions: [transition("T1"), transition("T2")],
+      arcs: [arc("P1", "T1"), arc("T1", "P2"), arc("P2", "T2"), arc("T2", "P1")],
+    };
+    expect(NetAnalysis.placeBoundsCaveat(NetAnalysis.analyze(cycle, { behavioral: true }))).toBe(
+      null,
+    );
   });
 });

@@ -85,6 +85,8 @@ export class AnalysisReport {
     } else {
       const { max, exact, unbounded } = result.placeBounds;
       if (!exact) lines.push("Lower limits only: the state space was not explored completely.");
+      const caveat = NetAnalysis.placeBoundsCaveat(result);
+      if (caveat !== null) lines.push(caveat);
       for (const p of net.places) {
         const known = max[p.id];
         let value = "unknown";
