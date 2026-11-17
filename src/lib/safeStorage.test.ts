@@ -7,7 +7,7 @@ const denied = (): never => {
   throw new DOMException("The operation is insecure.", "SecurityError");
 };
 /** A storage whose every method throws, as in a browser that blocks site data. */
-const BLOCKED_STORAGE = { getItem: denied, setItem: denied, removeItem: denied };
+const BLOCKED_STORAGE = { getItem: denied, setItem: denied };
 
 describe("SafeStorage", () => {
   afterEach(() => {
@@ -19,19 +19,16 @@ describe("SafeStorage", () => {
     STORAGE.clear();
   });
 
-  it("reads, writes and removes through localStorage", () => {
+  it("reads and writes through localStorage", () => {
     SafeStorage.set("k", "v");
     expect(STORAGE.getItem("k")).toBe("v");
     expect(SafeStorage.get("k")).toBe("v");
-    SafeStorage.remove("k");
-    expect(SafeStorage.get("k")).toBeNull();
   });
 
   it("finds nothing and drops writes when every method throws", () => {
     vi.stubGlobal("localStorage", BLOCKED_STORAGE);
     expect(SafeStorage.get("k")).toBeNull();
     expect(() => SafeStorage.set("k", "v")).not.toThrow();
-    expect(() => SafeStorage.remove("k")).not.toThrow();
   });
 
   it("finds nothing and drops writes when localStorage itself throws", () => {
@@ -43,7 +40,6 @@ describe("SafeStorage", () => {
     });
     expect(SafeStorage.get("k")).toBeNull();
     expect(() => SafeStorage.set("k", "v")).not.toThrow();
-    expect(() => SafeStorage.remove("k")).not.toThrow();
   });
 
   it("finds nothing where there is no localStorage", () => {

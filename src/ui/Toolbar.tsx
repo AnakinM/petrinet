@@ -13,9 +13,9 @@ import {
 } from "@/ui/icons";
 import { Menu, type MenuEntry, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
-import { useThemeToggle } from "@/ui/ThemeToggle";
 import { Tooltip, type TooltipTriggerProps } from "@/ui/Tooltip";
 import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
+import { useThemeToggle } from "@/ui/useThemeToggle";
 
 const SNAP_ON_TIP = "Snap to grid: on. Click to turn off.";
 const SNAP_OFF_TIP = "Snap to grid: off. Click to turn on.";
@@ -124,9 +124,12 @@ function ToolbarMenu({
 }
 
 /**
- * A top bar button, at least as tall as one with a text label, so icon-only buttons match. A `tooltip` shows as a quick {@link Tooltip} under it; `tooltipSuppressed`
+ * A top bar button. A `tooltip` shows as a quick {@link Tooltip} under it; `tooltipSuppressed`
  * keeps it hidden while the button's own menu is open there. `menu` makes it the trigger of a
  * {@link Menu}: the menu then handles the click, and `active` only styles the open state.
+ *
+ * `min-h-7.5` (1.875rem) is the height of a button with a text label (`text-sm`, `py-1`, a border),
+ * so icon-only buttons are as tall. If that padding changes, change `min-h-7.5` with it.
  */
 function ToolbarButton({
   onClick,
@@ -158,8 +161,8 @@ function ToolbarButton({
       aria-label={ariaLabel}
       className={
         active
-          ? "inline-flex min-h-[1.875rem] items-center gap-1.5 rounded border border-accent bg-accent px-2.5 py-1 text-on-accent text-sm shadow-sm"
-          : "inline-flex min-h-[1.875rem] items-center gap-1.5 rounded border border-line-strong bg-surface-raised px-2.5 py-1 text-fg-soft text-sm shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+          ? "inline-flex min-h-7.5 items-center gap-1.5 rounded border border-accent bg-accent px-2.5 py-1 text-on-accent text-sm shadow-sm"
+          : "inline-flex min-h-7.5 items-center gap-1.5 rounded border border-line-strong bg-surface-raised px-2.5 py-1 text-fg-soft text-sm shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
       }
     >
       {children}

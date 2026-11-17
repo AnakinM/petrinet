@@ -5,8 +5,8 @@ import { netHistory, useNetStore, useTemporal } from "@/store/netStore";
 import { MenuIcon, RedoIcon, UndoIcon } from "@/ui/icons";
 import { Menu, type MenuSection, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
-import { useThemeToggle } from "@/ui/ThemeToggle";
 import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
+import { useThemeToggle } from "@/ui/useThemeToggle";
 
 const GUIDE_URL = "/guide";
 const REPO_URL = "https://github.com/AnakinM/petrinet";

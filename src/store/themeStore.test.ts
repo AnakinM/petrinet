@@ -124,7 +124,7 @@ describe("Theme store on load", () => {
     expect(page().dark).toBe(false);
   });
 
-  it("treats a stored System value of an older version as no choice", async () => {
+  it("treats a stored `system` value as no choice", async () => {
     STORAGE.setItem(KEY, "system");
     const { theme, system } = await load(true);
     expect(theme.useThemeStore.getState()).toMatchObject({ choice: null, resolved: "dark" });
@@ -276,7 +276,12 @@ describe("Inline theme script in index.html", () => {
     [null, false, "light"],
     [null, true, "dark"],
     ["dark", false, "dark"],
+    ["dark", true, "dark"],
+    ["light", false, "light"],
     ["light", true, "light"],
+    ["system", false, "light"],
+    ["system", true, "dark"],
+    ["sepia", true, "dark"],
     ["blocked", true, "dark"],
   ];
 
