@@ -13,6 +13,7 @@ import {
 } from "@/ui/icons";
 import { Menu, type MenuEntry, type MenuTriggerProps } from "@/ui/Menu";
 import { ModeToggle } from "@/ui/ModeToggle";
+import { THEME_LABEL, ThemeIcon, ThemeMenu } from "@/ui/ThemeMenu";
 import { Tooltip, type TooltipTriggerProps } from "@/ui/Tooltip";
 import { EXPORT_ENTRIES, IMAGE_ENTRIES, importNet, newNet } from "@/ui/toolbarActions";
 
@@ -21,7 +22,10 @@ const SNAP_OFF_TIP = "Snap to grid: off. Click to turn on.";
 const EXPORT_TIP = "Save the net as a file that can be imported again";
 const IMAGE_TIP = "Save or copy a picture of the net";
 
-/** Top bar: New / Import, the Export and Image menus, undo / redo, and the Build ↔ Simulate toggle. */
+/**
+ * Top bar: New / Import, the Export and Image menus, undo / redo, the theme switch, the Analysis
+ * toggle and the Build ↔ Simulate toggle.
+ */
 export function Toolbar(): JSX.Element {
   const mode = useNetStore((s) => s.mode);
   const simulating = mode === "simulate";
@@ -85,6 +89,19 @@ export function Toolbar(): JSX.Element {
         </>
       )}
       <div className="ml-auto flex items-center gap-2">
+        <ThemeMenu>
+          {(trigger, open) => (
+            <ToolbarButton
+              menu={trigger}
+              active={open}
+              ariaLabel={THEME_LABEL}
+              tooltip={THEME_LABEL}
+              tooltipSuppressed={open}
+            >
+              <ThemeIcon />
+            </ToolbarButton>
+          )}
+        </ThemeMenu>
         <ToolbarButton onClick={() => useAnalyticsStore.getState().toggle()} active={analyticsOpen}>
           Analysis
         </ToolbarButton>
