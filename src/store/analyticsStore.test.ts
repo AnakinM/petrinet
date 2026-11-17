@@ -42,3 +42,71 @@ describe("analyticsStore usage event", () => {
     expect(track).not.toHaveBeenCalled();
   });
 });
+
+describe("analyticsStore persisted state", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("opens on the default tab and width when nothing is stored", async () => {
+    const { store } = await load();
+    expect(store.getState().activeTab).toBe("invariants");
+    expect(store.getState().width).toBe(400);
+  });
+
+  it("keeps a stored width and the new Reachability tab", async () => {
+    localStorage.setItem(
+      "petrinet.analytics.v1",
+      JSON.stringify({ open: false, width: 360, activeTab: "reachability" }),
+    );
+    const { store } = await load();
+    expect(store.getState().width).toBe(360);
+    expect(store.getState().activeTab).toBe("reachability");
+  });
+
+  it("ignores a stored tab that does not exist", async () => {
+    localStorage.setItem(
+      "petrinet.analytics.v1",
+      JSON.stringify({ open: false, width: "wide", activeTab: "deadlocks" }),
+    );
+    const { store } = await load();
+    expect(store.getState().activeTab).toBe("invariants");
+    expect(store.getState().width).toBe(400);
+  });
+});
+
+describe("analyticsStore stale flag", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("marks the results stale after an edit only when a full analysis had run", async () => {
+    const { store } = await load();
+    const { useNetStore } = await import("@/store/netStore");
+    const id = useNetStore.getState().net.places[0].id;
+    store.getState().toggle();
+
+    useNetStore.getState().setTokens(id, 5);
+    expect(store.getState().stale).toBe(false);
+
+    store.getState().reanalyze();
+    expect(store.getState().result?.placeBounds).not.toBeNull();
+    useNetStore.getState().setTokens(id, 6);
+    expect(store.getState().stale).toBe(true);
+    // The old full results belong to the old net, so they are dropped.
+    expect(store.getState().result?.placeBounds).toBeNull();
+
+    store.getState().reanalyze();
+    expect(store.getState().stale).toBe(false);
+  });
+});

@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Arc, PetriNet, Place, Transition } from "@/domain/types";
-import { type AnalyticsTab, useAnalyticsStore } from "@/store/analyticsStore";
+import { type AnalyticsTab, NO_SPOTLIGHT, useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
+import { useNoticeStore } from "@/store/noticeStore";
 import { AnalyticsPanel } from "@/ui/analytics/AnalyticsPanel";
+import { COPY_FAILED } from "@/ui/analytics/copyActions";
 
 const place = (id: string, tokens = 0): Place => ({
   id,
@@ -15,13 +17,13 @@ const place = (id: string, tokens = 0): Place => ({
   position: { x: 0, y: 0 },
 });
 const transition = (id: string): Transition => ({ id, name: id, position: { x: 0, y: 0 } });
-const arc = (source: string, target: string): Arc => ({
+const arc = (source: string, target: string, multiplicity = 1): Arc => ({
   id: `${source}->${target}`,
   source,
   target,
   srcMagnetic: true,
   destMagnetic: true,
-  multiplicity: 1,
+  multiplicity,
   points: [],
 });
 
@@ -61,10 +63,36 @@ const DEAD_T: PetriNet = {
   ],
 };
 
+// The CYCLE with weight 2 on P1 → t1: the shape still fits a state machine, but the net is not ordinary.
+const HEAVY: PetriNet = {
+  ...CYCLE,
+  places: [place("P1", 2), place("P2", 0)],
+  arcs: [arc("P1", "t1", 2), arc("t1", "P2"), arc("P2", "t2"), arc("t2", "P1")],
+};
+
+// 250 tokens drain one by one from P into Q: 251 reachable markings, more than the table shows.
+const LONG: PetriNet = {
+  places: [place("P", 250), place("Q", 0)],
+  transitions: [transition("t")],
+  arcs: [arc("P", "t"), arc("t", "Q")],
+};
+
 function openWith(net: PetriNet, tab: AnalyticsTab = "invariants"): void {
   useNetStore.getState().setNet(net);
   useAnalyticsStore.setState({ open: true, activeTab: tab });
   useAnalyticsStore.getState().analyze();
+}
+
+async function analyse(): Promise<void> {
+  await userEvent.click(screen.getByRole("button", { name: /^Analyse/ }));
+}
+
+/** The card (a `section`) whose heading is `title`. */
+function card(title: string): HTMLElement {
+  const heading = screen.getByRole("heading", { name: new RegExp(`^${title}`) });
+  const section = heading.closest("section");
+  if (!section) throw new Error(`No card for ${title}`);
+  return section;
 }
 
 describe("AnalyticsPanel", () => {
@@ -73,23 +101,44 @@ describe("AnalyticsPanel", () => {
       open: false,
       activeTab: "invariants",
       result: null,
-      width: 360,
+      width: 400,
       stale: false,
       running: false,
-      highlight: [],
+      highlight: NO_SPOTLIGHT,
+      highlightKey: null,
+      preview: NO_SPOTLIGHT,
     });
   });
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it("renders nothing when closed", () => {
     const { container } = render(<AnalyticsPanel />);
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("shows the name Analysis and five tabs", () => {
+    openWith(CYCLE);
+    render(<AnalyticsPanel />);
+    expect(screen.getByRole("heading", { name: "Analysis" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close analysis" })).toBeInTheDocument();
+    for (const name of [
+      "Properties",
+      "Classification",
+      "Invariants",
+      "Structure",
+      "Reachability",
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
   it("renders the place & transition invariants of a conservative cycle", () => {
     openWith(CYCLE);
     render(<AnalyticsPanel />);
-    expect(screen.getByText("Place invariants")).toBeInTheDocument();
+    expect(within(card("Place invariants")).getByText("1")).toBeInTheDocument();
     expect(screen.getByText("P1 + P2")).toBeInTheDocument();
     expect(
       screen.getByText("All places covered, so the net is structurally bounded and conservative."),
@@ -100,157 +149,367 @@ describe("AnalyticsPanel", () => {
     openWith(CYCLE);
     render(<AnalyticsPanel />);
     await userEvent.click(screen.getByRole("button", { name: "Properties" }));
-    expect(screen.getByText("Conservative")).toBeInTheDocument();
     expect(
       screen.getByText("The total token count never changes, so the net is strictly conservative."),
     ).toBeInTheDocument();
   });
 
-  it("shows an empty hint when there is nothing to analyse", () => {
+  it("shows an empty hint and no Analyse bar when there is nothing to analyse", () => {
     openWith({ places: [], transitions: [], arcs: [] });
     render(<AnalyticsPanel />);
     expect(screen.getByText(/Nothing to analyse/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Analyse/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Copy results" })).not.toBeInTheDocument();
   });
 
-  it("resolves the behavioural verdicts only after Re-analyze", async () => {
-    openWith(CYCLE, "properties");
-    render(<AnalyticsPanel />);
-    // The behavioural pass is on-demand, so the behavioural rows start unsettled.
-    expect(screen.getAllByText(/Run Re-analyze/).length).toBeGreaterThan(0);
+  describe("Analyse bar", () => {
+    it("asks for the full analysis, marks the cards that need it, then says it is up to date", async () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      expect(screen.getByText("Some results need the full analysis.")).toBeInTheDocument();
+      expect(within(card("Live")).getByText("Needs the full analysis")).toBeInTheDocument();
+      expect(
+        within(card("Deadlock-free")).getByText("Needs the full analysis"),
+      ).toBeInTheDocument();
+      // Amber "Unknown" is kept for results that the analysis could not settle.
+      expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
-    expect(
-      screen.getByText("Every transition can fire again from every reachable marking."),
-    ).toBeInTheDocument();
+      await analyse();
+      expect(screen.getByText("Analysis is up to date. Explored 2 markings.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Analyse/ })).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Every transition can fire again from every reachable marking."),
+      ).toBeInTheDocument();
+    });
+
+    it("says the net changed after an edit, and is up to date again after Analyse again", async () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+
+      act(() => useNetStore.getState().setTokens("P1", 2));
+      expect(
+        screen.getByText("The net changed. The results may be out of date."),
+      ).toBeInTheDocument();
+      // The old results belong to the old net, so the cards wait for the new run.
+      expect(within(card("Live")).getByText("Needs the full analysis")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Analyse again" }));
+      expect(screen.getByText(/^Analysis is up to date/)).toBeInTheDocument();
+    });
+
+    it("stays on Analyse after an edit when the full analysis never ran", () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      act(() => useNetStore.getState().setTokens("P1", 2));
+      expect(screen.getByText("Some results need the full analysis.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Analyse" })).toBeInTheDocument();
+    });
+
+    it("shows on every tab", async () => {
+      openWith(CYCLE, "structure");
+      render(<AnalyticsPanel />);
+      expect(screen.getByRole("button", { name: "Analyse" })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Reachability" }));
+      expect(screen.getByRole("button", { name: "Analyse" })).toBeInTheDocument();
+    });
   });
 
-  it("flags the behavioural verdicts stale after a net edit and clears it on Re-analyze", async () => {
+  describe("Properties", () => {
+    it("lists a deadlock marking and its firing path in the Deadlock-free card", async () => {
+      openWith(DEADLOCK, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+      const deadlockFree = card("Deadlock-free");
+      expect(within(deadlockFree).getByText("Reaches a dead marking:")).toBeInTheDocument();
+      expect(within(deadlockFree).getByText("P1=0, P2=0, P3=1")).toBeInTheDocument();
+      expect(within(deadlockFree).getByText(/via t1.*t2/)).toBeInTheDocument();
+    });
+
+    it("never presents an incomplete (unbounded) state space as a definitive answer", async () => {
+      openWith(UNBOUNDED, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+      expect(
+        screen.getByText(/^Analysis is up to date\..*The net is unbounded/),
+      ).toBeInTheDocument();
+      expect(
+        within(card("Deadlock-free")).getByText(/None found in the explored markings/),
+      ).toBeInTheDocument();
+      expect(within(card("Live")).getByText(/Never fires: undetermined/)).toBeInTheDocument();
+      const bounded = card("Bounded");
+      expect(within(bounded).getByText(/only lower limits/)).toBeInTheDocument();
+      expect(within(bounded).getByText("no bound")).toBeInTheDocument();
+    });
+
+    it("shows the exact place bounds in the Bounded card after the full analysis", async () => {
+      openWith(DEADLOCK, "properties");
+      render(<AnalyticsPanel />);
+      // The place bounds wait with the same words as a pending card, without a full stop.
+      expect(within(card("Bounded")).getByText("Needs the full analysis")).toBeInTheDocument();
+      await analyse();
+      const bounded = card("Bounded");
+      expect(within(bounded).queryByText(/lower limits/)).not.toBeInTheDocument();
+      expect(within(bounded).getAllByText("1")).toHaveLength(3);
+    });
+
+    it("warns that other places may grow when the analysis stopped at an unbounded place", async () => {
+      const PUMP_AND_STORE: PetriNet = {
+        places: [place("P1", 0), place("P2", 1)],
+        transitions: [transition("t1")],
+        arcs: [arc("t1", "P1")],
+      };
+      openWith(PUMP_AND_STORE, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+      expect(
+        within(card("Bounded")).getByText(
+          "The analysis stopped when it proved the net unbounded. Other places may grow without limit too.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("gives a pending card no empty body", () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      const live = card("Live");
+      // The header row only: no body under the title.
+      expect(live.children).toHaveLength(1);
+    });
+
+    it("lights a transition that never fires from the Live card, and clears it on a second click", async () => {
+      openWith(DEAD_T, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+      const chip = within(card("Live")).getByRole("button", { name: "starved" });
+      await userEvent.click(chip);
+      expect(useAnalyticsStore.getState().highlight).toEqual({ nodes: ["starved"], arcs: [] });
+      await userEvent.click(chip);
+      expect(useAnalyticsStore.getState().highlight).toEqual(NO_SPOTLIGHT);
+    });
+
+    it("renders an all-zero deadlock marking as non-interactive (nothing to spotlight)", async () => {
+      // One token drained by a sink transition: dead at {p=0}, where no place holds a token.
+      const DRAIN: PetriNet = {
+        places: [place("p", 1)],
+        transitions: [transition("drain")],
+        arcs: [arc("p", "drain")],
+      };
+      openWith(DRAIN, "properties");
+      render(<AnalyticsPanel />);
+      await analyse();
+      expect(screen.getByText("p=0")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /p=0/ })).not.toBeInTheDocument();
+    });
+
+    it("gives every property a help icon", () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      expect(screen.getAllByRole("button", { name: /^Help:/ }).length).toBeGreaterThanOrEqual(7);
+    });
+  });
+
+  describe("highlight", () => {
+    it("lights a chip's elements while hovered, without keeping them", async () => {
+      openWith(CYCLE, "invariants");
+      render(<AnalyticsPanel />);
+      const chip = screen.getByRole("button", { name: /P1 \+ P2/ });
+      fireEvent.pointerEnter(chip, { pointerType: "mouse" });
+      expect(useAnalyticsStore.getState().preview).toEqual({ nodes: ["P1", "P2"], arcs: [] });
+      expect(useAnalyticsStore.getState().highlight).toEqual(NO_SPOTLIGHT);
+      fireEvent.pointerLeave(chip, { pointerType: "mouse" });
+      expect(useAnalyticsStore.getState().preview).toEqual(NO_SPOTLIGHT);
+    });
+
+    it("clears the preview when a hovered chip disappears", () => {
+      openWith(CYCLE, "invariants");
+      const { unmount } = render(<AnalyticsPanel />);
+      fireEvent.pointerEnter(screen.getByRole("button", { name: /P1 \+ P2/ }), {
+        pointerType: "mouse",
+      });
+      expect(useAnalyticsStore.getState().preview.nodes).toEqual(["P1", "P2"]);
+      unmount();
+      expect(useAnalyticsStore.getState().preview).toEqual(NO_SPOTLIGHT);
+    });
+
+    it("drops the highlight when the active tab changes", async () => {
+      openWith(CYCLE, "invariants");
+      render(<AnalyticsPanel />);
+      await userEvent.click(screen.getByRole("button", { name: /P1 \+ P2/ }));
+      expect(useAnalyticsStore.getState().highlight.nodes).toEqual(["P1", "P2"]);
+      await userEvent.click(screen.getByRole("button", { name: "Properties" }));
+      expect(useAnalyticsStore.getState().highlight).toEqual(NO_SPOTLIGHT);
+    });
+
+    it("drops the highlight on a structural net edit", async () => {
+      openWith(CYCLE, "invariants");
+      render(<AnalyticsPanel />);
+      await userEvent.click(screen.getByRole("button", { name: /P1 \+ P2/ }));
+      act(() => useNetStore.getState().setTokens("P1", 2));
+      expect(useAnalyticsStore.getState().highlight).toEqual(NO_SPOTLIGHT);
+    });
+  });
+
+  describe("Invariants", () => {
+    it("renders an invariant's structural vector and spotlights its support on click", async () => {
+      openWith(CYCLE, "invariants");
+      render(<AnalyticsPanel />);
+      const chip = screen.getByRole("button", { name: /P1 \+ P2/ });
+      expect(chip.textContent).toMatch(/\(1, 1\)/);
+      await userEvent.click(chip);
+      expect(useAnalyticsStore.getState().highlight).toEqual({ nodes: ["P1", "P2"], arcs: [] });
+    });
+
+    it("shows the incidence matrix and copies it as text and as an HTML table", async () => {
+      const write = vi.fn().mockResolvedValue(undefined);
+      vi.stubGlobal(
+        "ClipboardItem",
+        class {
+          constructor(readonly parts: Record<string, Blob>) {}
+        },
+      );
+      vi.stubGlobal("navigator", { clipboard: { write, writeText: vi.fn() } });
+      openWith(CYCLE, "invariants");
+      render(<AnalyticsPanel />);
+      const matrix = card("Incidence matrix");
+      expect(within(matrix).getByRole("columnheader", { name: "t1" })).toBeInTheDocument();
+      expect(within(matrix).getByRole("rowheader", { name: "P1" })).toBeInTheDocument();
+      expect(within(matrix).getAllByText("-1")).toHaveLength(2);
+
+      await userEvent.click(within(matrix).getByRole("button", { name: "Copy as text" }));
+      const [[items]] = write.mock.calls as [[{ parts: Record<string, Blob> }[]]];
+      expect(await items[0].parts["text/plain"].text()).toBe("\tt1\tt2\nP1\t-1\t1\nP2\t1\t-1");
+      expect(await items[0].parts["text/html"].text()).toContain("<table");
+      expect(useNoticeStore.getState().message).toBe("Incidence matrix copied to the clipboard.");
+    });
+  });
+
+  describe("Structure", () => {
+    it("shows loops and net facts only", () => {
+      openWith(CYCLE, "structure");
+      render(<AnalyticsPanel />);
+      expect(screen.getByText(/lie on a loop/)).toBeInTheDocument();
+      expect(within(card("Loops")).getByText("1 loop")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /^Net facts/ })).toBeInTheDocument();
+      expect(screen.queryByText("Dead transitions")).not.toBeInTheDocument();
+      expect(screen.queryByText("Check reachable")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Classification", () => {
+    it("classifies a simple cycle as every structural class", async () => {
+      openWith(CYCLE, "properties");
+      render(<AnalyticsPanel />);
+      await userEvent.click(screen.getByRole("button", { name: "Classification" }));
+      expect(screen.getAllByText("Yes")).toHaveLength(4);
+    });
+
+    it("answers no for a heavy arc on a fitting shape, and lights that arc", async () => {
+      openWith(HEAVY, "classification");
+      render(<AnalyticsPanel />);
+      const stateMachine = card("State machine");
+      expect(within(stateMachine).getByText("No")).toBeInTheDocument();
+      expect(
+        within(stateMachine).getByText(
+          "The shape fits a state machine, but 1 arc has a weight above 1.",
+        ),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        within(stateMachine).getByRole("button", { name: "P1 → t1, weight 2" }),
+      );
+      expect(useAnalyticsStore.getState().highlight).toEqual({ nodes: [], arcs: ["P1->t1"] });
+    });
+  });
+
+  describe("Reachability", () => {
+    it("answers a reachability query", async () => {
+      openWith(CYCLE, "reachability");
+      render(<AnalyticsPanel />);
+      // The form seeds with M0, which is trivially reachable from itself.
+      await userEvent.click(screen.getByRole("button", { name: "Check reachable" }));
+      expect(screen.getByText("This marking is reachable from M0.")).toBeInTheDocument();
+    });
+
+    it("lists the reachable markings after the full analysis and lights a row's marked places", async () => {
+      openWith(DEADLOCK, "reachability");
+      render(<AnalyticsPanel />);
+      expect(within(card("State table")).getByText("Needs the full analysis")).toBeInTheDocument();
+      await analyse();
+      const table = card("State table");
+      expect(within(table).getByText("3 markings")).toBeInTheDocument();
+      expect(within(table).getByText("t1 to M1")).toBeInTheDocument();
+      expect(within(table).getByText("deadlock")).toBeInTheDocument();
+
+      await userEvent.click(within(table).getByRole("button", { name: "M2" }));
+      expect(useAnalyticsStore.getState().highlight).toEqual({ nodes: ["P3"], arcs: [] });
+    });
+
+    it("keeps two markings with the same marked places apart: only the clicked one is pressed", async () => {
+      // 3 tokens move from P to Q: M1 (2, 1) and M2 (1, 2) both mark P and Q.
+      const MOVE: PetriNet = {
+        places: [place("P", 3), place("Q", 0)],
+        transitions: [transition("t")],
+        arcs: [arc("P", "t"), arc("t", "Q")],
+      };
+      openWith(MOVE, "reachability");
+      render(<AnalyticsPanel />);
+      await analyse();
+      const table = card("State table");
+      const m1 = within(table).getByRole("button", { name: "M1" });
+      const m2 = within(table).getByRole("button", { name: "M2" });
+      await userEvent.click(m1);
+      await userEvent.click(m2);
+      expect(useAnalyticsStore.getState().highlight).toEqual({ nodes: ["P", "Q"], arcs: [] });
+      expect(m1).toHaveAttribute("aria-pressed", "false");
+      expect(m2).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("separates the firings of a marking with semicolons, as Copy table does", async () => {
+      const CHOICE: PetriNet = {
+        places: [place("P1", 1), place("P2", 0), place("P3", 0)],
+        transitions: [transition("t1"), transition("t2")],
+        arcs: [arc("P1", "t1"), arc("t1", "P2"), arc("P1", "t2"), arc("t2", "P3")],
+      };
+      openWith(CHOICE, "reachability");
+      render(<AnalyticsPanel />);
+      await analyse();
+      expect(within(card("State table")).getByText("t1 to M1; t2 to M2")).toBeInTheDocument();
+    });
+
+    it("shows at most 200 rows and states the total", async () => {
+      openWith(LONG, "reachability");
+      render(<AnalyticsPanel />);
+      await analyse();
+      const table = card("State table");
+      expect(within(table).getByText("251 markings")).toBeInTheDocument();
+      expect(within(table).getByText(/Showing the first 200 of 251 markings/)).toBeInTheDocument();
+      // The header row plus 200 marking rows.
+      expect(within(table).getAllByRole("row")).toHaveLength(201);
+    });
+  });
+
+  it("copies the whole analysis from the header, saying when it is out of date", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
     openWith(CYCLE, "properties");
     render(<AnalyticsPanel />);
-    expect(screen.queryByText("Stale")).not.toBeInTheDocument();
-
-    // Editing the net (a new reference) marks the on-demand verdicts out of date.
+    await analyse();
     act(() => useNetStore.getState().setTokens("P1", 2));
-    expect(screen.getByText("Stale")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
-    expect(screen.queryByText("Stale")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Copy results" }));
+    const [[text]] = writeText.mock.calls as [[string]];
+    expect(text.startsWith("Analysis\n")).toBe(true);
+    expect(text).toContain("The results may be out of date.");
+    expect(useNoticeStore.getState().message).toBe("Analysis results copied to the clipboard.");
   });
 
-  it("lists a deadlock marking and its firing path on the Structure tab after Re-analyze", async () => {
-    openWith(DEADLOCK, "structure");
-    render(<AnalyticsPanel />);
-    // Behavioural diagnostics need the reachability pass first.
-    expect(screen.getAllByText(/Run Re-analyze/).length).toBeGreaterThan(0);
-
-    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
-    expect(screen.getByText("P1=0, P2=0, P3=1")).toBeInTheDocument();
-    expect(screen.getByText(/via t1.*t2/)).toBeInTheDocument();
-  });
-
-  it("never presents an incomplete (unbounded) net's structure as a definitive guarantee", async () => {
-    openWith(UNBOUNDED, "structure");
-    render(<AnalyticsPanel />);
-    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
-    // The graph was pruned for unboundedness, so empty results must NOT read as "None".
-    expect(screen.queryByText(/Every transition can fire/)).not.toBeInTheDocument();
-    expect(screen.getAllByText(/incomplete/).length).toBeGreaterThan(0);
-  });
-
-  it("spotlights a dead transition's node from the Structure tab, and clears on a second click", async () => {
-    openWith(DEAD_T, "structure");
-    render(<AnalyticsPanel />);
-    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
-
-    const chip = screen.getByRole("button", { name: "starved" });
-    await userEvent.click(chip);
-    expect(useAnalyticsStore.getState().highlight).toEqual(["starved"]);
-    // Clicking the lit chip again toggles the spotlight back off.
-    await userEvent.click(chip);
-    expect(useAnalyticsStore.getState().highlight).toEqual([]);
-  });
-
-  it("drops the highlight when the active tab changes", async () => {
-    openWith(DEAD_T, "structure");
-    render(<AnalyticsPanel />);
-    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
-    await userEvent.click(screen.getByRole("button", { name: "starved" }));
-    expect(useAnalyticsStore.getState().highlight).toEqual(["starved"]);
-
-    await userEvent.click(screen.getByRole("button", { name: "Properties" }));
-    expect(useAnalyticsStore.getState().highlight).toEqual([]);
-  });
-
-  it("drops the highlight on a structural net edit", async () => {
-    openWith(DEAD_T, "structure");
-    render(<AnalyticsPanel />);
-    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
-    await userEvent.click(screen.getByRole("button", { name: "starved" }));
-    expect(useAnalyticsStore.getState().highlight).toEqual(["starved"]);
-
-    act(() => useNetStore.getState().setTokens("P1", 2));
-    expect(useAnalyticsStore.getState().highlight).toEqual([]);
-  });
-
-  it("renders an all-zero deadlock marking as non-interactive (nothing to spotlight)", async () => {
-    // One token drained by a sink transition: dead at {p=0}, where no place holds a token.
-    const DRAIN: PetriNet = {
-      places: [place("p", 1)],
-      transitions: [transition("drain")],
-      arcs: [arc("p", "drain")],
-    };
-    openWith(DRAIN, "structure");
-    render(<AnalyticsPanel />);
-    await userEvent.click(screen.getByRole("button", { name: "Re-analyze" }));
-
-    expect(screen.getByText("p=0")).toBeInTheDocument();
-    // No tokens remain, so there is nothing to highlight. The row must not be a clickable button.
-    expect(screen.queryByRole("button", { name: /p=0/ })).not.toBeInTheDocument();
-  });
-
-  it("renders an invariant's structural vector and spotlights its support on click", async () => {
-    openWith(CYCLE, "invariants");
-    render(<AnalyticsPanel />);
-    // The chip shows the readable sum and, alongside it, the structural weight vector.
-    const chip = screen.getByRole("button", { name: /P1 \+ P2/ });
-    expect(chip.textContent).toMatch(/\(1, 1\)/);
-    await userEvent.click(chip);
-    expect(useAnalyticsStore.getState().highlight).toEqual(["P1", "P2"]);
-  });
-
-  it("summarises cycle coverage on the Structure tab", () => {
-    openWith(CYCLE, "structure");
-    render(<AnalyticsPanel />);
-    // The whole conservative cycle (P1, P2, t1, t2) lies on one strongly-connected component.
-    expect(screen.getByText(/lie on a cycle/)).toBeInTheDocument();
-  });
-
-  it("shows labelled status pills and per-property help tooltips on the Properties tab", () => {
+  it("says so in the notice when the browser refuses the copy", async () => {
+    vi.stubGlobal("navigator", {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error("Not allowed")) },
+    });
     openWith(CYCLE, "properties");
     render(<AnalyticsPanel />);
-    // Verdicts render as labelled pills (icon + word), not icon-only badges.
-    expect(screen.getAllByText("Yes").length).toBeGreaterThan(0);
-    // Every property carries a "?" help affordance exposed to assistive tech.
-    expect(screen.getAllByRole("img", { name: /^Help:/ }).length).toBeGreaterThanOrEqual(6);
-  });
-
-  it("classifies a simple cycle as every structural class", async () => {
-    openWith(CYCLE, "properties");
-    render(<AnalyticsPanel />);
-    await userEvent.click(screen.getByRole("button", { name: "Classification" }));
-    expect(screen.getByText("Ordinary")).toBeInTheDocument();
-    expect(screen.getByText("State machine")).toBeInTheDocument();
-    expect(screen.getByText("Marked graph")).toBeInTheDocument();
-    expect(screen.getByText("Free choice")).toBeInTheDocument();
-    // The P1 ⇄ P2 cycle satisfies all four classes.
-    expect(screen.getAllByText("Yes")).toHaveLength(4);
-  });
-
-  it("answers a reachability query on the Structure tab", async () => {
-    openWith(CYCLE, "structure");
-    render(<AnalyticsPanel />);
-    // The form seeds with M0, which is trivially reachable from itself.
-    await userEvent.click(screen.getByRole("button", { name: "Check reachable" }));
-    expect(screen.getByText("This marking is reachable from M0.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Copy results" }));
+    expect(useNoticeStore.getState().message).toBe(COPY_FAILED);
   });
 });

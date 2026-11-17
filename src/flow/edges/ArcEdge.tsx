@@ -10,8 +10,12 @@ import { type ArcEnd, NetOps } from "@/domain/netOps";
 import type { Vec2 } from "@/domain/types";
 import { ArcGeometry } from "@/flow/edges/arcGeometry";
 import { ARC_COLOR, type ArcFlowEdge } from "@/flow/projection";
+import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useNetStore } from "@/store/netStore";
 import { useIsMobile } from "@/ui/useIsMobile";
+
+/** The amber glow under an arc that the Analysis panel lights, matching the node highlight. */
+const GLOW_COLOR = "#f59e0b";
 
 /** An in-progress handle drag: the active point index plus a live draft polyline. */
 type Drag =
@@ -34,6 +38,10 @@ export function ArcEdge({
   selected,
 }: EdgeProps<ArcFlowEdge>): JSX.Element | null {
   const editable = useNetStore((s) => s.mode === "build");
+  // Lit when an Analysis result points at this arc (kept by a click, or shown while hovered).
+  const lit = useAnalyticsStore(
+    (s) => s.highlight.arcs.includes(id) || s.preview.arcs.includes(id),
+  );
   const isMobile = useIsMobile();
   const { screenToFlowPosition } = useReactFlow();
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -96,12 +104,26 @@ export function ArcEdge({
     return isDouble;
   };
 
+  const path = ArcGeometry.roundedPath(points);
   return (
     <>
+      {lit && (
+        <path
+          d={path}
+          fill="none"
+          stroke={GLOW_COLOR}
+          strokeOpacity={0.55}
+          strokeWidth={9}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pointerEvents="none"
+          data-testid="arc-highlight"
+        />
+      )}
       <BaseEdge
-        path={ArcGeometry.roundedPath(points)}
+        path={path}
         markerEnd={markerEnd}
-        style={{ stroke: ARC_COLOR, strokeWidth: 1.5 }}
+        style={{ stroke: ARC_COLOR, strokeWidth: lit ? 2.5 : 1.5 }}
       />
       <EdgeLabelRenderer>
         {weightLabel && (

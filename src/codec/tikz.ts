@@ -1,3 +1,4 @@
+import { LatexText } from "@/domain/latexText";
 import { NodeGeometry } from "@/domain/nodeGeometry";
 import type { Arc, PetriNet, Place, Transition, Vec2 } from "@/domain/types";
 import { ArcGeometry } from "@/flow/edges/arcGeometry";
@@ -6,23 +7,6 @@ import { NetSvg } from "@/flow/svgExport";
 
 /** Default name of the downloaded TikZ file. */
 export const TIKZ_FILE_NAME = "net.tex";
-
-const LATEX_ESCAPES: Record<string, string> = {
-  "\\": "\\textbackslash{}",
-  "<": "\\textless{}",
-  ">": "\\textgreater{}",
-  "|": "\\textbar{}",
-  "-": "{-}",
-  "{": "\\{",
-  "}": "\\}",
-  $: "\\$",
-  "&": "\\&",
-  "#": "\\#",
-  "^": "\\textasciicircum{}",
-  _: "\\_",
-  "%": "\\%",
-  "~": "\\textasciitilde{}",
-};
 
 /**
  * Exports a {@link PetriNet} as a TikZ (LaTeX) snippet that mirrors the canvas picture: same
@@ -142,6 +126,6 @@ export class TikzCodec {
   }
 
   private static _escape(s: string): string {
-    return s.replace(/\r?\n/g, " ").replace(/[\\{}$&#^_%~<>|-]/g, (c) => LATEX_ESCAPES[c]);
+    return LatexText.escape(s.replace(/\r?\n/g, " "));
   }
 }
