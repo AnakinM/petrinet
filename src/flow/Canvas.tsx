@@ -41,6 +41,7 @@ import { type ArcFlowEdge, FlowProjection, type PetriFlowNode } from "@/flow/pro
 import { useAnalyticsStore } from "@/store/analyticsStore";
 import { useBuildStore } from "@/store/buildStore";
 import { useNetStore } from "@/store/netStore";
+import { useThemeStore } from "@/store/themeStore";
 import { useIsMobile } from "@/ui/useIsMobile";
 
 // Stable module-level references: recreating these each render makes React Flow warn.
@@ -82,6 +83,8 @@ export function Canvas(): JSX.Element {
   // suppresses node drag/select so a tap starts/finishes the arc instead of moving or selecting.
   const arcTool = editable && tool === "arc";
   const isMobile = useIsMobile();
+  // React Flow's own controls and minimap follow the theme.
+  const colorMode = useThemeStore((s) => s.resolved);
   // Suppress node drag + marquee-select for any tool that turns a tap into its own action: token,
   // arc, and (on touch only, where placing has no capture overlay) the placing tools (so a tap
   // just drops a node and never nudges/selects an existing one).
@@ -354,6 +357,7 @@ export function Canvas(): JSX.Element {
       onContextMenu={onContextMenu}
     >
       <ReactFlow
+        colorMode={colorMode}
         nodes={nodes}
         edges={edges}
         onNodesChange={handleNodesChange}
