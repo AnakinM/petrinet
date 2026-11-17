@@ -91,8 +91,7 @@ export function Toolbar(): JSX.Element {
       )}
       <div className="ml-auto flex items-center gap-2">
         <ToolbarButton onClick={theme.toggle} ariaLabel={theme.label} tooltip={theme.label}>
-          {/* As tall as a line of text, so the button is as tall as the ones with a label. */}
-          <span className="flex h-5 items-center">{theme.icon}</span>
+          {theme.icon}
         </ToolbarButton>
         <ToolbarButton onClick={() => useAnalyticsStore.getState().toggle()} active={analyticsOpen}>
           Analysis
@@ -125,7 +124,7 @@ function ToolbarMenu({
 }
 
 /**
- * A top bar button. A `tooltip` shows as a quick {@link Tooltip} under it; `tooltipSuppressed`
+ * A top bar button, at least as tall as one with a text label, so icon-only buttons match. A `tooltip` shows as a quick {@link Tooltip} under it; `tooltipSuppressed`
  * keeps it hidden while the button's own menu is open there. `menu` makes it the trigger of a
  * {@link Menu}: the menu then handles the click, and `active` only styles the open state.
  */
@@ -159,8 +158,8 @@ function ToolbarButton({
       aria-label={ariaLabel}
       className={
         active
-          ? "inline-flex items-center gap-1.5 rounded border border-accent bg-accent px-2.5 py-1 text-on-accent text-sm shadow-sm"
-          : "inline-flex items-center gap-1.5 rounded border border-line-strong bg-surface-raised px-2.5 py-1 text-fg-soft text-sm shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+          ? "inline-flex min-h-[1.875rem] items-center gap-1.5 rounded border border-accent bg-accent px-2.5 py-1 text-on-accent text-sm shadow-sm"
+          : "inline-flex min-h-[1.875rem] items-center gap-1.5 rounded border border-line-strong bg-surface-raised px-2.5 py-1 text-fg-soft text-sm shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
       }
     >
       {children}
