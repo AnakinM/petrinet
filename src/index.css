@@ -33,8 +33,10 @@
   --color-fg: oklch(27.9% 0.041 260.031); /* slate-800 */
   --color-fg-soft: oklch(37.2% 0.044 257.287); /* slate-700 */
   --color-fg-muted: oklch(44.6% 0.043 257.281); /* slate-600 */
-  --color-fg-subtle: oklch(55.4% 0.046 257.417); /* slate-500 */
-  --color-fg-faint: oklch(70.4% 0.04 256.788); /* slate-400 */
+  /* fg-subtle and fg-faint sit between slate-500 and slate-600, so even the faintest text reads at
+     4.5:1 on a hovered row (surface-muted). They were slate-500 and slate-400. */
+  --color-fg-subtle: #51637b;
+  --color-fg-faint: #607087;
   --color-link: oklch(48.8% 0.243 264.376); /* blue-700 */
 
   /* The pressed or chosen control (active toggle, chosen tool, primary button), and its text. */
@@ -56,14 +58,15 @@
   --color-warning: oklch(76.9% 0.188 70.08); /* amber-500 */
   --color-info: oklch(54.6% 0.245 262.881); /* blue-600 */
   --color-info-hover: oklch(48.8% 0.243 264.376); /* blue-700 */
-  --color-on-status: #fff; /* white */
+  --color-on-status: #fff; /* white: on success, danger and info */
+  --color-on-warning: oklch(20.8% 0.042 265.755); /* slate-900: white on amber is too faint */
 
   /* Danger: errors, the delete button, a dead state. */
-  --color-danger-fg: oklch(57.7% 0.245 27.325); /* red-600 */
+  --color-danger-fg: oklch(50.5% 0.213 27.518); /* red-700, was red-600 */
   --color-danger-fg-strong: oklch(44.4% 0.177 26.899); /* red-800 */
   --color-danger-soft: oklch(97.1% 0.013 17.38); /* red-50 */
   --color-danger-tint: oklch(93.6% 0.032 17.717); /* red-100 */
-  --color-danger-line: oklch(70.4% 0.191 22.216); /* red-400 */
+  --color-danger-line: oklch(63.7% 0.237 25.331); /* red-500, was red-400 */
   --color-danger-line-soft: oklch(88.5% 0.062 18.334); /* red-200 */
 
   /* Warning: notes and caveats, the out-of-date Analyse bar. */
@@ -103,20 +106,20 @@
   --color-canvas-handle-soft: oklch(67.3% 0.182 276.935); /* indigo-400 */
   --color-canvas-handle-fill: #fff; /* white */
   --color-canvas-preview: #6366f1;
-  --color-canvas-valid: #10b981;
+  --color-canvas-valid: #059669; /* was #10b981 */
   --color-canvas-invalid: #ef4444;
   --color-canvas-guide: #f43f5e;
   --color-canvas-enabled: oklch(59.6% 0.145 163.225); /* emerald-600 */
   --color-canvas-enabled-ring: oklch(76.5% 0.177 163.223); /* emerald-400 */
   --color-canvas-enabled-glow: rgb(16 185 129 / 0.7);
-  --color-canvas-flash: oklch(84.5% 0.143 164.978); /* emerald-300 */
+  --color-canvas-flash: #065f46; /* was emerald-300: a light flash vanished on white */
   --color-canvas-flash-glow: rgb(16 185 129 / 0.9);
-  --color-canvas-highlight: #f59e0b;
-  --color-canvas-highlight-glow: rgb(245 158 11 / 0.45);
+  --color-canvas-highlight: #d97706; /* was #f59e0b */
+  --color-canvas-highlight-glow: rgb(217 119 6 / 0.45);
 }
 
 @layer base {
-  /* The dark theme. Text contrast is at least 4.5:1 on every surface (faint text 3.6:1), and the
+  /* The dark theme. Text contrast is at least 4.5:1 on every surface, also on a hovered row, and the
      canvas marks at least 3:1 on the canvas. The ratios are listed in token-map.md. */
   .dark {
     --color-surface: #0f172a;
@@ -133,8 +136,8 @@
     --color-fg: #f1f5f9;
     --color-fg-soft: #e2e8f0;
     --color-fg-muted: #cbd5e1;
-    --color-fg-subtle: #a0aec0;
-    --color-fg-faint: #718096;
+    --color-fg-subtle: #b3c0d1;
+    --color-fg-faint: #a1aec0;
     --color-link: #93c5fd;
 
     --color-accent: #cbd5e1;
@@ -148,6 +151,7 @@
     --color-focus-soft: #2563eb;
 
     --color-danger-fg: #f87171;
+    --color-danger-line: #f87171;
     --color-danger-fg-strong: #fecaca;
     --color-danger-soft: #2c1519;
     --color-danger-tint: #7f1d1d;
@@ -186,6 +190,7 @@
     --color-canvas-handle-fill: #0f172a;
     --color-canvas-preview: #818cf8;
     --color-canvas-valid: #34d399;
+    --color-canvas-flash: #6ee7b7;
     --color-canvas-invalid: #f87171;
     --color-canvas-guide: #fb7185;
     --color-canvas-highlight: #fbbf24;
