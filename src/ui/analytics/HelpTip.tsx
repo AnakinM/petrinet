@@ -65,7 +65,11 @@ export function HelpTip({ topic }: { topic: HelpTopic }): JSX.Element {
   useEffect(() => {
     if (!card) return;
     const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") setCard(null);
+      if (e.key !== "Escape") return;
+      // This Escape belongs to the card: it must not also leave a placing tool, cancel an arc or
+      // clear the selection, whose listeners sit on the window.
+      e.stopPropagation();
+      setCard(null);
     };
     // A keyboard focus can scroll the panel to bring the icon into view, so that card follows the
     // icon. A card opened by the mouse or a finger closes on any scroll.
