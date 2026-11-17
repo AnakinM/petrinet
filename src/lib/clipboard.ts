@@ -14,19 +14,24 @@ export class TextClipboard {
   /**
    * Put `text` on the clipboard, and `html` beside it when given and the browser can hold both.
    * Call it directly in the click handler: browsers allow the write only during a visitor's action.
-   * Rejects when the page has no clipboard access (an insecure page or an old browser).
+   * Rejects when the page has no clipboard access (an insecure page or an old browser), and also
+   * when the browser throws at once instead of rejecting, so every failure reaches the caller.
    */
   static write(text: string, html?: string): Promise<void> {
-    const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
-    if (html !== undefined && typeof ClipboardItem === "function" && clipboard?.write) {
-      const item = new ClipboardItem({
-        "text/plain": new Blob([text], { type: "text/plain" }),
-        "text/html": new Blob([html], { type: "text/html" }),
-      });
-      return clipboard.write([item]);
+    try {
+      const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
+      if (html !== undefined && typeof ClipboardItem === "function" && clipboard?.write) {
+        const item = new ClipboardItem({
+          "text/plain": new Blob([text], { type: "text/plain" }),
+          "text/html": new Blob([html], { type: "text/html" }),
+        });
+        return clipboard.write([item]);
+      }
+      if (clipboard?.writeText) return clipboard.writeText(text);
+      return Promise.reject(new Error("The clipboard is not available."));
+    } catch (error) {
+      return Promise.reject(error);
     }
-    if (clipboard?.writeText) return clipboard.writeText(text);
-    return Promise.reject(new Error("The clipboard is not available."));
   }
 
   /** Write a tab-separated table as both `text/plain` and an HTML table (see {@link htmlTable}). */
